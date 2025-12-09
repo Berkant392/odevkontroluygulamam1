@@ -2,8 +2,8 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <!-- MOBİL UYUMLULUK İÇİN KRİTİK AYAR: Zoom yapılmasını engeller, native uygulama hissi verir -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- ÖNEMLİ: Zoom yapılabilmesi için user-scalable=yes yapıldı ve maximum-scale artırıldı -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Berkant Hoca - Mobil Ödev Takip</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -23,20 +23,26 @@
     </script>
 
     <style>
-        /* Mobil kaydırma deneyimi için pürüzsüz kaydırma */
-        html { -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; }
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-        
-        /* Tablo içi yatay kaydırma alanı */
-        .table-container {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch; /* iOS için akıcı kaydırma */
-            scrollbar-width: none; /* Firefox scrollbar gizle */
+        /* Pürüzsüz kaydırma */
+        html { 
+            scroll-behavior: smooth; 
+            /* Yatay taşmaya izin veriyoruz, böylece sayfa genişliyor */
+            overflow-x: auto; 
         }
-        .table-container::-webkit-scrollbar { display: none; /* Chrome/Safari scrollbar gizle */ }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            /* İçeriğin genişlemesine izin ver */
+            min-width: 100vw;
+            width: fit-content;
+        }
+
+        /* TÜM Scrollbarları Gizle (Ama kaydırma çalışsın) */
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Tablo hücrelerinin sıkışmasını önle */
+        td, th { white-space: nowrap; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -69,7 +75,6 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // --- VERİTABANI ID'Sİ (AYNI KALDI - VERİLER KORUNUYOR) ---
         const COLLECTION_NAME = 'homework_tracker'; 
         const DOC_ID = 'main_list_v8_berkant_hoca'; 
         const DOC_ID_SETTINGS = 'settings'; 
@@ -125,7 +130,6 @@
             const [activeTopicMenu, setActiveTopicMenu] = useState(null);
             const [confirmModal, setConfirmModal] = useState(null);
 
-            // İlk yüklemeyi takip etmek için ref (Sınıfları kapalı başlatmak için)
             const isFirstLoad = useRef(true);
 
             useEffect(() => {
@@ -142,18 +146,11 @@
                 const unsubClasses = onSnapshot(docRef, (snap) => {
                     if (snap.exists()) {
                         const data = snap.data().classes || [];
-                        
-                        // İSTEK: Uygulama ilk açılınca tüm sınıflar kapalı olsun.
-                        // Eğer ilk yüklemeyse, gelen verideki 'isOpen' ne olursa olsun hepsini false yapıyoruz.
-                        // Not: Bu sadece yerel state'i etkiler, veritabanını bozmaz.
                         if (isFirstLoad.current) {
                             const closedClasses = data.map(c => ({ ...c, isOpen: false }));
                             setClasses(closedClasses);
                             isFirstLoad.current = false;
                         } else {
-                            // Sonraki güncellemelerde normal akış (biri açarsa herkeste açılabilir veya yerel kalır)
-                            // Kullanıcı deneyimi için, eğer bir sınıfı biz açtıysak açık kalsın istiyoruz.
-                            // Ancak basitlik adına Firestore'dan geleni basıyoruz.
                             setClasses(data);
                         }
                     } else { 
@@ -180,28 +177,18 @@
                 if (!user) return;
                 try {
                     const docRef = doc(db, COLLECTION_NAME, DOC_ID);
-                    // Veriyi kaydederken isOpen durumunu da kaydediyoruz ki diğer cihazlarda da senkron olsun
                     await setDoc(docRef, { classes: newData }, { merge: true });
-                } catch (err) {
-                    console.error(err);
-                }
+                } catch (err) { console.error(err); }
             };
 
             const generateId = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-            // --- Toggle Class (Aç/Kapa) ---
             const toggleClass = (id) => {
-                // Sadece tıklananı aç, diğerlerini kapa (Accordion Logic) ya da sadece toggle et
-                // Kullanıcı isteği: "Tıklasın ve o zaman isimler sıralansın"
                 const updated = classes.map(c => {
                     if (c.id === id) return { ...c, isOpen: !c.isOpen };
-                    return c; // İstersen return { ...c, isOpen: false }; yaparak aynı anda tek sınıf açtırabilirsin.
+                    return c;
                 });
                 setClasses(updated);
-                // Açık/Kapalı bilgisini kaydetmek istersen:
-                // saveData(updated); -> Bunu yaparsan öğretmenin açtığı sınıf öğrencide de açılır.
-                // Yapmazsan sadece lokalde açılır. Kullanıcı deneyimi için kaydetmemek daha iyi olabilir ama
-                // "en son düzenlediğim data" dediği için şimdilik lokal state yeterli.
             };
 
             const handleModalSubmit = () => {
@@ -367,14 +354,14 @@
             if (loading) return <div className="flex h-screen items-center justify-center text-indigo-600"><Loader2 className="animate-spin" size={40}/></div>;
 
             return (
-                <div className="min-h-screen font-sans text-slate-800 pb-32">
+                <div className="min-h-screen font-sans text-slate-800 pb-32 w-fit min-w-full">
                 {(activeCell || activeColMenu || activeTopicMenu) && (
                     <div className="fixed inset-0 z-50 bg-black/20" onClick={() => { setActiveCell(null); setActiveColMenu(null); setActiveTopicMenu(null); }}/>
                 )}
                 
-                {/* HEADER */}
-                <div className="bg-white sticky top-0 z-[60] shadow-sm border-b border-indigo-50/50">
-                    <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+                {/* HEADER - Sticky değil artık, sayfa ile kaysın istenirse sticky class'ı kaldırılabilir ama kullanıcı deneyimi için sticky kalması iyidir. Ancak sayfa genişlediğinde header'ın da genişlemesi gerekir. */}
+                <div className="bg-white sticky top-0 z-[60] shadow-sm border-b border-indigo-50/50 w-full min-w-max">
+                    <div className="max-w-full px-4 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <div className="bg-indigo-600 text-white p-2 rounded-lg shadow-md shadow-indigo-200"><GraduationCap size={22} /></div>
                             <div>
@@ -389,9 +376,9 @@
                     </div>
                 </div>
 
-                {/* DUYURU */}
-                <div className="max-w-5xl mx-auto px-4 mt-6">
-                    <div className="bg-amber-50/80 border border-amber-100 p-4 rounded-xl relative">
+                {/* DUYURU - Genişleyebilir */}
+                <div className="px-4 mt-6 w-full min-w-max">
+                    <div className="bg-amber-50/80 border border-amber-100 p-4 rounded-xl relative max-w-5xl mx-auto md:mx-0">
                         <div className="flex items-start gap-3">
                             <div className="bg-white p-1.5 rounded-full shadow-sm text-amber-500 mt-0.5"><Megaphone size={18} /></div>
                             <div className="flex-1">
@@ -415,20 +402,20 @@
                     </div>
                 </div>
 
-                {/* SINIF LİSTESİ */}
-                <div className="max-w-5xl mx-auto px-3 mt-6 flex flex-col gap-4">
+                {/* SINIF LİSTESİ - INFINITE CANVAS */}
+                <div className="px-3 mt-6 flex flex-col gap-4 w-full min-w-max pb-20">
                     {classes.length === 0 && !loading && (
-                        <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-slate-200 mx-2">
+                        <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-slate-200 mx-2 max-w-lg">
                             <h2 className="text-slate-400 font-medium text-sm">Sınıf bulunamadı.</h2>
                             {isTeacherMode && <button onClick={() => openModal('class')} className="mt-3 text-indigo-600 font-bold text-sm underline">Sınıf Ekle</button>}
                         </div>
                     )}
 
                     {classes.map((cls) => (
-                        <div key={cls.id} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div key={cls.id} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden w-full transition-all">
                             {/* Sınıf Kartı Başlığı */}
                             <div 
-                                className="bg-white p-4 flex items-center justify-between cursor-pointer active:bg-slate-50 touch-manipulation" 
+                                className="bg-white p-4 flex items-center justify-between cursor-pointer active:bg-slate-50 touch-manipulation sticky left-0" 
                                 onClick={() => toggleClass(cls.id)}
                             >
                                 <div className="flex items-center gap-3">
@@ -451,12 +438,12 @@
                             {/* Açılan İçerik (Tablo) */}
                             {cls.isOpen && (
                                 <div className="border-t border-slate-100">
-                                    <div className="table-container">
+                                    {/* table-container sınıfını kaldırdık, direct rendering */}
+                                    <div className="w-full">
                                         <table className="w-full text-left border-collapse">
                                             <thead>
                                                 <tr>
-                                                    {/* SOL ÜST KÖŞE: Sabit İsim Sütunu Başlığı */}
-                                                    {/* z-index: 40 vererek isimlerin üstüne binmesini engelledik */}
+                                                    {/* SOL ÜST KÖŞE */}
                                                     <th rowSpan={2} className="sticky left-0 top-0 z-40 bg-white border-b border-r border-slate-200 min-w-[160px] p-0 align-bottom shadow-[4px_0_8px_-2px_rgba(0,0,0,0.05)]">
                                                         <div className="p-3 text-xs font-black text-slate-400 uppercase tracking-wider h-full flex items-end">Öğrenci</div>
                                                     </th>
@@ -501,7 +488,6 @@
                                                     return (
                                                         <tr key={student.id} style={{ backgroundColor: rowColor }}>
                                                             {/* SOL SÜTUN: ÖĞRENCİ İSMİ (YAPIŞKAN) */}
-                                                            {/* z-index: 30. Başlığın (40) altında, diğer hücrelerin (0) üstünde */}
                                                             <td className="sticky left-0 z-30 border-r border-slate-200/80 py-2 px-3 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.05)]" style={{ backgroundColor: rowColor }}>
                                                                 <div className="flex items-center justify-between gap-2">
                                                                     <div 
@@ -563,7 +549,7 @@
                     ))}
                     
                     {isTeacherMode && (
-                        <div className="sticky bottom-6 flex justify-center z-50 pointer-events-none">
+                        <div className="sticky bottom-6 left-0 right-0 flex justify-center z-50 pointer-events-none">
                             <button onClick={() => openModal('class')} className="pointer-events-auto flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-indigo-500/40 hover:scale-105 transition-transform">
                                 <Plus size={20}/> <span className="text-sm">YENİ SINIF</span>
                             </button>
