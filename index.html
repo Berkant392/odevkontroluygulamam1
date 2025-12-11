@@ -46,72 +46,76 @@
             overflow-x: hidden;
         }
 
-        /* --- GELİŞMİŞ 3D NEON EFEKTİ --- */
+        /* --- SADELEŞTİRİLMİŞ AKIŞKAN NEON KART --- */
         
         .neon-card-wrapper {
             position: relative;
-            z-index: 0;
+            z-index: 1;
             border-radius: 1.5rem;
+            margin-bottom: 20px;
             transition: transform 0.3s ease;
-            margin: 10px; /* Işıkların taşması için pay */
+            cursor: pointer;
+            /* Kart yüksekliği */
+            min-height: 180px; 
+            display: flex;
         }
 
-        /* Hover'da kart havalansın */
         .neon-card-wrapper:hover {
-            transform: translateY(-8px) scale(1.02);
-            z-index: 10;
+            transform: scale(1.02);
         }
 
-        /* Katman 1: Keskin Çerçeve Işığı */
-        .neon-card-wrapper::before {
-            content: "";
+        /* Işık Katmanı (Çerçeve) */
+        .neon-card-glow {
             position: absolute;
-            inset: -4px; /* Dışa taşma */
+            inset: -4px; /* Çerçeve kalınlığı */
+            border-radius: 1.7rem;
+            /* Gökkuşağı Akışı */
+            background: linear-gradient(
+                90deg, 
+                #ff0000, #ff7f00, #ffff00, #00ff00, 
+                #0000ff, #4b0082, #9400d3, #ff0000
+            );
+            background-size: 400%;
+            animation: flow-light 8s linear infinite;
             z-index: -1;
-            /* Gökkuşağı Gradyanı */
+            filter: blur(8px); /* Hafif yumuşatma */
+        }
+        
+        /* Daha belirgin bir kontür için ikinci katman */
+        .neon-card-border-sharp {
+            position: absolute;
+            inset: -2px;
+            border-radius: 1.6rem;
             background: linear-gradient(
-                60deg, 
+                90deg, 
                 #ff0000, #ff7f00, #ffff00, #00ff00, 
                 #0000ff, #4b0082, #9400d3, #ff0000
             );
-            background-size: 300% 300%;
-            animation: neon-flow 4s linear infinite;
-            border-radius: 1.8rem;
+            background-size: 400%;
+            animation: flow-light 8s linear infinite;
+            z-index: -1;
         }
 
-        /* Katman 2: Etrafı Aydınlatan Bulanık Işık (Glow) */
-        .neon-card-wrapper::after {
-            content: "";
-            position: absolute;
-            inset: -4px;
-            z-index: -2;
-            background: linear-gradient(
-                60deg, 
-                #ff0000, #ff7f00, #ffff00, #00ff00, 
-                #0000ff, #4b0082, #9400d3, #ff0000
-            );
-            background-size: 300% 300%;
-            animation: neon-flow 4s linear infinite;
-            border-radius: 1.8rem;
-            filter: blur(25px); /* Işığı yayar */
-            opacity: 0.7;
+        /* Işık Akış Animasyonu */
+        @keyframes flow-light {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 400% 50%; }
         }
 
         /* Kartın İçi (Beyaz Zemin) */
         .neon-card-content {
             background: white;
             border-radius: 1.5rem;
-            height: 100%;
             width: 100%;
+            height: 100%; /* Kapsayıcıyı doldur */
             position: relative;
-            z-index: 1; /* Işıkların üstünde */
-        }
-
-        /* Işık Akış Animasyonu */
-        @keyframes neon-flow {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 2rem;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.02); /* Hafif iç gölge */
         }
 
         /* Scrollbar */
@@ -159,7 +163,7 @@
         // --- VERİ YAPISI ---
         const CLASSES_COLLECTION = 'berkant_hoca_classes_secure';
         const LIBRARY_COLLECTION = 'berkant_hoca_library';
-        const SETTINGS_COLLECTION = 'settings'; 
+        const SETTINGS_PATH = { collection: 'settings', doc: 'global_settings' };
         const DEFAULT_PIN = "1234"; 
 
         const MOTIVATIONAL_QUOTES = [
@@ -318,6 +322,7 @@
 
             useEffect(() => {
                 if (!user) return;
+                
                 const qClasses = query(collection(db, CLASSES_COLLECTION));
                 const unsubClasses = onSnapshot(qClasses, (snap) => {
                     const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -325,16 +330,25 @@
                     setClasses(loaded);
                     setLoading(false);
                 });
+
                 const qLib = query(collection(db, LIBRARY_COLLECTION));
                 const unsubLib = onSnapshot(qLib, (snap) => setLibraryItems(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>a.text.localeCompare(b.text))));
-                const settingsRef = doc(db, SETTINGS_COLLECTION, 'global_settings');
+
+                // AYARLARI DİNLE (PIN & DUYURU)
+                const settingsRef = doc(db, SETTINGS_PATH.collection, SETTINGS_PATH.doc);
                 const unsubSettings = onSnapshot(settingsRef, (snap) => {
                     if (snap.exists()) {
                         const d = snap.data();
-                        if (d.pin) setDbTeacherPin(d.pin);
+                        // DİKKAT: Şifreyi string'e çeviriyoruz ki 1234 (sayı) ile "1234" (yazı) fark etmesin
+                        if (d.pin !== undefined) setDbTeacherPin(String(d.pin).trim());
                         if (d.announcement !== undefined) setAnnouncement(d.announcement);
+                    } else {
+                        // Eğer ayar dosyası yoksa oluştur (Firebase'de görünmesi için)
+                        setDoc(settingsRef, { pin: DEFAULT_PIN, announcement: "Hoşgeldiniz!" }, { merge: true });
+                        setDbTeacherPin(DEFAULT_PIN);
                     }
                 });
+
                 return () => { unsubClasses(); unsubLib(); unsubSettings(); };
             }, [user]);
 
@@ -348,8 +362,27 @@
             };
             
             const deleteLibraryItem = async (id) => { await deleteDoc(doc(db, LIBRARY_COLLECTION, id)); };
-            const saveAnnouncementFn = async () => { try { await setDoc(doc(db, SETTINGS_COLLECTION, 'global_settings'), { announcement: tempAnnouncement }, { merge: true }); setIsEditingAnnouncement(false); } catch (e) { alert("Hata"); } };
-            const updatePinFn = async () => { if (newPin.length < 4) return alert("En az 4 karakter."); await setDoc(doc(db, SETTINGS_COLLECTION, 'global_settings'), { pin: newPin }, { merge: true }); setShowChangePinModal(false); setNewPin(""); alert("Şifre değişti."); };
+            const saveAnnouncementFn = async () => { try { await setDoc(doc(db, SETTINGS_PATH.collection, SETTINGS_PATH.doc), { announcement: tempAnnouncement }, { merge: true }); setIsEditingAnnouncement(false); } catch (e) { alert("Hata"); } };
+            
+            const updatePinFn = async () => { 
+                if (!newPin || String(newPin).length < 4) return alert("En az 4 karakter."); 
+                // Yeni şifreyi String olarak kaydediyoruz
+                await setDoc(doc(db, SETTINGS_PATH.collection, SETTINGS_PATH.doc), { pin: String(newPin).trim() }, { merge: true }); 
+                setShowChangePinModal(false); 
+                setNewPin(""); 
+                alert("Şifre değişti. Yeni şifrenizle giriş yapabilirsiniz."); 
+            };
+
+            const verifyPin = () => {
+                // Her iki tarafı da string'e çevirip boşlukları temizleyerek karşılaştır
+                if (String(pinInput).trim() === String(dbTeacherPin).trim()) {
+                    setIsTeacherMode(true);
+                    setShowPinModal(false);
+                    setPinInput("");
+                } else {
+                    alert("Hatalı PIN!");
+                }
+            };
 
             const generateId = (p) => `${p}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             
@@ -430,7 +463,7 @@
                 <div className="min-h-screen pb-20 relative">
                     
                     {/* --- HEADER --- */}
-                    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
+                    <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
                         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col items-center gap-2">
                             <div className="flex items-center gap-3 w-full justify-between">
                                 {!isTeacherMode && view !== 'home' ? (
@@ -596,23 +629,16 @@
                                             <div 
                                                 key={cls.id} 
                                                 onClick={() => openClass(cls)}
-                                                className="neon-card-wrapper cursor-pointer group"
+                                                className="neon-card-wrapper"
                                             >
-                                                {/* İÇERİK */}
-                                                <div className="neon-card-content p-6 flex flex-col justify-between">
-                                                    <div>
-                                                        <div className="flex justify-between items-start mb-6">
-                                                            <div className="bg-indigo-50 p-4 rounded-2xl text-indigo-600 group-hover:scale-110 transition-transform duration-300 shadow-sm">
-                                                                <Layout size={28} />
-                                                            </div>
-                                                            <span className="text-xs font-black bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full uppercase tracking-wider">{cls.students?.length || 0} Öğrenci</span>
-                                                        </div>
-                                                        <h2 className="text-3xl font-black text-slate-800 mb-2">{cls.className}</h2>
-                                                        <p className="text-sm text-slate-500 font-medium">Sınıf Detayları ve Ödevler</p>
-                                                    </div>
-                                                    <div className="flex items-center text-sm font-bold text-indigo-600 group-hover:translate-x-2 transition-transform mt-4">
-                                                        Sınıfı Görüntüle <ChevronRight size={18} className="ml-1"/>
-                                                    </div>
+                                                {/* Işık Efekti Katmanları */}
+                                                <div className="neon-card-glow"></div>
+                                                <div className="neon-card-border-sharp"></div>
+                                                
+                                                {/* İÇERİK - SADELEŞTİRİLMİŞ */}
+                                                <div className="neon-card-content">
+                                                    <h2 className="text-3xl font-black text-slate-800 tracking-tight">{cls.className}</h2>
+                                                    <p className="text-xs text-slate-400 mt-1 font-medium">Giriş için tıklayınız</p>
                                                 </div>
                                             </div>
                                         ))}
@@ -832,9 +858,21 @@
                                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
                                 <div className="bg-indigo-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-600"><Lock size={32}/></div>
                                 <h3 className="text-xl font-black text-slate-800 mb-6 tracking-wide">YÖNETİCİ GİRİŞİ</h3>
-                                <input autoFocus type="password" className="w-full text-center text-3xl font-mono tracking-widest p-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none mb-6 text-slate-800" placeholder="****" value={pinInput} onChange={(e) => setPinInput(e.target.value)} onKeyDown={(e) => { if(e.key==='Enter'){ if(pinInput===dbTeacherPin){setIsTeacherMode(true);setShowPinModal(false);setPinInput("");}else{alert("Hatalı PIN");} } }} />
-                                <button onClick={() => { if(pinInput===dbTeacherPin){setIsTeacherMode(true);setShowPinModal(false);setPinInput("");}else{alert("Hatalı PIN");} }} className="w-full py-3.5 text-white bg-indigo-600 rounded-xl font-bold mb-4 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all">GİRİŞ YAP</button>
+                                <input autoFocus type="password" className="w-full text-center text-3xl font-mono tracking-widest p-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none mb-6 text-slate-800" placeholder="****" value={pinInput} onChange={(e) => setPinInput(e.target.value)} onKeyDown={(e) => { if(e.key==='Enter'){ verifyPin(); } }} />
+                                <button onClick={verifyPin} className="w-full py-3.5 text-white bg-indigo-600 rounded-xl font-bold mb-4 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all">GİRİŞ YAP</button>
                                 <button onClick={() => setShowPinModal(false)} className="text-slate-400 text-sm font-bold hover:text-slate-600">Vazgeç</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Şifre Değiştirme Modalı */}
+                    {showChangePinModal && (
+                        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+                            <div className="bg-white rounded-3xl p-8 w-full max-w-xs text-center modal-anim shadow-2xl">
+                                <h3 className="text-xl font-black text-slate-800 mb-6 tracking-wide">Şifre Değiştir</h3>
+                                <input autoFocus type="text" className="w-full text-center text-2xl tracking-widest p-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none mb-6 text-slate-800" placeholder="Yeni Pin" value={newPin} onChange={(e) => setNewPin(e.target.value)} />
+                                <button onClick={updatePinFn} className="w-full py-3.5 text-white bg-emerald-600 rounded-xl font-bold mb-4 hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all">GÜNCELLE</button>
+                                <button onClick={() => setShowChangePinModal(false)} className="text-slate-400 text-sm font-bold hover:text-slate-600">İptal</button>
                             </div>
                         </div>
                     )}
