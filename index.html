@@ -192,7 +192,11 @@
         const formatDate = (dateString) => {
             if (!dateString) return "";
             const date = new Date(dateString);
-            return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            //return `${day}.${month}.${year}`; // Gün.Ay.Yıl
+            return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }); // 20 Aralık 2025
         };
 
         // --- COMPONENTS ---
@@ -206,7 +210,6 @@
                     const now = new Date();
                     const difference = targetDate - now;
                     const elapsed = now - startDate;
-                    
                     if (difference < 0) { clearInterval(timer); return; }
                     const days = Math.floor(difference / (1000 * 60 * 60 * 24));
                     const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
@@ -369,10 +372,10 @@
                 const opt = STATUS_OPTIONS.find(o => o.id === status) || STATUS_OPTIONS[3];
                 const Icon = opt.icon;
                 return (
-                    <div className={`flex items-center justify-center gap-1 px-2 py-1 rounded-md border ${opt.bg} ${opt.color} ${opt.border} w-full shadow-sm relative group`}>
-                        <Icon size={12} strokeWidth={2.5} className="shrink-0" />
-                        <span className="text-[9px] font-bold truncate">{opt.label}</span>
-                        {hasNote && <div className="absolute -top-1.5 -right-1.5 text-yellow-500 bg-white rounded-full p-0.5 shadow-sm border border-yellow-200"><StickyNote size={8} fill="currentColor"/></div>}
+                    <div className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border ${opt.bg} ${opt.color} ${opt.border} w-full shadow-sm relative group`}>
+                        <Icon size={14} strokeWidth={2.5} />
+                        <span className="text-[10px] font-bold truncate">{opt.label}</span>
+                        {hasNote && <div className="absolute -top-1.5 -right-1.5 text-yellow-500 bg-white rounded-full p-0.5 shadow-sm border border-yellow-200"><StickyNote size={10} fill="currentColor"/></div>}
                     </div>
                 );
             };
@@ -381,7 +384,7 @@
 
             return (
                 <div className="min-h-screen pb-20 relative">
-                    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
+                    <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
                          <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col items-center gap-2">
                             <div className="flex items-center gap-3 w-full justify-between">
                                 {!isTeacherMode && view !== 'home' ? (
@@ -450,11 +453,11 @@
                                                     <table className="w-full text-left border-collapse">
                                                         <thead>
                                                             <tr>
-                                                                <th rowSpan={2} className="sticky-corner border-b border-r border-slate-200 min-w-[160px] shadow-sm p-4 text-xs font-bold text-slate-500 uppercase">Öğrenci Listesi</th>
+                                                                <th rowSpan={2} className="sticky-corner border-b border-r border-slate-200 min-w-[200px] shadow-sm p-4 text-xs font-bold text-slate-500 uppercase">Öğrenci Listesi</th>
                                                                 {cls.topics?.map((topic, i) => {
                                                                     const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
                                                                     return (
-                                                                        <th key={topic.id} colSpan={Math.max(1, (topic.subColumns?.length || 0) + 1)} className={`text-center p-2 border-b border-r border-slate-200 sticky-header-top ${theme.main} min-w-[200px]`}>
+                                                                        <th key={topic.id} colSpan={Math.max(1, (topic.subColumns?.length || 0) + 1)} className={`text-center p-2 border-b border-r border-slate-200 sticky-header-top ${theme.main} min-w-[240px]`}>
                                                                             <div className="flex flex-col justify-center items-center gap-1">
                                                                                 {topic.date && (
                                                                                     <div 
@@ -464,7 +467,7 @@
                                                                                         Son Teslim : <span className="text-indigo-600">{formatDate(topic.date)}</span>
                                                                                     </div>
                                                                                 )}
-                                                                                <div className={`flex items-center gap-1 text-xs md:text-sm font-black uppercase tracking-wider mt-1 ${theme.text} break-words line-clamp-2 max-w-[180px] text-center`}>
+                                                                                <div className={`flex items-center gap-1 text-sm font-black uppercase tracking-wider mt-1 ${theme.text}`}>
                                                                                     {topic.title}
                                                                                     <button onClick={(e) => { e.stopPropagation(); setActiveTopicMenu({ classId: cls.id, topicId: topic.id, anchorEl: e.currentTarget }); }}><MoreVertical size={14}/></button>
                                                                                 </div>
@@ -479,15 +482,15 @@
                                                                     return (
                                                                         <React.Fragment key={topic.id}>
                                                                             {topic.subColumns?.map(col => (
-                                                                                <th key={col.id} className={`p-2 border-b border-r border-slate-200 sticky-header-sub ${theme.sub} min-w-[100px] text-center`}>
+                                                                                <th key={col.id} className={`p-2 border-b border-r border-slate-200 sticky-header-sub ${theme.sub} min-w-[140px] text-center`}>
                                                                                     <div className="flex flex-col items-center justify-center gap-1 h-full">
-                                                                                        <div className="font-bold text-[9px] md:text-[10px] line-clamp-2 break-words max-w-[80px]">{col.title}</div>
-                                                                                        <button onClick={(e) => { e.stopPropagation(); setActiveColMenu({ classId: cls.id, topicId: topic.id, colId: col.id, anchorEl: e.currentTarget }); }} className="text-xs text-slate-400 hover:text-indigo-600 opacity-50 hover:opacity-100"><MoreVertical size={10}/></button>
+                                                                                        <div className="font-bold text-[11px] line-clamp-2">{col.title}</div>
+                                                                                        <button onClick={(e) => { e.stopPropagation(); setActiveColMenu({ classId: cls.id, topicId: topic.id, colId: col.id, anchorEl: e.currentTarget }); }} className="text-xs text-slate-400 hover:text-indigo-600 opacity-50 hover:opacity-100"><MoreVertical size={12}/></button>
                                                                                     </div>
                                                                                 </th>
                                                                             ))}
-                                                                            <th className={`p-0 border-b border-r border-slate-200 w-10 text-center sticky-header-sub ${theme.sub}`}>
-                                                                                <button onClick={() => { setModalData({ classId: cls.id, topicId: topic.id }); setModalType('source'); }} className={`w-full h-full flex items-center justify-center transition-colors ${theme.btn}`} title="Kaynak Ekle"><Plus size={16}/></button>
+                                                                            <th className={`p-0 border-b border-r border-slate-200 w-12 text-center sticky-header-sub ${theme.sub}`}>
+                                                                                <button onClick={() => { setModalData({ classId: cls.id, topicId: topic.id }); setModalType('source'); }} className={`w-full h-full flex items-center justify-center transition-colors ${theme.btn}`} title="Kaynak Ekle"><Plus size={18}/></button>
                                                                             </th>
                                                                         </React.Fragment>
                                                                     );
@@ -500,10 +503,10 @@
                                                                     <td className="sticky-col-left p-3 border-r border-slate-200 shadow-sm">
                                                                         <div className="flex justify-between items-center group">
                                                                             <div className="flex items-center gap-3 cursor-pointer">
-                                                                                <span className="text-[10px] md:text-xs font-bold text-slate-700 truncate max-w-[100px]">{std.name}</span>
-                                                                                <button onClick={() => { setModalData({ classId: cls.id, studentId: std.id, currentName: std.name }); setModalInputVal(std.name); setModalType('edit-student'); }} className="text-slate-300 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size={12}/></button>
+                                                                                <span className="text-sm font-bold text-slate-700">{std.name}</span>
+                                                                                <button onClick={() => { setModalData({ classId: cls.id, studentId: std.id, currentName: std.name }); setModalInputVal(std.name); setModalType('edit-student'); }} className="text-slate-300 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size={14}/></button>
                                                                             </div>
-                                                                            <button onClick={() => deleteStudent(null, cls.id, std.id)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={12}/></button>
+                                                                            <button onClick={() => deleteStudent(null, cls.id, std.id)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14}/></button>
                                                                         </div>
                                                                     </td>
                                                                     {cls.topics?.map((topic, i) => {
@@ -526,8 +529,8 @@
                                                             <tr>
                                                                 <td className="sticky-col-left p-3 border-r border-slate-200 border-t border-slate-200">
                                                                     <div className="flex gap-2">
-                                                                        <input type="text" placeholder="Öğrenci..." className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs text-slate-700 w-full focus:border-indigo-500 outline-none" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(cls.id); }} />
-                                                                        <button onClick={() => addStudent(cls.id)} className="bg-indigo-600 text-white px-2 rounded text-[9px] font-bold">EKLE</button>
+                                                                        <input type="text" placeholder="Yeni Öğrenci..." className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs text-slate-700 w-full focus:border-indigo-500 outline-none" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(cls.id); }} />
+                                                                        <button onClick={() => addStudent(cls.id)} className="bg-indigo-600 text-white px-2 rounded text-xs font-bold">EKLE</button>
                                                                     </div>
                                                                 </td>
                                                                 {cls.topics?.map((t, i) => <td key={i} colSpan={Math.max(1, t.subColumns.length + 1)} className="border-t border-slate-200 bg-slate-50/20"></td>)}
@@ -566,7 +569,12 @@
                                                     <div key={topic.id} className="relative">
                                                         <div className="flex justify-between items-center mb-4 border-l-4 border-indigo-500 pl-3">
                                                             <div className="flex items-center gap-3">
-                                                                <h3 className="text-base md:text-lg font-bold text-indigo-700 uppercase tracking-wider">{topic.title}</h3>
+                                                                <h3 className="text-lg font-bold text-indigo-700 uppercase tracking-wider">{topic.title}</h3>
+                                                                {topic.date && (
+                                                                    <div className={`text-xs font-bold px-2 py-1 rounded flex items-center gap-1 ${isOverdue(topic.date) && pct < 100 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
+                                                                        <span className="font-normal text-slate-400">Son Teslim :</span> {formatDate(topic.date)}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                         <div className="grid grid-cols-1 gap-3">
@@ -580,18 +588,17 @@
                                                                 return (
                                                                     <div key={col.id} className={`bg-white border ${isLate ? 'border-red-300 animate-pulse-red' : 'border-slate-100'} rounded-2xl p-5 flex flex-col gap-3 hover:shadow-lg transition-all duration-300 group relative`}>
                                                                         <div className="flex justify-between items-center">
-                                                                            <div className="flex flex-col gap-1 w-2/3">
-                                                                                <div className="flex items-center gap-2 mb-1">
-                                                                                    <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div>ÖDEV</span>
-                                                                                    {topic.date && <span className={`text-[9px] font-medium flex items-center gap-1 ${isLate ? 'text-red-600 font-bold' : 'text-slate-400'}`}><Calendar size={9}/> {formatDate(topic.date)}</span>}
+                                                                            <div className="flex flex-col gap-1">
+                                                                                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div>KAYNAK</span>
+                                                                                <div className="flex flex-wrap items-center gap-2">
+                                                                                    <span className="text-base font-bold text-slate-700 group-hover:text-indigo-700 transition-colors leading-tight">{col.title}</span>
                                                                                 </div>
-                                                                                <span className="text-sm font-bold text-slate-700 group-hover:text-indigo-700 transition-colors leading-tight break-words">{col.title}</span>
                                                                             </div>
-                                                                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 shrink-0 ${statusData.bg} ${statusData.border} ${statusData.color}`}><StatusIcon size={14} strokeWidth={2.5} /><span className="text-[9px] font-black uppercase tracking-wide">{statusData.label}</span></div>
+                                                                            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 ${statusData.bg} ${statusData.border} ${statusData.color}`}><StatusIcon size={18} strokeWidth={2.5} /><span className="text-xs font-black uppercase tracking-wide">{statusData.label}</span></div>
                                                                         </div>
                                                                         {note && (
                                                                             <div className="bg-amber-50 p-3 rounded-lg border border-amber-100 flex gap-2 items-start text-xs text-amber-800">
-                                                                                <Info size={14} className="mt-0.5 shrink-0"/> <span><span className="font-bold">Not:</span> {note}</span>
+                                                                                <Info size={14} className="mt-0.5 shrink-0"/> <span><span className="font-bold">Öğretmen Notu:</span> {note}</span>
                                                                             </div>
                                                                         )}
                                                                     </div>
