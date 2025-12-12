@@ -131,7 +131,9 @@
 
         const CLASSES_COLLECTION = 'berkant_hoca_classes_secure';
         const LIBRARY_COLLECTION = 'berkant_hoca_library';
-        const SETTINGS_PATH = { collection: 'settings', doc: 'global_settings' };
+        
+        // --- DÜZELTME: Eski ve doğru ayar dosyasına yönlendirildi ---
+        const SETTINGS_PATH = { collection: 'homework_tracker', doc: 'settings' };
         const DEFAULT_PIN = "1234"; 
 
         const LIBRARY_TYPES = { EXCUSE: 'excuse', TOPIC: 'topic', SOURCE: 'source' };
@@ -192,11 +194,7 @@
         const formatDate = (dateString) => {
             if (!dateString) return "";
             const date = new Date(dateString);
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-            //return `${day}.${month}.${year}`; // Gün.Ay.Yıl
-            return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }); // 20 Aralık 2025
+            return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
         };
 
         // --- COMPONENTS ---
