@@ -2,18 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { 
-    getFirestore, doc, setDoc, collection, onSnapshot, 
-    deleteDoc, query 
+    getFirestore, doc, setDoc, getDoc, collection, onSnapshot, 
+    deleteDoc, query, addDoc
 } from 'firebase/firestore';
-import { GraduationCap, User, ShieldAlert, X, Loader2 } from 'lucide-react';
+import { GraduationCap, User, ShieldAlert, X, Loader2, Calendar, CheckCircle } from 'lucide-react';
 
-// Konfigürasyon ve Yardımcı Bileşenler (Yeni Yapıya Uygun)
-import { firebaseConfig, MOTIVATIONAL_QUOTES, STATUS_OPTIONS } from './config';
-import { Header, CountdownTimer, AnnouncementBox } from './components/CommonUI';
-import { StudentView } from './components/StudentView';
-import { AdminPanel } from './components/AdminPanel';
+// Konfigürasyon ve Modüller
+import { firebaseConfig, MOTIVATIONAL_QUOTES, STATUS_OPTIONS } from './config.js';
+import { Header, CountdownTimer, AnnouncementBox } from './components/CommonUI.jsx';
+import { StudentView } from './components/StudentView.jsx';
+import { AdminPanel } from './components/AdminPanel.jsx';
 
 // --- YARDIMCI ARAÇLAR ---
+const generateId = (p) => `${p}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 const generatePassword = () => {
     const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
     let pwd = '';
@@ -37,6 +38,7 @@ const App = () => {
     const [currentUserRole, setCurrentUserRole] = useState(null); 
     const [loggedInStudent, setLoggedInStudent] = useState(null);
     const [classes, setClasses] = useState([]);
+    const [libraryItems, setLibraryItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState('home');
     const [selectedClass, setSelectedClass] = useState(null);
@@ -50,8 +52,11 @@ const App = () => {
     const [studentPass, setStudentPass] = useState("");
     const [newStudentName, setNewStudentName] = useState("");
     const [modal, setModal] = useState({ type: null, data: {} });
+    const [modalInputVal, setModalInputVal] = useState("");
+    const [modalDateVal, setModalDateVal] = useState("");
+    const [useLibrary, setUseLibrary] = useState(false);
 
-    // --- FİREBASE VERİ DİNLEME ---
+    // --- VERİ DİNLEME ---
     useEffect(() => {
         signInAnonymously(auth);
         return onAuthStateChanged(auth, (u) => u && setUser(u));
@@ -64,109 +69,70 @@ const App = () => {
             setClasses(snap.docs.map(d => ({ id: d.id, ...d.data() })));
             setLoading(false);
         });
+        
+        const libUnsub = onSnapshot(collection(db, 'berkant_hoca_library'), (snap) => {
+            setLibraryItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+
         const settingsRef = doc(db, 'berkant_hoca_system_config_v2', 'main_config');
         const settingsUnsub = onSnapshot(settingsRef, (snap) => {
             if (snap.exists()) setAnnouncement(snap.data().announcement);
         });
-        return () => { unsub(); settingsUnsub(); };
+        return () => { unsub(); settingsUnsub(); libUnsub(); };
     }, [user]);
 
-    // --- TEMEL FONKSİYONLAR ---
-    const handleLogout = () => {
-        setCurrentUserRole(null);
-        setLoggedInStudent(null);
-        setView('home');
-        setAuthView('selection');
+    // --- MODAL İŞLEMLERİ ---
+    const handleModalSubmit = async () => {
+        if (!modalInputVal.trim()) return;
+
+        if (modal.type === 'class') {
+            const newClass = { id: generateId('class'), className: modalInputVal, topics: [], students: [] };
+            await setDoc(doc(db, 'berkant_hoca_classes_secure', newClass.id), newClass);
+        } 
+        else if (modal.type === 'topic') {
+            const cls = classes.find(c => c.id === modal.data.classId);
+            const newTopic = { id: generateId('topic'), title: modalInputVal, date: modalDateVal, subColumns: [] };
+            await setDoc(doc(db, 'berkant_hoca_classes_secure', cls.id), { ...cls, topics: [...(cls.topics || []), newTopic] }, { merge: true });
+        }
+        else if (modal.type === 'source') {
+            const cls = classes.find(c => c.id === modal.data.classId);
+            const newColId = generateId('col');
+            const updatedTopics = cls.topics.map(t => t.id === modal.data.topicId ? { ...t, subColumns: [...t.subColumns, { id: newColId, title: modalInputVal }] } : t);
+            const updatedStudents = cls.students.map(std => ({ ...std, grades: { ...std.grades, [newColId]: 'assigned' } }));
+            await setDoc(doc(db, 'berkant_hoca_classes_secure', cls.id), { ...cls, topics: updatedTopics, students: updatedStudents }, { merge: true });
+        }
+
+        setModal({ type: null, data: {} });
+        setModalInputVal("");
+        setModalDateVal("");
     };
 
-    const verifyTeacherPin = () => {
-        // Standart PIN: 1234
-        if (pinInput === "1234") {
-            setCurrentUserRole('teacher');
-            setAuthView('selection');
-            setPinInput("");
-        } else { alert("Hatalı PIN!"); }
-    };
-
-    const handleStudentLogin = () => {
-        let found = null;
-        classes.forEach(c => {
-            const s = c.students?.find(std => 
-                std.username.trim() === studentUser.trim() && 
-                std.password.trim() === studentPass.trim()
-            );
-            if (s) { found = { student: s, class: c }; }
-        });
-        if (found) {
-            setCurrentUserRole('student');
-            setLoggedInStudent(found.student);
-            setSelectedClass(found.class);
-            setAuthView('selection');
-            setStudentUser(""); setStudentPass("");
-        } else { alert("Giriş bilgileri hatalı."); }
-    };
-
-    const updateClassInDb = async (updatedClass) => {
-        await setDoc(doc(db, 'berkant_hoca_classes_secure', updatedClass.id), updatedClass, { merge: true });
-    };
-
-    const handleAddStudent = (classId) => {
+    // --- ANA FONKSİYONLAR ---
+    const handleLogout = () => { setCurrentUserRole(null); setLoggedInStudent(null); setView('home'); setAuthView('selection'); };
+    const verifyTeacherPin = () => { if (pinInput === "1234") { setCurrentUserRole('teacher'); setAuthView('selection'); setPinInput(""); } else { alert("Hatalı PIN!"); } };
+    
+    const handleAddStudent = async (classId) => {
         if (!newStudentName.trim()) return;
         const cls = classes.find(c => c.id === classId);
-        const newStudent = {
-            id: `std_${Date.now()}`,
-            name: newStudentName.trim(),
-            username: generateUsername(newStudentName.trim()),
-            password: generatePassword(),
-            grades: {},
-            assignmentNotes: {}
-        };
-        updateClassInDb({ ...cls, students: [...(cls.students || []), newStudent] });
+        const newStudent = { id: generateId('std'), name: newStudentName.trim(), username: generateUsername(newStudentName.trim()), password: generatePassword(), grades: {}, assignmentNotes: {} };
+        await setDoc(doc(db, 'berkant_hoca_classes_secure', cls.id), { ...cls, students: [...(cls.students || []), newStudent] }, { merge: true });
         setNewStudentName("");
     };
 
-    const calculateStats = (students, topics) => {
-        if (!students || !topics || topics.length === 0) return { percentage: 0 };
-        let total = 0, completed = 0;
-        const colIds = topics.flatMap(t => t.subColumns?.map(c => c.id) || []);
-        students.forEach(s => {
-            colIds.forEach(id => {
-                total++;
-                if (s.grades?.[id] === 'done') completed++;
-            });
-        });
-        return { percentage: total === 0 ? 0 : Math.round((completed/total)*100) };
-    };
+    if (loading) return <div className="flex h-screen items-center justify-center bg-slate-900 text-white font-black tracking-widest">YÜKLENİYOR...</div>;
 
-    if (loading) return (
-        <div className="flex h-screen items-center justify-center bg-slate-900">
-            <div className="text-center">
-                <Loader2 className="animate-spin text-indigo-500 mx-auto mb-4" size={48}/>
-                <p className="text-white font-bold tracking-widest">YÜKLENİYOR...</p>
-            </div>
-        </div>
-    );
-
-    // --- GİRİŞ EKRANI ---
     if (!currentUserRole) {
         return (
             <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
                 <div className="bg-white/10 backdrop-blur-2xl p-8 rounded-[2rem] w-full max-w-md border border-white/20 shadow-2xl">
                     <div className="text-center mb-10">
-                        <div className="w-20 h-20 bg-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <GraduationCap size={40} className="text-white" />
-                        </div>
+                        <div className="w-20 h-20 bg-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4"><GraduationCap size={40} className="text-white" /></div>
                         <h1 className="text-3xl font-black text-white">BERKANT HOCA</h1>
                     </div>
-
                     {authView === 'selection' ? (
                         <div className="space-y-4">
-                            <button onClick={() => setAuthView('student')} className="w-full p-5 bg-white/5 text-white rounded-2xl flex items-center gap-4 hover:bg-white/10 border border-white/5 transition-all">
-                                <User className="text-indigo-400"/> Öğrenci Girişi
-                            </button>
-                            <button onClick={() => setAuthView('teacher')} className="w-full p-5 bg-white/5 text-white rounded-2xl flex items-center gap-4 hover:bg-white/10 border border-white/5 transition-all">
-                                <ShieldAlert className="text-rose-400"/> Öğretmen Girişi
-                            </button>
+                            <button onClick={() => setAuthView('student')} className="w-full p-5 bg-white/5 text-white rounded-2xl flex items-center gap-4 hover:bg-white/10 border border-white/5 transition-all"><User className="text-indigo-400"/> Öğrenci Girişi</button>
+                            <button onClick={() => setAuthView('teacher')} className="w-full p-5 bg-white/5 text-white rounded-2xl flex items-center gap-4 hover:bg-white/10 border border-white/5 transition-all"><ShieldAlert className="text-rose-400"/> Öğretmen Girişi</button>
                         </div>
                     ) : authView === 'student' ? (
                         <div className="space-y-5">
@@ -187,23 +153,11 @@ const App = () => {
         );
     }
 
-    // --- ANA PANEL ---
     return (
         <div className="min-h-screen bg-slate-50">
-            <Header 
-                role={currentUserRole} 
-                view={view} 
-                onLogout={handleLogout} 
-                onGoHome={() => setView('home')} 
-                dailyQuote={dailyQuote}
-            />
-            
+            <Header role={currentUserRole} view={view} onLogout={handleLogout} onGoHome={() => setView('home')} dailyQuote={dailyQuote} />
             <CountdownTimer />
-            
-            <AnnouncementBox 
-                content={announcement} 
-                isTeacher={currentUserRole === 'teacher'} 
-            />
+            <AnnouncementBox content={announcement} isTeacher={currentUserRole === 'teacher'} />
             
             <main className="max-w-6xl mx-auto px-4 mt-8">
                 {currentUserRole === 'teacher' ? (
@@ -214,29 +168,63 @@ const App = () => {
                         onAddStudent={handleAddStudent}
                         newStudentName={newStudentName}
                         setNewStudentName={setNewStudentName}
-                        calculateStats={calculateStats}
-                        onDeleteClass={(e, id) => {
-                            e.stopPropagation();
-                            if(confirm("Sınıfı silmek istediğinize emin misiniz?")) deleteDoc(doc(db, 'berkant_hoca_classes_secure', id));
+                        calculateStats={(s, t) => {
+                            if (!s || !t || t.length === 0) return { percentage: 0 };
+                            let total = 0, completed = 0;
+                            const colIds = t.flatMap(topic => topic.subColumns?.map(c => c.id) || []);
+                            s.forEach(student => { colIds.forEach(id => { total++; if (student.grades?.[id] === 'done') completed++; }); });
+                            return { percentage: total === 0 ? 0 : Math.round((completed/total)*100) };
                         }}
+                        onDeleteClass={async (e, id) => { e.stopPropagation(); if(confirm("Silmek istediğinize emin misiniz?")) await deleteDoc(doc(db, 'berkant_hoca_classes_secure', id)); }}
                     />
                 ) : (
-                    <StudentView 
-                        student={loggedInStudent} 
-                        selectedClass={selectedClass} 
-                    />
+                    <StudentView student={loggedInStudent} selectedClass={selectedClass} />
                 )}
             </main>
 
-            {/* Basit Modal */}
+            {/* --- AKTİF MODAL (BOŞ DEĞİL!) --- */}
             {modal.type && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white p-6 rounded-2xl w-full max-w-sm">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-bold uppercase">{modal.type}</h3>
-                            <button onClick={() => setModal({type:null, data:{}})}><X/></button>
+                    <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl modal-anim">
+                        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="font-bold text-slate-800">
+                                {modal.type === 'class' ? 'Yeni Sınıf' : (modal.type === 'topic' ? 'Yeni Ödev' : 'Yeni Kaynak')}
+                            </h3>
+                            <button onClick={() => setModal({type:null, data:{}})} className="text-slate-400"><X size={20}/></button>
                         </div>
-                        <p className="text-sm text-slate-500">Bu alan bir sonraki güncellemede aktif olacaktır.</p>
+                        <div className="p-6 flex flex-col gap-4">
+                            {modal.type !== 'class' && (
+                                <div className="flex bg-slate-100 p-1 rounded-lg">
+                                    <button onClick={() => setUseLibrary(false)} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${!useLibrary ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Yeni Yaz</button>
+                                    <button onClick={() => setUseLibrary(true)} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${useLibrary ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Kütüphaneden</button>
+                                </div>
+                            )}
+                            
+                            {useLibrary ? (
+                                <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-xl bg-slate-50/50">
+                                    {libraryItems.filter(i => i.type === (modal.type === 'topic' ? 'topic' : 'source')).map(item => (
+                                        <button key={item.id} onClick={() => setModalInputVal(item.text)} className={`w-full text-left p-3 text-sm border-b border-slate-100 hover:bg-white flex items-center justify-between ${modalInputVal === item.text ? 'text-indigo-600 font-bold' : 'text-slate-600'}`}>
+                                            {item.text} {modalInputVal === item.text && <CheckCircle size={14}/>}
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : (
+                                <input autoFocus type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none font-medium" placeholder="İsim Giriniz..." value={modalInputVal} onChange={(e) => setModalInputVal(e.target.value)} />
+                            )}
+
+                            {modal.type === 'topic' && (
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase">Son Teslim Tarihi</label>
+                                    <div className="relative">
+                                        <input type="date" className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none" value={modalDateVal} onChange={(e) => setModalDateVal(e.target.value)} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+                            <button onClick={() => setModal({type:null, data:{}})} className="flex-1 py-3 text-sm font-bold text-slate-500">Vazgeç</button>
+                            <button onClick={handleModalSubmit} className="flex-1 py-3 rounded-xl font-bold text-white bg-indigo-600 shadow-md">Kaydet</button>
+                        </div>
                     </div>
                 </div>
             )}
