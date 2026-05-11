@@ -1,0 +1,181 @@
+/* Tailwind CSS Temel Direktifleri */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- ÖZEL TASARIM STİLLERİ --- */
+
+body { 
+    font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+    background-color: #f8fafc; 
+    color: #1e293b; 
+    overflow-x: hidden; 
+}
+
+/* Tablo Konteynırı ve Kaydırma Çubuğu */
+.table-container { 
+    overflow: auto; 
+    max-height: 80vh; 
+    position: relative; 
+    border: 1px solid #e2e8f0; 
+    border-radius: 12px; 
+    background-color: white; 
+}
+
+.table-container::-webkit-scrollbar { 
+    width: 12px; 
+    height: 12px; 
+}
+
+.table-container::-webkit-scrollbar-track { 
+    background: #f1f5f9; 
+}
+
+.table-container::-webkit-scrollbar-thumb { 
+    background: #94a3b8; 
+    border-radius: 6px; 
+    border: 3px solid #f1f5f9; 
+}
+
+.table-container::-webkit-scrollbar-thumb:hover { 
+    background: #64748b; 
+}
+
+@media (max-width: 768px) { 
+    .table-container::-webkit-scrollbar { display: none; } 
+}
+
+th, td { 
+    white-space: nowrap; 
+}
+
+/* Tablo Sabitleme (Sticky) Ayarları */
+.sticky-corner { 
+    position: sticky; 
+    left: 0; 
+    top: 0; 
+    z-index: 50 !important; 
+    background-color: white; 
+    border-right: 2px solid #e2e8f0; 
+    border-bottom: 2px solid #e2e8f0; 
+    height: 80px; 
+}
+
+.sticky-header-top { 
+    position: sticky; 
+    top: 0; 
+    z-index: 40; 
+    border-bottom: 1px solid rgba(0,0,0,0.1); 
+    height: 80px; 
+}
+
+.sticky-header-sub { 
+    position: sticky; 
+    top: 80px; 
+    z-index: 40; 
+    border-bottom: 2px solid rgba(0,0,0,0.1); 
+    height: 50px; 
+} 
+
+.sticky-col-left { 
+    position: sticky; 
+    left: 0; 
+    z-index: 30; 
+    background-color: white; 
+    border-right: 2px solid #e2e8f0; 
+}
+
+/* Neon Kart Efektleri */
+.neon-card-wrapper { 
+    position: relative; 
+    z-index: 1; 
+    border-radius: 1.5rem; 
+    margin-bottom: 20px; 
+    transition: transform 0.3s ease; 
+    cursor: pointer; 
+    min-height: 180px; 
+    display: flex; 
+}
+
+.neon-card-wrapper:hover { 
+    transform: scale(1.02); 
+}
+
+.neon-card-glow { 
+    position: absolute; 
+    inset: -4px; 
+    border-radius: 1.7rem; 
+    background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3, #ff0000); 
+    background-size: 400%; 
+    animation: flow-light 8s linear infinite; 
+    z-index: -1; 
+    filter: blur(8px); 
+}
+
+.neon-card-border-sharp { 
+    position: absolute; 
+    inset: -2px; 
+    border-radius: 1.6rem; 
+    background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3, #ff0000); 
+    background-size: 400%; 
+    animation: flow-light 8s linear infinite; 
+    z-index: -1; 
+}
+
+@keyframes flow-light { 
+    0% { background-position: 0% 50%; } 
+    100% { background-position: 400% 50%; } 
+}
+
+.neon-card-content { 
+    background: white; 
+    border-radius: 1.5rem; 
+    width: 100%; 
+    height: 100%; 
+    position: relative; 
+    z-index: 2; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    flex-direction: column; 
+    padding: 1.5rem; 
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.02); 
+}
+
+/* Animasyonlar */
+.modal-anim { 
+    animation: fadeIn 0.2s ease-out forwards; 
+}
+
+@keyframes fadeIn { 
+    from { opacity: 0; transform: scale(0.95); } 
+    to { opacity: 1; transform: scale(1); } 
+}
+
+.z-menu { 
+    z-index: 9999 !important; 
+}
+
+.animate-pulse-red { 
+    animation: pulseRed 2s infinite; 
+}
+
+.animation-delay-2000 { 
+    animation-delay: 2s; 
+}
+
+.animation-delay-4000 { 
+    animation-delay: 4s; 
+}
+
+/* --- YAZDIRMA (PRINT) ÖZEL STİLLERİ --- */
+@media print {
+    body { background-color: white !important; margin: 0; padding: 0; }
+    .no-print { display: none !important; }
+    .print-only { display: block !important; }
+    @page { margin: 1cm; }
+}
+
+.print-only { 
+    display: none; 
+}
