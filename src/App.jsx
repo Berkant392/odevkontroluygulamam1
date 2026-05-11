@@ -5,7 +5,7 @@ import {
     getFirestore, doc, setDoc, getDoc, collection, onSnapshot, 
     deleteDoc, query, addDoc
 } from 'firebase/firestore';
-import { GraduationCap, User, ShieldAlert, X, Loader2, Calendar, CheckCircle } from 'lucide-react';
+import { GraduationCap, User, ShieldAlert, X, Loader2, Calendar, CheckCircle, Printer } from 'lucide-react';
 
 // Konfigürasyon ve Modüller
 import { firebaseConfig, MOTIVATIONAL_QUOTES, STATUS_OPTIONS } from './config.js';
@@ -46,7 +46,7 @@ const App = () => {
     const [announcement, setAnnouncement] = useState("");
     const [dailyQuote] = useState(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]);
 
-    // Form Durumları
+    // Form ve Modal Durumları
     const [pinInput, setPinInput] = useState("");
     const [studentUser, setStudentUser] = useState("");
     const [studentPass, setStudentPass] = useState("");
@@ -55,6 +55,9 @@ const App = () => {
     const [modalInputVal, setModalInputVal] = useState("");
     const [modalDateVal, setModalDateVal] = useState("");
     const [useLibrary, setUseLibrary] = useState(false);
+    
+    // Yazdırma Durumu
+    const [printData, setPrintData] = useState(null);
 
     // --- VERİ DİNLEME ---
     useEffect(() => {
@@ -84,7 +87,6 @@ const App = () => {
     // --- MODAL İŞLEMLERİ ---
     const handleModalSubmit = async () => {
         if (!modalInputVal.trim()) return;
-
         if (modal.type === 'class') {
             const newClass = { id: generateId('class'), className: modalInputVal, topics: [], students: [] };
             await setDoc(doc(db, 'berkant_hoca_classes_secure', newClass.id), newClass);
@@ -101,22 +103,41 @@ const App = () => {
             const updatedStudents = cls.students.map(std => ({ ...std, grades: { ...std.grades, [newColId]: 'assigned' } }));
             await setDoc(doc(db, 'berkant_hoca_classes_secure', cls.id), { ...cls, topics: updatedTopics, students: updatedStudents }, { merge: true });
         }
-
         setModal({ type: null, data: {} });
         setModalInputVal("");
         setModalDateVal("");
     };
 
-    // --- ANA FONKSİYONLAR ---
+    // --- TEMEL FONKSİYONLAR ---
     const handleLogout = () => { setCurrentUserRole(null); setLoggedInStudent(null); setView('home'); setAuthView('selection'); };
     const verifyTeacherPin = () => { if (pinInput === "1234") { setCurrentUserRole('teacher'); setAuthView('selection'); setPinInput(""); } else { alert("Hatalı PIN!"); } };
     
+    const handleStudentLogin = () => {
+        let found = null;
+        classes.forEach(c => {
+            const s = c.students?.find(std => std.username.trim() === studentUser.trim() && std.password.trim() === studentPass.trim());
+            if (s) { found = { student: s, class: c }; }
+        });
+        if (found) {
+            setCurrentUserRole('student');
+            setLoggedInStudent(found.student);
+            setSelectedClass(found.class);
+            setAuthView('selection');
+            setStudentUser(""); setStudentPass("");
+        } else { alert("Giriş bilgileri hatalı."); }
+    };
+
     const handleAddStudent = async (classId) => {
         if (!newStudentName.trim()) return;
         const cls = classes.find(c => c.id === classId);
         const newStudent = { id: generateId('std'), name: newStudentName.trim(), username: generateUsername(newStudentName.trim()), password: generatePassword(), grades: {}, assignmentNotes: {} };
         await setDoc(doc(db, 'berkant_hoca_classes_secure', cls.id), { ...cls, students: [...(cls.students || []), newStudent] }, { merge: true });
         setNewStudentName("");
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return "";
+        return new Date(dateString).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
     };
 
     if (loading) return <div className="flex h-screen items-center justify-center bg-slate-900 text-white font-black tracking-widest">YÜKLENİYOR...</div>;
@@ -176,20 +197,81 @@ const App = () => {
                             return { percentage: total === 0 ? 0 : Math.round((completed/total)*100) };
                         }}
                         onDeleteClass={async (e, id) => { e.stopPropagation(); if(confirm("Silmek istediğinize emin misiniz?")) await deleteDoc(doc(db, 'berkant_hoca_classes_secure', id)); }}
+                        onPrintPasswords={(cls) => { setPrintData({ type: 'passwords', classData: cls }); setTimeout(() => window.print(), 300); }}
+                        onPrintStudentReport={(cls, std) => { setPrintData({ type: 'report', classData: cls, studentData: std }); setTimeout(() => window.print(), 300); }}
+                        onDownloadReport={(cls) => {
+                            let csvContent = "data:text/csv;charset=utf-8,Öğrenci,Kullanıcı Adı,Şifre\n";
+                            cls.students.forEach(std => { csvContent += `${std.name},${std.username},${std.password}\n`; });
+                            const link = document.createElement("a");
+                            link.setAttribute("href", encodeURI(csvContent));
+                            link.setAttribute("download", `${cls.className}_Sifreler.csv`);
+                            link.click();
+                        }}
                     />
                 ) : (
                     <StudentView student={loggedInStudent} selectedClass={selectedClass} />
                 )}
             </main>
 
-            {/* --- AKTİF MODAL (BOŞ DEĞİL!) --- */}
+            {/* Yazdırma Önizleme Ekranı */}
+            {printData && (
+                <div className="fixed inset-0 bg-white z-[9999] overflow-y-auto">
+                    <div className="p-4 no-print flex justify-between items-center bg-slate-100 border-b shadow-sm sticky top-0">
+                        <span className="font-bold text-slate-700">Yazdırma Önizlemesi</span>
+                        <div className="flex gap-2">
+                            <button onClick={() => setPrintData(null)} className="bg-white border px-4 py-2 rounded-lg font-bold">Kapat</button>
+                            <button onClick={() => window.print()} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2"><Printer size={16}/> Yazdır</button>
+                        </div>
+                    </div>
+                    
+                    {printData.type === 'passwords' && (
+                        <div className="p-10 grid grid-cols-2 gap-4">
+                            {printData.classData.students?.map((std, i) => (
+                                <div key={i} className="border-2 border-dashed p-4 rounded-xl text-center">
+                                    <div className="font-black text-lg">{std.name}</div>
+                                    <div className="text-xs text-slate-400 mt-2">Kullanıcı Adı: {std.username}</div>
+                                    <div className="font-mono font-black text-xl tracking-widest mt-1">{std.password}</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {printData.type === 'report' && (
+                        <div className="p-10 max-w-3xl mx-auto">
+                            <h1 className="text-3xl font-black border-b-4 border-slate-800 pb-4 mb-6">Öğrenci Gelişim Raporu</h1>
+                            <div className="flex justify-between mb-8">
+                                <div><div className="text-slate-400 uppercase text-xs font-bold">Öğrenci</div><div className="text-xl font-bold">{printData.studentData.name}</div></div>
+                                <div className="text-right"><div className="text-slate-400 uppercase text-xs font-bold">Sınıf</div><div className="text-xl font-bold">{printData.classData.className}</div></div>
+                            </div>
+                            <div className="space-y-6">
+                                {printData.classData.topics?.map(topic => (
+                                    <div key={topic.id} className="border-l-4 border-indigo-500 pl-4 py-2">
+                                        <div className="font-bold text-lg mb-2 uppercase">{topic.title}</div>
+                                        <table className="w-full text-sm">
+                                            <thead><tr className="text-left text-slate-400"><th className="pb-2">Kaynak</th><th className="pb-2">Durum</th></tr></thead>
+                                            <tbody>
+                                                {topic.subColumns?.map(col => (
+                                                    <tr key={col.id} className="border-t">
+                                                        <td className="py-2 font-medium">{col.title}</td>
+                                                        <td className="py-2 font-bold uppercase">{STATUS_OPTIONS.find(o => o.id === (printData.studentData.grades?.[col.id] || 'exempt'))?.label}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Modal Ekranı */}
             {modal.type && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
                     <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl modal-anim">
                         <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h3 className="font-bold text-slate-800">
-                                {modal.type === 'class' ? 'Yeni Sınıf' : (modal.type === 'topic' ? 'Yeni Ödev' : 'Yeni Kaynak')}
-                            </h3>
+                            <h3 className="font-bold text-slate-800">{modal.type === 'class' ? 'Yeni Sınıf' : (modal.type === 'topic' ? 'Yeni Ödev' : 'Yeni Kaynak')}</h3>
                             <button onClick={() => setModal({type:null, data:{}})} className="text-slate-400"><X size={20}/></button>
                         </div>
                         <div className="p-6 flex flex-col gap-4">
@@ -199,7 +281,6 @@ const App = () => {
                                     <button onClick={() => setUseLibrary(true)} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${useLibrary ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Kütüphaneden</button>
                                 </div>
                             )}
-                            
                             {useLibrary ? (
                                 <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-xl bg-slate-50/50">
                                     {libraryItems.filter(i => i.type === (modal.type === 'topic' ? 'topic' : 'source')).map(item => (
@@ -211,13 +292,10 @@ const App = () => {
                             ) : (
                                 <input autoFocus type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none font-medium" placeholder="İsim Giriniz..." value={modalInputVal} onChange={(e) => setModalInputVal(e.target.value)} />
                             )}
-
                             {modal.type === 'topic' && (
                                 <div className="flex flex-col gap-1">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase">Son Teslim Tarihi</label>
-                                    <div className="relative">
-                                        <input type="date" className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none" value={modalDateVal} onChange={(e) => setModalDateVal(e.target.value)} />
-                                    </div>
+                                    <input type="date" className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none" value={modalDateVal} onChange={(e) => setModalDateVal(e.target.value)} />
                                 </div>
                             )}
                         </div>
