@@ -1,102 +1,166 @@
-import React, { useState } from 'react';
-import { Users, Plus, Trash2, Printer, ChevronDown, ChevronUp, FileText, Lock, UserPlus, X } from 'lucide-react';
-import { STATUS_OPTIONS } from '../config.js';
+import React from 'react';
+import { 
+    Layout, Plus, ChevronRight, Pencil, AlertOctagon, FileSpreadsheet, Printer, 
+    Trash2, MoreVertical, KeyRound, UserPlus 
+} from 'lucide-react';
+import { TOPIC_THEMES, STATUS_OPTIONS } from '../config.js';
 
-export const AdminPanel = ({ 
-    classes, onToggleClass, onOpenModal, onUpdateGradeClick, 
-    onPrintPasswords, onPrintReport, calculateStats, 
-    onDeleteTopic, onDeleteSource, onAddStudent, onDeleteClass 
+// StatusBadge bileşeni (HTML'deki orijinali)
+const StatusBadge = ({ status, hasNote }) => {
+    const opt = STATUS_OPTIONS.find(o => o.id === status) || STATUS_OPTIONS[3]; 
+    const Icon = opt.icon;
+    return ( 
+        <div className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border ${opt.bg} ${opt.color} ${opt.border} w-full shadow-sm relative group`}>
+            <Icon size={14} strokeWidth={2.5} />
+            <span className="text-[10px] font-bold truncate">{opt.label}</span>
+            {hasNote && <div className="absolute -top-1.5 -right-1.5 text-yellow-500 bg-white rounded-full p-0.5 shadow-sm border border-yellow-200"><div className="w-2 h-2 rounded-full bg-yellow-500"></div></div>}
+        </div> 
+    );
+};
+
+export const AdminPanel = ({
+    classes, isTeacherMode, calculateStats, formatDate,
+    onToggleClass, onOpenModal, onOpenRisk, onDownloadReport, onPrintPasswords,
+    onOpenTopicMenu, onOpenColMenu, onOpenStudent, onPrintStudentReport, onDeleteStudent,
+    onOpenNoteModal, onOpenCellMenu, onAddStudent, onDeleteClass,
+    newStudentName, setNewStudentName
 }) => {
-    const [nameInput, setNameInput] = useState({});
-
     return (
-        <div className="space-y-8 animate-fadeIn">
+        <div className="flex flex-col gap-8 animate-fadeIn">
+            {/* HTML'DEKİ KAYBOLAN SINIF EKLEME KISMI BURADA */}
+            <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <Layout className="text-indigo-600"/> Sınıf Yönetimi
+                </h2>
+                <button 
+                    onClick={() => onOpenModal('class')} 
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-indigo-200 flex items-center gap-2 transition-all"
+                >
+                    <Plus size={18}/> Sınıf Ekle
+                </button>
+            </div>
+
             {classes.map(cls => {
                 const stats = calculateStats(cls.students, cls.topics);
-                const safeStudents = (cls.students || []).filter(Boolean);
-
                 return (
-                    <div key={cls.id} className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden">
+                    <div key={cls.id} className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
                         
-                        <div className="p-6 md:p-8 flex justify-between items-center bg-slate-50/50 cursor-pointer" onClick={() => onToggleClass(cls.id)}>
-                            <div className="flex items-center gap-6">
-                                <div className="text-2xl font-black italic uppercase text-slate-800">{cls.className}</div>
-                                <span className="px-4 py-1.5 bg-indigo-600 text-white rounded-full text-[10px] font-black italic tracking-widest hidden md:inline-block">%{stats.percentage} BAŞARI</span>
+                        {/* SINIF BAŞLIĞI */}
+                        <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => onToggleClass(cls.id)}>
+                            <div className="flex items-center gap-4">
+                                <div className={`p-2 rounded-lg bg-indigo-100 text-indigo-600 transition-transform duration-300 ${cls.isOpen ? 'rotate-90' : ''}`}><ChevronRight size={20}/></div>
+                                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                    {cls.className} 
+                                    <button onClick={(e) => { e.stopPropagation(); onOpenModal('edit-class', { classId: cls.id, currentName: cls.className }); }} className="text-slate-400 hover:text-indigo-600 p-1 rounded-full hover:bg-white/50"><Pencil size={14} /></button>
+                                </h3>
+                                <div className="hidden sm:flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">
+                                    <span className="text-xs font-black text-indigo-700">%{stats.percentage} BAŞARI</span>
+                                </div>
                             </div>
-                            <div className="flex gap-2 no-print">
-                                <button onClick={(e) => {e.stopPropagation(); onPrintPasswords(cls)}} className="p-3 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-indigo-600 transition-all shadow-sm"><Printer size={20}/></button>
-                                <button onClick={(e) => {e.stopPropagation(); onDeleteClass(cls.id)}} className="p-3 text-slate-300 hover:text-rose-600 transition-all"><Trash2 size={20}/></button>
-                                <div className="p-3 text-slate-400">{cls.isOpen ? <ChevronUp/> : <ChevronDown/>}</div>
+                            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                                <button onClick={() => onOpenRisk(cls)} className="text-xs bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 px-3 py-1.5 rounded font-bold shadow-sm flex items-center gap-1"><AlertOctagon size={14}/> Risk</button>
+                                <button onClick={() => onDownloadReport(cls)} className="text-xs bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100 px-3 py-1.5 rounded font-bold shadow-sm flex items-center gap-1"><FileSpreadsheet size={14}/> Excel</button>
+                                <button onClick={() => onPrintPasswords(cls)} className="text-xs bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 px-3 py-1.5 rounded font-bold shadow-sm flex items-center gap-1"><Printer size={14}/> Şifreler</button>
+                                <button onClick={() => onOpenModal('topic', { classId: cls.id })} className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100 px-3 py-1.5 rounded font-bold shadow-sm flex items-center gap-1"><Plus size={14}/> Ödev</button>
+                                <button onClick={(e) => onDeleteClass(e, cls.id)} className="p-1.5 text-rose-400 hover:bg-rose-50 rounded transition-colors"><Trash2 size={18}/></button>
                             </div>
                         </div>
 
+                        {/* TABLO */}
                         {cls.isOpen && (
-                            <div className="p-6 md:p-8 space-y-8 border-t border-slate-100">
-                                {/* KONU VE KAYNAK YÖNETİMİ */}
-                                <div className="flex gap-4 flex-wrap">
-                                    {cls.topics?.map(t => (
-                                        <div key={t.id} className="p-2 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center gap-2 group">
-                                            <span className="px-2 font-black text-xs uppercase text-indigo-700">{t.title}</span>
-                                            <button onClick={() => onOpenModal('source', {classId: cls.id, topicId: t.id})} className="p-1.5 bg-white text-indigo-600 rounded-xl shadow-sm hover:bg-indigo-600 hover:text-white transition-all"><Plus size={14} strokeWidth={4}/></button>
-                                            <button onClick={() => onDeleteTopic(cls.id, t.id)} className="p-1.5 text-rose-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-all"><X size={14} strokeWidth={4}/></button>
-                                        </div>
-                                    ))}
-                                    <button onClick={() => onOpenModal('topic', {classId: cls.id})} className="px-6 py-2 border-2 border-dashed border-slate-200 text-slate-400 rounded-2xl text-[10px] font-black hover:border-indigo-400 hover:text-indigo-600 transition-all">+ YENİ ÖDEV</button>
-                                </div>
-
-                                {/* ANA TABLO */}
-                                <div className="overflow-x-auto rounded-[2rem] border border-slate-100 shadow-sm">
-                                    <table className="w-full border-collapse">
-                                        <thead>
-                                            <tr className="bg-slate-50/80 text-[10px] font-black text-slate-400 tracking-widest uppercase">
-                                                <th className="p-5 text-left border-b min-w-[200px]">Öğrenci / Şifre</th>
-                                                {cls.topics?.flatMap(t => t.subColumns?.map(c => (
-                                                    <th key={c.id} className="p-4 border-b bg-indigo-50/20 text-center relative group min-w-[120px]">
-                                                        <div className="text-[8px] text-indigo-400 mb-1">{t.title}</div>
-                                                        <div className="text-slate-700 text-[11px] font-bold">{c.title}</div>
-                                                        <button onClick={() => onDeleteSource(cls.id, t.id, c.id)} className="absolute top-1 right-1 p-1 text-rose-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={10}/></button>
-                                                    </th>
-                                                )))}
-                                                <th className="p-4 border-b text-center">Rapor</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {safeStudents.map(std => (
-                                                <tr key={std.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                                                    <td className="p-5">
-                                                        <div className="font-bold text-slate-800 text-sm italic">{std.name}</div>
-                                                        <div className="text-[10px] text-slate-400 font-mono mt-1 flex items-center gap-1.5"><Lock size={10}/> {std.password}</div>
-                                                    </td>
-                                                    {cls.topics?.flatMap(t => t.subColumns?.map(c => {
-                                                        const status = std.grades?.[c.id] || 'assigned';
-                                                        const opt = STATUS_OPTIONS.find(o => o.id === status);
-                                                        return (
-                                                            <td key={c.id} className="p-3 text-center">
-                                                                <button onClick={() => onUpdateGradeClick({classId: cls.id, studentId: std.id, colId: c.id})} className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase transition-all active:scale-95 border-2 ${opt.bg} ${opt.color} ${opt.border}`}>
-                                                                    {opt.label}
-                                                                </button>
-                                                            </td>
-                                                        );
-                                                    }))}
-                                                    <td className="p-4 text-center">
-                                                        <button onClick={() => onPrintReport(cls, std)} className="p-2 text-slate-300 hover:text-indigo-600 transition-all bg-white rounded-xl shadow-sm border border-slate-100"><FileText size={20}/></button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            
-                                            {/* HIZLI ÖĞRENCİ EKLEME */}
-                                            <tr className="bg-slate-50/30 no-print">
-                                                <td className="p-4">
-                                                    <div className="flex gap-2">
-                                                        <input type="text" placeholder="İsim..." className="bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-xs outline-none focus:border-indigo-500 w-full font-bold" value={nameInput[cls.id] || ""} onChange={(e) => setNameInput({...nameInput, [cls.id]: e.target.value})} onKeyDown={(e) => e.key === 'Enter' && onAddStudent(cls.id, nameInput[cls.id])} />
-                                                        <button onClick={() => { onAddStudent(cls.id, nameInput[cls.id]); setNameInput({...nameInput, [cls.id]: ""}); }} className="bg-indigo-600 text-white p-2.5 rounded-xl hover:bg-indigo-700 shadow-md"><UserPlus size={18}/></button>
+                            <div className="table-container">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr>
+                                            <th rowSpan={2} className="sticky-corner border-b border-r border-slate-200 min-w-[200px] shadow-sm p-4 text-xs font-bold text-slate-500 uppercase">Öğrenci Listesi</th>
+                                            {cls.topics?.map((topic, i) => {
+                                                const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
+                                                return ( 
+                                                    <th key={topic.id} colSpan={Math.max(1, (topic.subColumns?.length || 0) + 1)} className={`text-center p-2 border-b border-r border-slate-200 sticky-header-top ${theme.main} min-w-[240px]`}>
+                                                        <div className="flex flex-col justify-center items-center gap-1">
+                                                            {topic.date && ( 
+                                                                <div className="text-[10px] bg-white px-2 py-0.5 rounded text-slate-500 font-bold flex items-center gap-0.5 cursor-pointer hover:text-indigo-600 shadow-sm border border-slate-100 mb-1" onContextMenu={(e) => { e.preventDefault(); onOpenModal('edit-date', { classId: cls.id, topicId: topic.id, date: topic.date }); }}>
+                                                                    Son Teslim : <span className="text-indigo-600">{formatDate(topic.date)}</span>
+                                                                </div> 
+                                                            )}
+                                                            <div className={`flex items-center gap-1 text-sm font-black uppercase tracking-wider mt-1 ${theme.text}`}>
+                                                                {topic.title}
+                                                                <button onClick={(e) => { e.stopPropagation(); onOpenTopicMenu({ classId: cls.id, topicId: topic.id, anchorEl: e.currentTarget }); }}><MoreVertical size={14}/></button>
+                                                            </div>
+                                                        </div>
+                                                    </th> 
+                                                );
+                                            })}
+                                        </tr>
+                                        <tr>
+                                            {cls.topics?.map((topic, i) => {
+                                                const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
+                                                return ( 
+                                                    <React.Fragment key={topic.id}>
+                                                        {topic.subColumns?.map(col => ( 
+                                                            <th key={col.id} className={`p-2 border-b border-r border-slate-200 sticky-header-sub ${theme.sub} min-w-[140px] text-center`}>
+                                                                <div className="flex flex-col items-center justify-center gap-1 h-full">
+                                                                    <div className="font-bold text-[11px] line-clamp-2">{col.title}</div>
+                                                                    <button onClick={(e) => { e.stopPropagation(); onOpenColMenu({ classId: cls.id, topicId: topic.id, colId: col.id, anchorEl: e.currentTarget }); }} className="text-xs text-slate-400 hover:text-indigo-600 opacity-50 hover:opacity-100"><MoreVertical size={12}/></button>
+                                                                </div>
+                                                            </th> 
+                                                        ))} 
+                                                        <th className={`p-0 border-b border-r border-slate-200 w-12 text-center sticky-header-sub ${theme.sub}`}>
+                                                            <button onClick={() => onOpenModal('source', { classId: cls.id, topicId: topic.id })} className={`w-full h-full flex items-center justify-center transition-colors ${theme.btn}`} title="Kaynak Ekle"><Plus size={18}/></button>
+                                                        </th>
+                                                    </React.Fragment> 
+                                                );
+                                            })}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(cls.students || []).filter(Boolean).map((std) => (
+                                            <tr key={std.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                                <td className="sticky-col-left p-3 border-r border-slate-200 shadow-sm">
+                                                    <div className="flex justify-between items-center group">
+                                                        <div className="flex flex-col gap-0.5 cursor-pointer" onClick={() => onOpenStudent(std)}>
+                                                            <div className="flex items-center gap-2"><span className="text-sm font-bold text-slate-700">{std.name}</span><button onClick={(e) => { e.stopPropagation(); onOpenModal('edit-student', { classId: cls.id, studentId: std.id, currentName: std.name }); }} className="text-slate-300 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size={12}/></button></div>
+                                                            {isTeacherMode && std.username && ( 
+                                                                <div className="flex items-center gap-1 text-[9px] font-mono text-slate-400 mt-1" onClick={e=>e.stopPropagation()}>
+                                                                    <span className="bg-slate-100 px-1 py-0.5 rounded">{std.username}</span>
+                                                                    <span className="bg-slate-100 px-1 py-0.5 rounded flex items-center gap-1"><KeyRound size={8}/> {std.password}</span>
+                                                                </div> 
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button onClick={(e) => { e.stopPropagation(); onPrintStudentReport(cls, std); }} className="text-indigo-300 hover:text-indigo-600 p-1" title="Veli Raporu Yazdır"><Printer size={14}/></button>
+                                                            <button onClick={(e) => onDeleteStudent(e, cls.id, std.id)} className="text-slate-300 hover:text-rose-500 p-1"><Trash2 size={14}/></button>
+                                                        </div>
                                                     </div>
                                                 </td>
-                                                <td colSpan="100" className="p-4 text-slate-300 italic text-[10px] font-bold uppercase text-center tracking-widest">Sınıfa yeni öğrenci dahil et.</td>
+                                                {cls.topics?.map((topic, i) => {
+                                                    const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
+                                                    return ( 
+                                                        <React.Fragment key={topic.id}>
+                                                            {topic.subColumns?.map(col => ( 
+                                                                <td key={col.id} className={`p-1 border-r border-slate-100 text-center ${theme.cell}`} onContextMenu={(e) => { e.preventDefault(); onOpenNoteModal({ classId: cls.id, studentId: std.id, colId: col.id, currentNote: std.assignmentNotes?.[col.id] }); }}>
+                                                                    <div onClick={(e) => { e.stopPropagation(); onOpenCellMenu({ classId: cls.id, studentId: std.id, colId: col.id, anchorEl: e.currentTarget }); }} className="cursor-pointer hover:scale-105 transition-transform">
+                                                                        <StatusBadge status={std.grades?.[col.id] || 'exempt'} hasNote={!!std.assignmentNotes?.[col.id]} />
+                                                                    </div>
+                                                                </td> 
+                                                            ))}
+                                                            <td className={`border-r border-slate-100 ${theme.cell}`}></td>
+                                                        </React.Fragment> 
+                                                    );
+                                                })}
                                             </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                                        ))}
+                                        <tr>
+                                            <td className="sticky-col-left p-3 border-r border-slate-200 border-t border-slate-200">
+                                                <div className="flex gap-2">
+                                                    <input type="text" placeholder="Yeni Öğrenci..." className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs text-slate-700 w-full focus:border-indigo-500 outline-none" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') onAddStudent(cls.id); }} />
+                                                    <button onClick={() => onAddStudent(cls.id)} className="bg-indigo-600 text-white px-2 rounded text-xs font-bold">EKLE</button>
+                                                </div>
+                                            </td>
+                                            {cls.topics?.map((t, i) => <td key={i} colSpan={Math.max(1, t.subColumns.length + 1)} className="border-t border-slate-200 bg-slate-50/20"></td>)}
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </div>
