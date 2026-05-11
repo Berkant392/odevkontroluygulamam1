@@ -142,37 +142,61 @@ const App = () => {
 
     if (loading) return <div className="flex h-screen items-center justify-center bg-slate-900 text-white font-black tracking-widest">YÜKLENİYOR...</div>;
 
-    if (!currentUserRole) {
-        return (
-            <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-                <div className="bg-white/10 backdrop-blur-2xl p-8 rounded-[2rem] w-full max-w-md border border-white/20 shadow-2xl">
-                    <div className="text-center mb-10">
-                        <div className="w-20 h-20 bg-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4"><GraduationCap size={40} className="text-white" /></div>
-                        <h1 className="text-3xl font-black text-white">BERKANT HOCA</h1>
+    // Giriş ekranı kısmını (if (!currentUserRole)) bununla değiştirin:
+if (!currentUserRole) {
+    return (
+        <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-6">
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px]"></div>
+                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px]"></div>
+            </div>
+
+            <div className="w-full max-w-[440px] relative z-10">
+                <div className="text-center mb-10">
+                    <div className="inline-flex p-4 rounded-3xl bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-2xl shadow-indigo-500/20 mb-6">
+                        <GraduationCap size={48} className="text-white" />
                     </div>
+                    <h1 className="text-4xl font-black text-white tracking-tight mb-2">Halkalı Fen Bilimleri</h1>
+                    <p className="text-slate-400 font-medium tracking-widest uppercase text-[10px]">Kurumsal Eğitim Yönetim Portalı</p>
+                </div>
+
+                <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] shadow-2xl">
                     {authView === 'selection' ? (
                         <div className="space-y-4">
-                            <button onClick={() => setAuthView('student')} className="w-full p-5 bg-white/5 text-white rounded-2xl flex items-center gap-4 hover:bg-white/10 border border-white/5 transition-all"><User className="text-indigo-400"/> Öğrenci Girişi</button>
-                            <button onClick={() => setAuthView('teacher')} className="w-full p-5 bg-white/5 text-white rounded-2xl flex items-center gap-4 hover:bg-white/10 border border-white/5 transition-all"><ShieldAlert className="text-rose-400"/> Öğretmen Girişi</button>
-                        </div>
-                    ) : authView === 'student' ? (
-                        <div className="space-y-5">
-                            <input type="text" placeholder="Kullanıcı Adı" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none" value={studentUser} onChange={e=>setStudentUser(e.target.value)} />
-                            <input type="password" placeholder="Şifre" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none" value={studentPass} onChange={e=>setStudentPass(e.target.value)} />
-                            <button onClick={handleStudentLogin} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg">GİRİŞ YAP</button>
-                            <button onClick={() => setAuthView('selection')} className="w-full text-indigo-300 text-sm font-bold mt-2">Geri Dön</button>
+                            <button onClick={() => setAuthView('student')} className="w-full p-6 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl flex items-center gap-5 transition-all group">
+                                <div className="p-3 bg-indigo-500/20 rounded-xl group-hover:bg-indigo-500/40 text-indigo-400"><User size={24}/></div>
+                                <div className="text-left"><p className="text-white font-bold text-lg">Öğrenci & Veli</p><p className="text-slate-400 text-xs">Kişisel gelişim paneli</p></div>
+                            </button>
+                            <button onClick={() => setAuthView('teacher')} className="w-full p-6 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl flex items-center gap-5 transition-all group">
+                                <div className="p-3 bg-slate-500/20 rounded-xl group-hover:bg-slate-500/40 text-slate-400"><ShieldAlert size={24}/></div>
+                                <div className="text-left"><p className="text-white font-bold text-lg">Öğretmen</p><p className="text-slate-400 text-xs">Yönetim ve analiz merkezi</p></div>
+                            </button>
                         </div>
                     ) : (
-                        <div className="space-y-5">
-                            <input type="password" placeholder="PIN Kodu" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none text-center text-4xl tracking-widest" value={pinInput} onChange={e=>setPinInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && verifyTeacherPin()} />
-                            <button onClick={verifyTeacherPin} className="w-full py-4 bg-rose-600 text-white rounded-2xl font-black shadow-lg">SİSTEME GİR</button>
-                            <button onClick={() => setAuthView('selection')} className="w-full text-rose-300 text-sm font-bold mt-2">Geri Dön</button>
+                        <div className="space-y-6 animate-fadeIn">
+                            <button onClick={() => setAuthView('selection')} className="text-slate-500 hover:text-white text-xs font-bold flex items-center gap-2 mb-2 transition-colors">
+                                <ChevronLeft size={16}/> SEÇİME DÖN
+                            </button>
+                            {authView === 'student' ? (
+                                <div className="space-y-4">
+                                    <input type="text" placeholder="Kullanıcı Adı" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500" value={studentUser} onChange={e=>setStudentUser(e.target.value)} />
+                                    <input type="password" placeholder="Şifre" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500" value={studentPass} onChange={e=>setStudentPass(e.target.value)} />
+                                    <button onClick={handleStudentLogin} className="w-full py-5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black transition-all shadow-xl shadow-indigo-600/20">SİSTEME GİRİŞ YAP</button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <p className="text-slate-400 text-center text-[10px] font-bold uppercase tracking-widest">Yönetici PIN Kodunu Giriniz</p>
+                                    <input type="password" placeholder="••••" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none text-center text-4xl tracking-[0.5em] focus:border-indigo-500" value={pinInput} onChange={e=>setPinInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && verifyTeacherPin()} />
+                                    <button onClick={verifyTeacherPin} className="w-full py-5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black transition-all">YÖNETİMİ AÇ</button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
             </div>
-        );
-    }
+        </div>
+    );
+}
 
     return (
         <div className="min-h-screen bg-slate-50">
