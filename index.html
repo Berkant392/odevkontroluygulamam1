@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Berkant Hoca - Eğitim Platformu</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -14,31 +14,18 @@
         "imports": {
             "react": "https://esm.sh/react@18.2.0",
             "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-            "lucide-react": "https://esm.sh/lucide-react@0.344.0",
+            "lucide-react": "https://esm.sh/lucide-react@0.344.0?external=react",
             "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
             "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
             "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
         }
     }
     </script>
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: { primary: '#4f46e5', secondary: '#8b5cf6', accent: '#ec4899' },
-                    animation: { 'spin-slow': 'spin 4s linear infinite', 'pulse-red': 'pulseRed 2s infinite', 'blob': 'blob 7s infinite' },
-                    keyframes: {
-                        pulseRed: { '0%, 100%': { backgroundColor: 'rgba(254, 226, 226, 0.5)', borderColor: 'rgba(239, 68, 68, 0.5)' }, '50%': { backgroundColor: 'rgba(254, 202, 202, 0.8)', borderColor: 'rgba(239, 68, 68, 1)' } },
-                        blob: { '0%': { transform: 'translate(0px, 0px) scale(1)' }, '33%': { transform: 'translate(30px, -50px) scale(1.1)' }, '66%': { transform: 'translate(-20px, 20px) scale(0.9)' }, '100%': { transform: 'translate(0px, 0px) scale(1)' } }
-                    }
-                }
-            }
-        }
-    </script>
 </head>
 <body>
     <div id="root"></div>
-    <script type="text/babel" data-type="module" src="App.js"></script>
+    <script type="text/babel" data-type="module">
+        import './App.js';
+    </script>
 </body>
 </html>
