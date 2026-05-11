@@ -1,0 +1,22 @@
+/* Ana Ayarlar */
+body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; overflow-x: hidden; }
+
+/* Tablo Tasarımı */
+.table-container { overflow: auto; max-height: 80vh; border-radius: 12px; background-color: white; border: 1px solid #e2e8f0; }
+.sticky-corner { position: sticky; left: 0; top: 0; z-index: 50; background: white; border-right: 2px solid #e2e8f0; border-bottom: 2px solid #e2e8f0; height: 80px; }
+.sticky-header-top { position: sticky; top: 0; z-index: 40; height: 80px; }
+.sticky-col-left { position: sticky; left: 0; z-index: 30; background: white; border-right: 2px solid #e2e8f0; }
+
+/* Neon Kartlar */
+.neon-card-wrapper { position: relative; transition: transform 0.3s ease; cursor: pointer; min-height: 180px; display: flex; }
+.neon-card-wrapper:hover { transform: scale(1.02); }
+.neon-card-glow { position: absolute; inset: -4px; border-radius: 1.7rem; background: linear-gradient(90deg, #ff0000, #00ff00, #0000ff, #ff0000); background-size: 400%; animation: flow-light 8s linear infinite; z-index: -1; filter: blur(8px); }
+@keyframes flow-light { 0% { background-position: 0% 50%; } 100% { background-position: 400% 50%; } }
+
+/* Yazdırma Modu */
+@media print {
+    .no-print { display: none !important; }
+    .print-only { display: block !important; }
+    body { background: white !important; }
+}
+.print-only { display: none; }
