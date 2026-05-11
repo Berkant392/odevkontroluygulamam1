@@ -6,15 +6,14 @@ import {
     getFirestore, doc, setDoc, getDoc, collection, onSnapshot, 
     updateDoc, deleteDoc, addDoc, query, orderBy 
 } from 'firebase/firestore';
-import { GraduationCap, User, ShieldAlert, ChevronRight, X, KeyRound, Loader2 } from 'lucide-react';
 
-// Kendi oluşturduğumuz modülleri içeri alıyoruz
+// Ayarlar ve Bileşenleri içe aktarırken .js uzantısını asla unutma
 import { firebaseConfig, MOTIVATIONAL_QUOTES, STATUS_OPTIONS } from './config.js';
 import { Header, CountdownTimer, AnnouncementBox } from './components/CommonUI.js';
 import { StudentView } from './components/StudentView.js';
 import { AdminPanel } from './components/AdminPanel.js';
 
-// --- YARDIMCI ARAÇLAR (UTILS) ---
+// --- YARDIMCI ARAÇLAR ---
 const generatePassword = () => {
     const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
     let pwd = '';
@@ -23,8 +22,8 @@ const generatePassword = () => {
 };
 
 const generateUsername = (name) => {
-    const trMap = { 'ç':'c', 'ğ':'g', 'ı':'i', 'ö':'o', 'ş':'s', 'ü':'u' };
-    let baseName = name.toLowerCase().replace(/[çğıöşü]/g, m => trMap[m] || m).replace(/[^a-z0-9]/g, '.');
+    const trMap = { 'ç':'c', 'ğ':'g', 'ı':'i', 'ö':'o', 'ş':'s', 'ü':'u', 'Ç':'C', 'Ğ':'G', 'İ':'I', 'Ö':'O', 'Ş':'S', 'Ü':'U' };
+    let baseName = name.toLowerCase().replace(/[çğıöşüÇĞİÖŞÜ]/g, m => trMap[m] || m).replace(/[^a-z0-9]/g, '.');
     return `${baseName}.${Math.floor(100 + Math.random() * 900)}`;
 };
 
@@ -34,7 +33,6 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const HomeworkTracker = () => {
-    // --- STATE (DURUM) YÖNETİMİ ---
     const [user, setUser] = useState(null);
     const [currentUserRole, setCurrentUserRole] = useState(null); 
     const [loggedInStudent, setLoggedInStudent] = useState(null);
@@ -46,16 +44,14 @@ const HomeworkTracker = () => {
     const [announcement, setAnnouncement] = useState("");
     const [dailyQuote] = useState(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]);
 
-    // Form Inputları
+    // Formlar
     const [pinInput, setPinInput] = useState("");
     const [studentUser, setStudentUser] = useState("");
     const [studentPass, setStudentPass] = useState("");
     const [newStudentName, setNewStudentName] = useState("");
-
-    // Modal ve Menü State'leri
     const [modal, setModal] = useState({ type: null, data: {} });
 
-    // --- FİREBASE VERİ DİNLEME ---
+    // --- VERİ AKIŞI ---
     useEffect(() => {
         signInAnonymously(auth);
         return onAuthStateChanged(auth, (u) => u && setUser(u));
@@ -63,17 +59,19 @@ const HomeworkTracker = () => {
 
     useEffect(() => {
         if (!user) return;
-        const unsub = onSnapshot(collection(db, 'berkant_hoca_classes_secure'), (snap) => {
+        const q = query(collection(db, 'berkant_hoca_classes_secure'));
+        const unsub = onSnapshot(q, (snap) => {
             setClasses(snap.docs.map(d => ({ id: d.id, ...d.data() })));
             setLoading(false);
         });
-        const settingsUnsub = onSnapshot(doc(db, 'berkant_hoca_system_config_v2', 'main_config'), (snap) => {
+        const settingsRef = doc(db, 'berkant_hoca_system_config_v2', 'main_config');
+        const settingsUnsub = onSnapshot(settingsRef, (snap) => {
             if (snap.exists()) setAnnouncement(snap.data().announcement);
         });
         return () => { unsub(); settingsUnsub(); };
     }, [user]);
 
-    // --- TEMEL FONKSİYONLAR ---
+    // --- AKSİYONLAR ---
     const handleLogout = () => {
         setCurrentUserRole(null);
         setLoggedInStudent(null);
@@ -82,7 +80,8 @@ const HomeworkTracker = () => {
     };
 
     const verifyTeacherPin = () => {
-        if (pinInput === "1234") { // Burayı config'e taşıyabiliriz
+        // PIN: 1234 (Bunu ileride Firestore'dan çekebiliriz)
+        if (pinInput === "1234") {
             setCurrentUserRole('teacher');
             setAuthView('selection');
             setPinInput("");
@@ -92,7 +91,7 @@ const HomeworkTracker = () => {
     const handleStudentLogin = () => {
         let found = null;
         classes.forEach(c => {
-            const s = c.students?.find(std => std.username === studentUser && std.password === studentPass);
+            const s = c.students?.find(std => std.username.trim() === studentUser.trim() && std.password.trim() === studentPass.trim());
             if (s) { found = { student: s, class: c }; }
         });
         if (found) {
@@ -101,7 +100,7 @@ const HomeworkTracker = () => {
             setSelectedClass(found.class);
             setAuthView('selection');
             setStudentUser(""); setStudentPass("");
-        } else { alert("Hatalı kullanıcı adı veya şifre!"); }
+        } else { alert("Hatalı giriş! Lütfen bilgileri kontrol edin."); }
     };
 
     const updateClassInDb = async (updatedClass) => {
@@ -124,9 +123,9 @@ const HomeworkTracker = () => {
     };
 
     const calculateStats = (students, topics) => {
-        if (!students || !topics || topics.length === 0) return { percentage: 0, atRisk: [] };
+        if (!students || !topics || topics.length === 0) return { percentage: 0 };
         let total = 0, completed = 0;
-        const colIds = topics.flatMap(t => t.subColumns.map(c => c.id));
+        const colIds = topics.flatMap(t => t.subColumns?.map(c => c.id) || []);
         students.forEach(s => {
             colIds.forEach(id => {
                 total++;
@@ -136,39 +135,52 @@ const HomeworkTracker = () => {
         return { percentage: total === 0 ? 0 : Math.round((completed/total)*100) };
     };
 
-    // --- RENDER (EKRAN GÖSTERİMİ) ---
-    if (loading) return <div className="flex h-screen items-center justify-center text-indigo-600"><Loader2 className="animate-spin" size={48}/></div>;
+    if (loading) return (
+        <div className="flex h-screen items-center justify-center bg-slate-900">
+            <div className="text-center">
+                <Loader2 className="animate-spin text-indigo-500 mx-auto mb-4" size={48}/>
+                <p className="text-white font-bold tracking-widest">YÜKLENİYOR...</p>
+            </div>
+        </div>
+    );
 
-    // GİRİŞ EKRANLARI
+    // --- GİRİŞ EKRANI TASARIMI ---
     if (!currentUserRole) {
         return (
             <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-                <div className="bg-white/10 backdrop-blur-xl p-8 rounded-[2rem] w-full max-w-md border border-white/20">
-                    <div className="text-center mb-8">
-                        <GraduationCap size={48} className="text-indigo-400 mx-auto mb-4" />
-                        <h1 className="text-3xl font-black text-white">BERKANT HOCA</h1>
+                <div className="bg-white/10 backdrop-blur-2xl p-8 rounded-[2rem] w-full max-w-md border border-white/20 shadow-2xl">
+                    <div className="text-center mb-10">
+                        <div className="w-20 h-20 bg-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/30">
+                            <GraduationCap size={40} className="text-white" />
+                        </div>
+                        <h1 className="text-3xl font-black text-white tracking-tight">BERKANT HOCA</h1>
+                        <p className="text-indigo-300 text-xs font-bold uppercase tracking-widest mt-1">Eğitim Platformu</p>
                     </div>
+
                     {authView === 'selection' ? (
                         <div className="space-y-4">
-                            <button onClick={() => setAuthView('student')} className="w-full p-4 bg-white/5 text-white rounded-2xl flex items-center gap-4 hover:bg-white/10 transition-all">
-                                <User className="text-indigo-400"/> Öğrenci Girişi
+                            <button onClick={() => setAuthView('student')} className="w-full p-5 bg-white/5 text-white rounded-2xl flex items-center gap-4 hover:bg-white/10 border border-white/5 transition-all group">
+                                <div className="p-3 bg-indigo-500/20 rounded-xl group-hover:bg-indigo-500/40"><User className="text-indigo-400"/></div>
+                                <div className="text-left"><p className="font-bold">Öğrenci Girişi</p><p className="text-xs text-slate-400">Ödev ve karne takibi</p></div>
                             </button>
-                            <button onClick={() => setAuthView('teacher')} className="w-full p-4 bg-white/5 text-white rounded-2xl flex items-center gap-4 hover:bg-white/10 transition-all">
-                                <ShieldAlert className="text-rose-400"/> Öğretmen Girişi
+                            <button onClick={() => setAuthView('teacher')} className="w-full p-5 bg-white/5 text-white rounded-2xl flex items-center gap-4 hover:bg-white/10 border border-white/5 transition-all group">
+                                <div className="p-3 bg-rose-500/20 rounded-xl group-hover:bg-rose-500/40"><ShieldAlert className="text-rose-400"/></div>
+                                <div className="text-left"><p className="font-bold">Öğretmen Girişi</p><p className="text-xs text-slate-400">Sınıf ve öğrenci yönetimi</p></div>
                             </button>
                         </div>
                     ) : authView === 'student' ? (
-                        <div className="space-y-4">
-                            <input type="text" placeholder="Kullanıcı Adı" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none" value={studentUser} onChange={e=>setStudentUser(e.target.value)} />
-                            <input type="password" placeholder="Şifre" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none" value={studentPass} onChange={e=>setStudentPass(e.target.value)} />
-                            <button onClick={handleStudentLogin} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold">Giriş Yap</button>
-                            <button onClick={() => setAuthView('selection')} className="w-full text-indigo-300 text-sm">Geri Dön</button>
+                        <div className="space-y-5">
+                            <input type="text" placeholder="Kullanıcı Adı" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 transition-all" value={studentUser} onChange={e=>setStudentUser(e.target.value)} />
+                            <input type="password" placeholder="Şifre" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 transition-all" value={studentPass} onChange={e=>setStudentPass(e.target.value)} />
+                            <button onClick={handleStudentLogin} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-600/30 hover:-translate-y-0.5 transition-all">GİRİŞ YAP</button>
+                            <button onClick={() => setAuthView('selection')} className="w-full text-indigo-300 text-sm font-bold">Geri Dön</button>
                         </div>
                     ) : (
-                        <div className="space-y-4">
-                            <input type="password" placeholder="PIN Kodu" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none text-center text-2xl" value={pinInput} onChange={e=>setPinInput(e.target.value)} />
-                            <button onClick={verifyTeacherPin} className="w-full py-4 bg-rose-600 text-white rounded-2xl font-bold">Sisteme Gir</button>
-                            <button onClick={() => setAuthView('selection')} className="w-full text-rose-300 text-sm">Geri Dön</button>
+                        <div className="space-y-5">
+                            <p className="text-center text-slate-400 text-xs font-bold uppercase">Yönetici PIN Kodunu Giriniz</p>
+                            <input type="password" placeholder="••••" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none text-center text-4xl tracking-widest focus:border-rose-500 transition-all" value={pinInput} onChange={e=>setPinInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && verifyTeacherPin()} />
+                            <button onClick={verifyTeacherPin} className="w-full py-4 bg-rose-600 text-white rounded-2xl font-black shadow-lg shadow-rose-600/30 hover:-translate-y-0.5 transition-all">SİSTEME GİR</button>
+                            <button onClick={() => setAuthView('selection')} className="w-full text-rose-300 text-sm font-bold">Geri Dön</button>
                         </div>
                     )}
                 </div>
@@ -176,9 +188,9 @@ const HomeworkTracker = () => {
         );
     }
 
-    // ANA PANEL
+    // --- ANA UYGULAMA GÖVDESİ ---
     return (
-        <div className="min-h-screen">
+        <div className="min-h-screen bg-slate-50">
             <Header 
                 role={currentUserRole} 
                 view={view} 
@@ -186,8 +198,14 @@ const HomeworkTracker = () => {
                 onGoHome={() => setView('home')} 
                 dailyQuote={dailyQuote}
             />
+            
             <CountdownTimer />
-            <AnnouncementBox content={announcement} isTeacher={currentUserRole === 'teacher'} />
+            
+            <AnnouncementBox 
+                content={announcement} 
+                isTeacher={currentUserRole === 'teacher'} 
+                onEdit={() => alert("Duyuru düzenleme yakında eklenecek.")}
+            />
             
             <main className="max-w-6xl mx-auto px-4 mt-8">
                 {currentUserRole === 'teacher' ? (
@@ -199,7 +217,10 @@ const HomeworkTracker = () => {
                         newStudentName={newStudentName}
                         setNewStudentName={setNewStudentName}
                         calculateStats={calculateStats}
-                        // İleride diğer admin fonksiyonları buraya eklenecek
+                        onDeleteClass={(e, id) => {
+                            e.stopPropagation();
+                            if(confirm("Sınıfı silmek istediğinize emin misiniz?")) deleteDoc(doc(db, 'berkant_hoca_classes_secure', id));
+                        }}
                     />
                 ) : (
                     <StudentView 
@@ -208,9 +229,24 @@ const HomeworkTracker = () => {
                     />
                 )}
             </main>
+
+            {/* Basit Modal Placeholder */}
+            {modal.type && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white p-6 rounded-2xl w-full max-w-sm">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold capitalize">{modal.type} İşlemi</h3>
+                            <button onClick={() => setModal({type:null, data:{}})}><X/></button>
+                        </div>
+                        <p className="text-sm text-slate-500">Bu özellik bir sonraki güncelleme ile aktif edilecektir.</p>
+                        <button onClick={() => setModal({type:null, data:{}})} className="w-full mt-4 py-2 bg-indigo-600 text-white rounded-lg font-bold">Tamam</button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
+// React 18 ile Render
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<HomeworkTracker />);
