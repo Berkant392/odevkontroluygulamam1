@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import ReactDOM from 'react-dom/client';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { 
-    getFirestore, doc, setDoc, getDoc, collection, onSnapshot, 
-    updateDoc, deleteDoc, addDoc, query, orderBy 
+    getFirestore, doc, setDoc, collection, onSnapshot, 
+    deleteDoc, query 
 } from 'firebase/firestore';
+import { GraduationCap, User, ShieldAlert, X, Loader2 } from 'lucide-react';
 
-// Ayarlar ve Bileşenleri içe aktarırken .js uzantısını asla unutma
-import { firebaseConfig, MOTIVATIONAL_QUOTES, STATUS_OPTIONS } from './config.js';
-import { Header, CountdownTimer, AnnouncementBox } from './components/CommonUI.js';
-import { StudentView } from './components/StudentView.js';
-import { AdminPanel } from './components/AdminPanel.js';
+// Konfigürasyon ve Yardımcı Bileşenler (Yeni Yapıya Uygun)
+import { firebaseConfig, MOTIVATIONAL_QUOTES, STATUS_OPTIONS } from './config';
+import { Header, CountdownTimer, AnnouncementBox } from './components/CommonUI';
+import { StudentView } from './components/StudentView';
+import { AdminPanel } from './components/AdminPanel';
 
 // --- YARDIMCI ARAÇLAR ---
 const generatePassword = () => {
@@ -32,7 +32,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const HomeworkTracker = () => {
+const App = () => {
     const [user, setUser] = useState(null);
     const [currentUserRole, setCurrentUserRole] = useState(null); 
     const [loggedInStudent, setLoggedInStudent] = useState(null);
@@ -44,14 +44,14 @@ const HomeworkTracker = () => {
     const [announcement, setAnnouncement] = useState("");
     const [dailyQuote] = useState(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]);
 
-    // Formlar
+    // Form Durumları
     const [pinInput, setPinInput] = useState("");
     const [studentUser, setStudentUser] = useState("");
     const [studentPass, setStudentPass] = useState("");
     const [newStudentName, setNewStudentName] = useState("");
     const [modal, setModal] = useState({ type: null, data: {} });
 
-    // --- VERİ AKIŞI ---
+    // --- FİREBASE VERİ DİNLEME ---
     useEffect(() => {
         signInAnonymously(auth);
         return onAuthStateChanged(auth, (u) => u && setUser(u));
@@ -71,7 +71,7 @@ const HomeworkTracker = () => {
         return () => { unsub(); settingsUnsub(); };
     }, [user]);
 
-    // --- AKSİYONLAR ---
+    // --- TEMEL FONKSİYONLAR ---
     const handleLogout = () => {
         setCurrentUserRole(null);
         setLoggedInStudent(null);
@@ -80,7 +80,7 @@ const HomeworkTracker = () => {
     };
 
     const verifyTeacherPin = () => {
-        // PIN: 1234 (Bunu ileride Firestore'dan çekebiliriz)
+        // Standart PIN: 1234
         if (pinInput === "1234") {
             setCurrentUserRole('teacher');
             setAuthView('selection');
@@ -91,7 +91,10 @@ const HomeworkTracker = () => {
     const handleStudentLogin = () => {
         let found = null;
         classes.forEach(c => {
-            const s = c.students?.find(std => std.username.trim() === studentUser.trim() && std.password.trim() === studentPass.trim());
+            const s = c.students?.find(std => 
+                std.username.trim() === studentUser.trim() && 
+                std.password.trim() === studentPass.trim()
+            );
             if (s) { found = { student: s, class: c }; }
         });
         if (found) {
@@ -100,7 +103,7 @@ const HomeworkTracker = () => {
             setSelectedClass(found.class);
             setAuthView('selection');
             setStudentUser(""); setStudentPass("");
-        } else { alert("Hatalı giriş! Lütfen bilgileri kontrol edin."); }
+        } else { alert("Giriş bilgileri hatalı."); }
     };
 
     const updateClassInDb = async (updatedClass) => {
@@ -144,43 +147,39 @@ const HomeworkTracker = () => {
         </div>
     );
 
-    // --- GİRİŞ EKRANI TASARIMI ---
+    // --- GİRİŞ EKRANI ---
     if (!currentUserRole) {
         return (
             <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
                 <div className="bg-white/10 backdrop-blur-2xl p-8 rounded-[2rem] w-full max-w-md border border-white/20 shadow-2xl">
                     <div className="text-center mb-10">
-                        <div className="w-20 h-20 bg-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/30">
+                        <div className="w-20 h-20 bg-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
                             <GraduationCap size={40} className="text-white" />
                         </div>
-                        <h1 className="text-3xl font-black text-white tracking-tight">BERKANT HOCA</h1>
-                        <p className="text-indigo-300 text-xs font-bold uppercase tracking-widest mt-1">Eğitim Platformu</p>
+                        <h1 className="text-3xl font-black text-white">BERKANT HOCA</h1>
                     </div>
 
                     {authView === 'selection' ? (
                         <div className="space-y-4">
-                            <button onClick={() => setAuthView('student')} className="w-full p-5 bg-white/5 text-white rounded-2xl flex items-center gap-4 hover:bg-white/10 border border-white/5 transition-all group">
-                                <div className="p-3 bg-indigo-500/20 rounded-xl group-hover:bg-indigo-500/40"><User className="text-indigo-400"/></div>
-                                <div className="text-left"><p className="font-bold">Öğrenci Girişi</p><p className="text-xs text-slate-400">Ödev ve karne takibi</p></div>
+                            <button onClick={() => setAuthView('student')} className="w-full p-5 bg-white/5 text-white rounded-2xl flex items-center gap-4 hover:bg-white/10 border border-white/5 transition-all">
+                                <User className="text-indigo-400"/> Öğrenci Girişi
                             </button>
-                            <button onClick={() => setAuthView('teacher')} className="w-full p-5 bg-white/5 text-white rounded-2xl flex items-center gap-4 hover:bg-white/10 border border-white/5 transition-all group">
-                                <div className="p-3 bg-rose-500/20 rounded-xl group-hover:bg-rose-500/40"><ShieldAlert className="text-rose-400"/></div>
-                                <div className="text-left"><p className="font-bold">Öğretmen Girişi</p><p className="text-xs text-slate-400">Sınıf ve öğrenci yönetimi</p></div>
+                            <button onClick={() => setAuthView('teacher')} className="w-full p-5 bg-white/5 text-white rounded-2xl flex items-center gap-4 hover:bg-white/10 border border-white/5 transition-all">
+                                <ShieldAlert className="text-rose-400"/> Öğretmen Girişi
                             </button>
                         </div>
                     ) : authView === 'student' ? (
                         <div className="space-y-5">
-                            <input type="text" placeholder="Kullanıcı Adı" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 transition-all" value={studentUser} onChange={e=>setStudentUser(e.target.value)} />
-                            <input type="password" placeholder="Şifre" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 transition-all" value={studentPass} onChange={e=>setStudentPass(e.target.value)} />
-                            <button onClick={handleStudentLogin} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-600/30 hover:-translate-y-0.5 transition-all">GİRİŞ YAP</button>
-                            <button onClick={() => setAuthView('selection')} className="w-full text-indigo-300 text-sm font-bold">Geri Dön</button>
+                            <input type="text" placeholder="Kullanıcı Adı" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none" value={studentUser} onChange={e=>setStudentUser(e.target.value)} />
+                            <input type="password" placeholder="Şifre" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none" value={studentPass} onChange={e=>setStudentPass(e.target.value)} />
+                            <button onClick={handleStudentLogin} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg">GİRİŞ YAP</button>
+                            <button onClick={() => setAuthView('selection')} className="w-full text-indigo-300 text-sm font-bold mt-2">Geri Dön</button>
                         </div>
                     ) : (
                         <div className="space-y-5">
-                            <p className="text-center text-slate-400 text-xs font-bold uppercase">Yönetici PIN Kodunu Giriniz</p>
-                            <input type="password" placeholder="••••" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none text-center text-4xl tracking-widest focus:border-rose-500 transition-all" value={pinInput} onChange={e=>setPinInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && verifyTeacherPin()} />
-                            <button onClick={verifyTeacherPin} className="w-full py-4 bg-rose-600 text-white rounded-2xl font-black shadow-lg shadow-rose-600/30 hover:-translate-y-0.5 transition-all">SİSTEME GİR</button>
-                            <button onClick={() => setAuthView('selection')} className="w-full text-rose-300 text-sm font-bold">Geri Dön</button>
+                            <input type="password" placeholder="PIN Kodu" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none text-center text-4xl tracking-widest" value={pinInput} onChange={e=>setPinInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && verifyTeacherPin()} />
+                            <button onClick={verifyTeacherPin} className="w-full py-4 bg-rose-600 text-white rounded-2xl font-black shadow-lg">SİSTEME GİR</button>
+                            <button onClick={() => setAuthView('selection')} className="w-full text-rose-300 text-sm font-bold mt-2">Geri Dön</button>
                         </div>
                     )}
                 </div>
@@ -188,7 +187,7 @@ const HomeworkTracker = () => {
         );
     }
 
-    // --- ANA UYGULAMA GÖVDESİ ---
+    // --- ANA PANEL ---
     return (
         <div className="min-h-screen bg-slate-50">
             <Header 
@@ -204,7 +203,6 @@ const HomeworkTracker = () => {
             <AnnouncementBox 
                 content={announcement} 
                 isTeacher={currentUserRole === 'teacher'} 
-                onEdit={() => alert("Duyuru düzenleme yakında eklenecek.")}
             />
             
             <main className="max-w-6xl mx-auto px-4 mt-8">
@@ -230,16 +228,15 @@ const HomeworkTracker = () => {
                 )}
             </main>
 
-            {/* Basit Modal Placeholder */}
+            {/* Basit Modal */}
             {modal.type && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
                     <div className="bg-white p-6 rounded-2xl w-full max-w-sm">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-bold capitalize">{modal.type} İşlemi</h3>
+                            <h3 className="font-bold uppercase">{modal.type}</h3>
                             <button onClick={() => setModal({type:null, data:{}})}><X/></button>
                         </div>
-                        <p className="text-sm text-slate-500">Bu özellik bir sonraki güncelleme ile aktif edilecektir.</p>
-                        <button onClick={() => setModal({type:null, data:{}})} className="w-full mt-4 py-2 bg-indigo-600 text-white rounded-lg font-bold">Tamam</button>
+                        <p className="text-sm text-slate-500">Bu alan bir sonraki güncellemede aktif olacaktır.</p>
                     </div>
                 </div>
             )}
@@ -247,6 +244,4 @@ const HomeworkTracker = () => {
     );
 };
 
-// React 18 ile Render
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<HomeworkTracker />);
+export default App;
