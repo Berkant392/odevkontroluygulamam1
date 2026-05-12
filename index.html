@@ -513,7 +513,7 @@
             const [showAssistantModal, setShowAssistantModal] = useState(false);
             const [assistantFoundStudents, setAssistantFoundStudents] = useState([]);
             const [assistantFoundTopics, setAssistantFoundTopics] = useState([]);
-            const [assistantSelectedStudentId, setAssistantSelectedStudentId] = useState(null);
+            const [assistantSelectedStudent, setAssistantSelectedStudent] = useState(null); // Sadece ID değil, öğrenci ve classId bilgisini tutacağız { id, classId, ... }
             const [assistantDraftGrades, setAssistantDraftGrades] = useState({});
             const [assistantDraftNotes, setAssistantDraftNotes] = useState({});
             
@@ -539,15 +539,8 @@
                 return () => { unsubClasses(); unsubLib(); unsubSettings(); };
             }, [user]);
 
-            // --- ASİSTAN FONKSİYONLARI ---
+            // --- YENİLENEN ASİSTAN FONKSİYONLARI (TÜM SINIFLARDA ARAMA) ---
             const toggleListening = () => {
-                const activeClass = classes.find(c => c.isOpen) || selectedClass;
-                if (!activeClass) { 
-                    alert("Lütfen önce işlem yapmak istediğiniz sınıfı açın (Tabloyu genişletin veya sınıfın içine girin)."); 
-                    return; 
-                }
-                setActiveRiskClass(activeClass);
-
                 if (isListening) { 
                     if (recognitionRef.current) { recognitionRef.current.stop(); } 
                     setIsListening(false); 
@@ -570,17 +563,35 @@
                     setIsListening(true); 
                     setSpeechTranscript("Sizi dinliyorum... (Örn: 'Emre logaritma')"); 
                     setShowAssistantModal(true); 
-                    setAssistantFoundStudents(activeClass.students); 
-                    setAssistantFoundTopics(activeClass.topics); 
+                    
+                    // Tüm öğrencileri ve konuları başlangıçta yükle
+                    let allStudents = [];
+                    let allTopicsMap = new Map(); // Tekrar eden konu isimlerini önlemek için Map
+
+                    classes.forEach(cls => {
+                        cls.students.forEach(std => {
+                            allStudents.push({ ...std, classId: cls.id, className: cls.className });
+                        });
+                        cls.topics.forEach(topic => {
+                             if (!allTopicsMap.has(topic.title)) {
+                                 // Konuya hangi sınıfa ait olduğunu da ekleyelim (aynı isimde konu birden fazla sınıfta olabilir ama şimdilik ilkini baz alalım)
+                                 allTopicsMap.set(topic.title, { ...topic, classId: cls.id });
+                             }
+                        });
+                    });
+
+                    setAssistantFoundStudents(allStudents);
+                    setAssistantFoundTopics(Array.from(allTopicsMap.values()));
+                    
                     setAssistantDraftGrades({}); 
                     setAssistantDraftNotes({}); 
-                    setAssistantSelectedStudentId(null); 
+                    setAssistantSelectedStudent(null); 
                 };
                 
                 recognition.onresult = (event) => { 
                     const transcript = event.results[0][0].transcript; 
                     setSpeechTranscript(transcript); 
-                    processSearchCommand(transcript, activeClass); 
+                    processGlobalSearchCommand(transcript); 
                 };
                 
                 recognition.onerror = (event) => { 
@@ -596,46 +607,130 @@
                 recognition.start();
             };
 
-            const processSearchCommand = (text, cls) => {
+            const processGlobalSearchCommand = (text) => {
                 const lowerText = text.toLowerCase();
+                
                 let foundStudents = [];
-                cls.students.forEach(student => {
-                    const studentNames = student.name.toLowerCase().split(' ').filter(n => n.length > 2);
-                    if (studentNames.some(name => lowerText.includes(name)) || lowerText.includes("herkes") || lowerText.includes("tüm öğrenciler")) foundStudents.push(student);
+                let allTopicsMap = new Map();
+
+                // 1. Tüm Sınıflarda Öğrenci ve Konu Ara
+                classes.forEach(cls => {
+                    // Öğrenciler
+                    cls.students.forEach(student => {
+                        const studentNames = student.name.toLowerCase().split(' ').filter(n => n.length > 2);
+                        if (studentNames.some(name => lowerText.includes(name)) || lowerText.includes("herkes") || lowerText.includes("tüm öğrenciler")) {
+                            foundStudents.push({ ...student, classId: cls.id, className: cls.className });
+                        }
+                    });
+
+                    // Konular
+                    cls.topics.forEach(topic => {
+                        const topicWords = topic.title.toLowerCase().split(' ').filter(n => n.length > 2);
+                        if (topicWords.some(word => lowerText.includes(word)) || lowerText.includes("hepsi") || lowerText.includes("tüm ödevler") || lowerText.includes("ödevleri")) {
+                             if (!allTopicsMap.has(topic.title)) {
+                                 allTopicsMap.set(topic.title, { ...topic, classId: cls.id });
+                             }
+                        }
+                    });
                 });
 
-                let foundTopics = [];
-                cls.topics.forEach(topic => {
-                    const topicWords = topic.title.toLowerCase().split(' ').filter(n => n.length > 2);
-                    if (topicWords.some(word => lowerText.includes(word)) || lowerText.includes("hepsi") || lowerText.includes("tüm ödevler") || lowerText.includes("ödevleri")) foundTopics.push(topic);
-                });
+                // 2. Sonuçları Güncelle
+                if (foundStudents.length > 0) { 
+                    setAssistantFoundStudents(foundStudents); 
+                    setAssistantSelectedStudent(foundStudents[0]); // İlk bulunanı seç ({id, classId, className})
+                } else {
+                    // Bulunamazsa tüm öğrencileri listele
+                    let allStudents = [];
+                    classes.forEach(cls => cls.students.forEach(std => allStudents.push({ ...std, classId: cls.id, className: cls.className })));
+                    setAssistantFoundStudents(allStudents);
+                }
 
-                if (foundStudents.length > 0) { setAssistantFoundStudents(foundStudents); setAssistantSelectedStudentId(foundStudents[0].id); } else { setAssistantFoundStudents(cls.students); }
-                if (foundTopics.length > 0) { setAssistantFoundTopics(foundTopics); } else { setAssistantFoundTopics(cls.topics); }
+                if (allTopicsMap.size > 0) { 
+                    setAssistantFoundTopics(Array.from(allTopicsMap.values())); 
+                } else { 
+                    let allT = [];
+                    classes.forEach(cls => cls.topics.forEach(t => { if(!allT.some(xt => xt.title === t.title)) allT.push({...t, classId: cls.id}) }));
+                    setAssistantFoundTopics(allT); 
+                }
             };
 
             const handleDraftGradeChange = (studentId, colId, status) => { setAssistantDraftGrades(prev => ({ ...prev, [studentId]: { ...(prev[studentId] || {}), [colId]: status } })); };
             const handleDraftNoteChange = (studentId, colId, note) => { setAssistantDraftNotes(prev => ({ ...prev, [studentId]: { ...(prev[studentId] || {}), [colId]: note } })); };
 
+            // YENİLENEN KAYDETME MANTIĞI (Öğrencinin kendi sınıfını bularak günceller)
             const applyAssistantDrafts = () => {
-                if (!activeRiskClass) return; const cls = classes.find(c => c.id === activeRiskClass.id); if (!cls) return;
-                let updatedStudents = [...cls.students]; let hasChanges = false;
+                let hasChangesAnywhere = false;
+                
+                // Seçilen öğrencilerin hangi sınıflarda olduğunu gruplayalım
                 const allModifiedStudentIds = new Set([...Object.keys(assistantDraftGrades), ...Object.keys(assistantDraftNotes)]);
+                
+                if(allModifiedStudentIds.size === 0) return;
+
+                // Mevcut classes state'inin bir kopyasını alıyoruz, değişiklikleri burada yapıp tek seferde veri tabanına atacağız
+                // (Ya da her sınıfı ayrı ayrı doc update yapabiliriz)
+                
+                const classesToUpdate = {}; // { classId: newClassData }
 
                 allModifiedStudentIds.forEach(studentId => {
-                    const studentIndex = updatedStudents.findIndex(s => s.id === studentId);
-                    if (studentIndex > -1) {
-                        const student = updatedStudents[studentIndex];
-                        const newGrades = { ...student.grades }; const newNotes = { ...student.assignmentNotes };
+                     // Bu studentId'ye sahip öğrenciyi asistantFoundStudents veya tüm listelerden bul
+                     let studentClassId = null;
+                     let studentData = null;
+                     let studentIndexInClass = -1;
+
+                     for (const c of classes) {
+                         const idx = c.students.findIndex(s => s.id === studentId);
+                         if(idx > -1) {
+                             studentClassId = c.id;
+                             studentData = c.students[idx];
+                             studentIndexInClass = idx;
+                             break;
+                         }
+                     }
+
+                     if(studentClassId && studentData) {
+                         // Sınıfı güncellenecekler listesine al
+                         if(!classesToUpdate[studentClassId]) {
+                             classesToUpdate[studentClassId] = { ...classes.find(c => c.id === studentClassId) };
+                             // students dizisini kopyala ki referans sorunu olmasın
+                             classesToUpdate[studentClassId].students = [...classesToUpdate[studentClassId].students];
+                         }
+
+                        const newGrades = { ...studentData.grades }; 
+                        const newNotes = { ...studentData.assignmentNotes };
                         
-                        if (assistantDraftGrades[studentId]) { Object.keys(assistantDraftGrades[studentId]).forEach(colId => { newGrades[colId] = assistantDraftGrades[studentId][colId]; hasChanges = true; }); }
-                        if (assistantDraftNotes[studentId]) { Object.keys(assistantDraftNotes[studentId]).forEach(colId => { const noteVal = assistantDraftNotes[studentId][colId]; if (noteVal.trim() === "") { delete newNotes[colId]; } else { newNotes[colId] = noteVal; } hasChanges = true; }); }
-                        updatedStudents[studentIndex] = { ...student, grades: newGrades, assignmentNotes: newNotes };
-                    }
+                        if (assistantDraftGrades[studentId]) { 
+                            Object.keys(assistantDraftGrades[studentId]).forEach(colId => { 
+                                newGrades[colId] = assistantDraftGrades[studentId][colId]; 
+                                hasChangesAnywhere = true; 
+                            }); 
+                        }
+                        if (assistantDraftNotes[studentId]) { 
+                            Object.keys(assistantDraftNotes[studentId]).forEach(colId => { 
+                                const noteVal = assistantDraftNotes[studentId][colId]; 
+                                if (noteVal.trim() === "") { delete newNotes[colId]; } else { newNotes[colId] = noteVal; } 
+                                hasChangesAnywhere = true; 
+                            }); 
+                        }
+
+                        // Sınıf kopyası içindeki öğrenciyi güncelle
+                        classesToUpdate[studentClassId].students[studentIndexInClass] = { 
+                            ...studentData, 
+                            grades: newGrades, 
+                            assignmentNotes: newNotes 
+                        };
+                     }
                 });
 
-                if (hasChanges) updateClassInDb({ ...cls, students: updatedStudents });
-                setShowAssistantModal(false); setAssistantDraftGrades({}); setAssistantDraftNotes({});
+                if (hasChangesAnywhere) {
+                    // Her değiştirilen sınıf için veri tabanı güncellemesi yap
+                    Object.values(classesToUpdate).forEach(updatedClass => {
+                        updateClassInDb(updatedClass);
+                    });
+                }
+                
+                setShowAssistantModal(false); 
+                setAssistantDraftGrades({}); 
+                setAssistantDraftNotes({});
             };
 
 
@@ -722,17 +817,18 @@
                     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
                         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-blob"></div>
                         <div className="absolute top-[20%] right-[-10%] w-[400px] h-[400px] bg-purple-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-blob animation-delay-2000"></div>
-                        
-                        <div className="bg-white/10 backdrop-blur-3xl border border-white/20 p-8 rounded-[2.5rem] shadow-2xl w-full max-w-md relative z-10 modal-anim">
+                        <div className="absolute bottom-[-20%] left-[20%] w-[600px] h-[600px] bg-pink-600 rounded-full mix-blend-screen filter blur-[100px] opacity-30 animate-blob animation-delay-4000"></div>
+
+                        <div className="bg-white/10 backdrop-blur-2xl border border-white/20 p-8 rounded-[2rem] shadow-2xl w-full max-w-md relative z-10 modal-anim">
                             <div className="text-center mb-10">
-                                <div className="w-24 h-24 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-500/30 rotate-3 hover:rotate-0 transition-transform"><GraduationCap size={48} className="text-white" /></div>
+                                <div className="w-24 h-24 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-500/30 rotate-3 hover:rotate-0 transition-transform"><GraduationCap size={48} className="text-white" /></div>
                                 <h1 className="text-4xl font-black text-white tracking-tight mb-2">BERKANT HOCA</h1>
                                 <p className="text-indigo-200 text-xs font-bold tracking-[0.3em] uppercase">Eğitim Platformu</p>
                             </div>
                             {authView === 'selection' && (
                                 <div className="space-y-4">
-                                    <button onClick={() => setAuthView('student-login')} className="w-full group relative overflow-hidden rounded-2xl p-5 bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center gap-5 hover:shadow-lg hover:shadow-indigo-500/20 hover:-translate-y-1"><div className="bg-indigo-500/20 p-4 rounded-xl text-indigo-300 group-hover:text-indigo-200 group-hover:bg-indigo-500/40 transition-colors"><User size={28}/></div><div className="text-left"><h3 className="text-white font-black text-lg tracking-wide">Öğrenci Girişi</h3><p className="text-indigo-200/70 text-xs mt-0.5">Ödev takip ve karne paneli</p></div><ChevronRight className="ml-auto text-white/30 group-hover:text-white transition-colors" size={24}/></button>
-                                    <button onClick={() => setAuthView('teacher-login')} className="w-full group relative overflow-hidden rounded-2xl p-5 bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center gap-5 hover:shadow-lg hover:shadow-rose-500/20 hover:-translate-y-1"><div className="bg-rose-500/20 p-4 rounded-xl text-rose-300 group-hover:text-rose-200 group-hover:bg-rose-500/40 transition-colors"><ShieldAlert size={28}/></div><div className="text-left"><h3 className="text-white font-black text-lg tracking-wide">Öğretmen Girişi</h3><p className="text-rose-200/70 text-xs mt-0.5">Yönetim ve raporlama</p></div><ChevronRight className="ml-auto text-white/30 group-hover:text-white transition-colors" size={24}/></button>
+                                    <button onClick={() => setAuthView('student-login')} className="w-full group relative overflow-hidden rounded-2xl p-5 bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center gap-5 hover:shadow-lg hover:shadow-indigo-500/10 hover:-translate-y-1"><div className="bg-indigo-500/20 p-4 rounded-xl text-indigo-300 group-hover:text-indigo-200 group-hover:bg-indigo-500/40 transition-colors"><User size={28}/></div><div className="text-left"><h3 className="text-white font-black text-lg tracking-wide">Öğrenci Girişi</h3><p className="text-indigo-200/70 text-xs mt-0.5">Ödev takip ve karne paneli</p></div><ChevronRight className="ml-auto text-white/30 group-hover:text-white transition-colors" size={24}/></button>
+                                    <button onClick={() => setAuthView('teacher-login')} className="w-full group relative overflow-hidden rounded-2xl p-5 bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center gap-5 hover:shadow-lg hover:shadow-rose-500/10 hover:-translate-y-1"><div className="bg-rose-500/20 p-4 rounded-xl text-rose-300 group-hover:text-rose-200 group-hover:bg-rose-500/40 transition-colors"><ShieldAlert size={28}/></div><div className="text-left"><h3 className="text-white font-black text-lg tracking-wide">Öğretmen Girişi</h3><p className="text-rose-200/70 text-xs mt-0.5">Yönetim ve raporlama</p></div><ChevronRight className="ml-auto text-white/30 group-hover:text-white transition-colors" size={24}/></button>
                                 </div>
                             )}
                             {authView === 'student-login' && (
@@ -1096,11 +1192,11 @@
                         )}
                     </main>
 
-                    {/* --- YENİ EKLENEN: SABİT ASİSTAN BUTONU (FAB) --- */}
+                    {/* --- SABİT ASİSTAN BUTONU (FAB) - HER YERDE GÖRÜNSÜN --- */}
                     {isTeacherMode && (
                         <div className="fab-button bg-gradient-to-r from-indigo-600 to-purple-600" onClick={toggleListening} title="Akıllı Asistanı Başlat">
                             {isListening && <div className="fab-pulse"></div>}
-                            <Mic size={32} className={`text-white ${isListening ? 'animate-pulse' : ''}`} />
+                            {isListening ? <Mic size={28} className="text-white animate-pulse" /> : <Wand2 size={28} className="text-white" />}
                         </div>
                     )}
 
@@ -1215,7 +1311,7 @@
                     
                     {activeCell && (<div className="fixed z-menu bg-white border border-slate-100 rounded-2xl shadow-xl p-2 w-48 modal-anim" style={{ top: Math.min(activeCell.anchorEl.getBoundingClientRect().bottom + 5, window.innerHeight - 200), left: Math.min(Math.max(10, activeCell.anchorEl.getBoundingClientRect().left), window.innerWidth - 200) }} onClick={(e) => e.stopPropagation()}>{STATUS_OPTIONS.map(opt => <button key={opt.id} onClick={() => updateGrade(activeCell.classId, activeCell.studentId, activeCell.colId, opt.id)} className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl hover:${opt.bg} transition-colors mb-1 last:mb-0`}><opt.icon size={18} className={opt.color} strokeWidth={2.5}/><span className="text-sm font-bold text-slate-700">{opt.label}</span></button>)}</div>)}
                     
-                    {/* --- AKILLI ARAMA VE HIZLI İŞLEM MODALI (YENİDEN DİNLE BUTONU EKLENDİ) --- */}
+                    {/* --- AKILLI ARAMA VE HIZLI İŞLEM MODALI (YENİLENMİŞ TASARIM VE TÜM SINIFLAR DESTEĞİ) --- */}
                     {showAssistantModal && (
                         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-2 md:p-4">
                             <div className="bg-white rounded-[2rem] w-full max-w-4xl overflow-hidden modal-anim shadow-2xl flex flex-col max-h-[95vh] border border-slate-200">
@@ -1271,17 +1367,23 @@
                                         {assistantFoundStudents.map(student => (
                                             <button 
                                                 key={student.id} 
-                                                onClick={() => setAssistantSelectedStudentId(student.id)}
+                                                onClick={() => setAssistantSelectedStudent(student)}
                                                 className={`text-left p-3 rounded-2xl border-2 transition-all flex items-center gap-3
-                                                    ${assistantSelectedStudentId === student.id ? 'bg-indigo-50 border-indigo-500 shadow-md' : 'border-transparent hover:bg-slate-50'}`}
+                                                    ${assistantSelectedStudent?.id === student.id ? 'bg-indigo-50 border-indigo-500 shadow-md' : 'border-transparent hover:bg-slate-50'}`}
                                             >
                                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0
-                                                    ${assistantSelectedStudentId === student.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                    ${assistantSelectedStudent?.id === student.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
                                                     {student.name.charAt(0)}
                                                 </div>
-                                                <span className={`font-bold text-sm truncate ${assistantSelectedStudentId === student.id ? 'text-indigo-900' : 'text-slate-700'}`}>
-                                                    {student.name}
-                                                </span>
+                                                <div className="flex flex-col overflow-hidden">
+                                                    <span className={`font-bold text-sm truncate ${assistantSelectedStudent?.id === student.id ? 'text-indigo-900' : 'text-slate-700'}`}>
+                                                        {student.name}
+                                                    </span>
+                                                    {/* SINIF BİLGİSİ EKLENDİ */}
+                                                    <span className="text-[10px] text-slate-400 font-bold truncate">
+                                                        {student.className}
+                                                    </span>
+                                                </div>
                                             </button>
                                         ))}
                                         {assistantFoundStudents.length === 0 && <div className="text-xs text-slate-400 text-center py-4">Öğrenci bulunamadı.</div>}
@@ -1290,10 +1392,11 @@
                                     {/* Sağ Kolon: Ödevler ve Hızlı İşlem */}
                                     <div className="w-full md:w-2/3 overflow-y-auto p-4 md:p-6">
                                         
-                                        {assistantSelectedStudentId ? (
+                                        {assistantSelectedStudent ? (
                                             <div className="space-y-6">
                                                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Ödevler ve Kaynaklar</div>
-                                                {assistantFoundTopics.map(topic => (
+                                                {/* Sadece seçili öğrencinin sınıfına ait konuları göster */}
+                                                {assistantFoundTopics.filter(t => t.classId === assistantSelectedStudent.classId).map(topic => (
                                                     <div key={topic.id} className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm">
                                                         <h4 className="font-black text-slate-800 text-lg mb-4 border-b border-slate-100 pb-3 flex items-center gap-2">
                                                             <div className="w-2 h-6 bg-indigo-500 rounded-full"></div>
@@ -1301,12 +1404,15 @@
                                                         </h4>
                                                         <div className="space-y-4">
                                                             {topic.subColumns.map(col => {
-                                                                const studentData = activeRiskClass.students.find(s => s.id === assistantSelectedStudentId);
+                                                                // Öğrencinin asıl verisini bul
+                                                                const targetClass = classes.find(c => c.id === assistantSelectedStudent.classId);
+                                                                const studentData = targetClass?.students.find(s => s.id === assistantSelectedStudent.id);
+                                                                
                                                                 const currentDbGrade = studentData?.grades?.[col.id] || 'exempt';
                                                                 const currentDbNote = studentData?.assignmentNotes?.[col.id] || '';
                                                                 
-                                                                const draftGrade = assistantDraftGrades[assistantSelectedStudentId]?.[col.id];
-                                                                const draftNote = assistantDraftNotes[assistantSelectedStudentId]?.[col.id];
+                                                                const draftGrade = assistantDraftGrades[assistantSelectedStudent.id]?.[col.id];
+                                                                const draftNote = assistantDraftNotes[assistantSelectedStudent.id]?.[col.id];
                                                                 
                                                                 const displayGrade = draftGrade !== undefined ? draftGrade : currentDbGrade;
                                                                 const displayNote = draftNote !== undefined ? draftNote : currentDbNote;
@@ -1321,7 +1427,7 @@
                                                                             {STATUS_OPTIONS.map(opt => (
                                                                                 <button 
                                                                                     key={opt.id}
-                                                                                    onClick={() => handleDraftGradeChange(assistantSelectedStudentId, col.id, opt.id)}
+                                                                                    onClick={() => handleDraftGradeChange(assistantSelectedStudent.id, col.id, opt.id)}
                                                                                     className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition-all 
                                                                                         ${displayGrade === opt.id ? `${opt.bg} ${opt.color} ${opt.border} shadow-sm scale-105` : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}
                                                                                 >
@@ -1340,7 +1446,7 @@
                                                                                 placeholder="Öğretmen notu ekle..." 
                                                                                 className="w-full text-xs pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all font-medium text-slate-700 placeholder:text-slate-400"
                                                                                 value={displayNote}
-                                                                                onChange={(e) => handleDraftNoteChange(assistantSelectedStudentId, col.id, e.target.value)}
+                                                                                onChange={(e) => handleDraftNoteChange(assistantSelectedStudent.id, col.id, e.target.value)}
                                                                             />
                                                                         </div>
                                                                     </div>
@@ -1350,7 +1456,7 @@
                                                         </div>
                                                     </div>
                                                 ))}
-                                                {assistantFoundTopics.length === 0 && <div className="text-xs text-slate-400 text-center py-8 bg-white rounded-2xl border border-slate-200">Konu bulunamadı.</div>}
+                                                {assistantFoundTopics.filter(t => t.classId === assistantSelectedStudent.classId).length === 0 && <div className="text-xs text-slate-400 text-center py-8 bg-white rounded-2xl border border-slate-200">Bu öğrencinin sınıfına ait konu bulunamadı.</div>}
                                             </div>
                                         ) : (
                                             <div className="flex flex-col h-full items-center justify-center text-slate-400 bg-white rounded-3xl border border-dashed border-slate-300 p-8">
