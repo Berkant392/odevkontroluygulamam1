@@ -294,11 +294,20 @@
             const [useLibrary, setUseLibrary] = useState(false); 
             const [dailyQuote, setDailyQuote] = useState(MOTIVATIONAL_QUOTES[0]);
 
-            // --- YENİ EKLENEN STATE'LER: SESLİ ASİSTAN İÇİN ---
+            // --- YENİ EKLENEN STATE'LER: AKILLI HIZLI İŞLEM ASİSTANI İÇİN ---
             const [isListening, setIsListening] = useState(false);
             const [speechTranscript, setSpeechTranscript] = useState("");
             const [showAssistantModal, setShowAssistantModal] = useState(false);
-            const [assistantPendingActions, setAssistantPendingActions] = useState([]);
+            
+            // Asistan tarafından bulunan eşleşmeler
+            const [assistantFoundStudents, setAssistantFoundStudents] = useState([]);
+            const [assistantFoundTopics, setAssistantFoundTopics] = useState([]);
+            
+            // Kullanıcının modal içinde seçtiği öğrenci (Hızlı işlem için)
+            const [assistantSelectedStudentId, setAssistantSelectedStudentId] = useState(null);
+            // Yapılacak değişikliklerin taslağı: { [studentId]: { [colId]: 'status' } }
+            const [assistantDraftGrades, setAssistantDraftGrades] = useState({});
+            
             const recognitionRef = useRef(null);
 
             useEffect(() => { const initAuth = async () => { try { await signInAnonymously(auth); } catch (e) { console.error(e); } }; initAuth(); setDailyQuote(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]); return onAuthStateChanged(auth, (u) => u && setUser(u)); }, []);
@@ -321,7 +330,7 @@
                 return () => { unsubClasses(); unsubLib(); unsubSettings(); };
             }, [user]);
 
-            // --- YENİ FONKSİYON: SES TANIMA BAŞLATMA ---
+            // --- YENİ SES TANIMA MANTIĞI (Arama Odaklı) ---
             const toggleListening = (cls) => {
                 if (isListening) {
                     if (recognitionRef.current) { recognitionRef.current.stop(); }
@@ -329,7 +338,6 @@
                     return;
                 }
 
-                // Tarayıcı destek kontrolü
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 if (!SpeechRecognition) {
                     alert("Tarayıcınız ses tanıma özelliğini desteklemiyor. Lütfen Chrome kullanın.");
@@ -346,13 +354,16 @@
                     setIsListening(true);
                     setSpeechTranscript("Sizi dinliyorum...");
                     setShowAssistantModal(true);
-                    setAssistantPendingActions([]); // Önceki işlemleri temizle
+                    setAssistantFoundStudents([]);
+                    setAssistantFoundTopics([]);
+                    setAssistantDraftGrades({});
+                    setAssistantSelectedStudentId(null);
                 };
 
                 recognition.onresult = (event) => {
                     const transcript = event.results[0][0].transcript;
                     setSpeechTranscript(transcript);
-                    processVoiceCommand(transcript, cls); // Algoritmayı çalıştır
+                    processSearchCommand(transcript, cls);
                 };
 
                 recognition.onerror = (event) => {
@@ -368,136 +379,94 @@
                 recognition.start();
             };
 
-            // --- YENİ FONKSİYON: METİN PARÇALAMA VE KURAL TABANLI EŞLEŞTİRME ---
-            const processVoiceCommand = (text, cls) => {
+            const processSearchCommand = (text, cls) => {
                 const lowerText = text.toLowerCase();
-                let actions = [];
+                
+                // 1. Öğrencileri Ara
+                let foundStudents = [];
+                cls.students.forEach(student => {
+                    // İsimleri kelimelere böl, 3 harften büyük olanları ara
+                    const studentNames = student.name.toLowerCase().split(' ').filter(n => n.length > 2);
+                    const isMatch = studentNames.some(name => lowerText.includes(name));
+                    
+                    if (isMatch || lowerText.includes("herkes") || lowerText.includes("tüm öğrenciler")) {
+                        foundStudents.push(student);
+                    }
+                });
 
-                // 1. Durum Kelimelerini Bul
-                let targetStatus = null;
-                if (lowerText.includes("yaptı") || lowerText.includes("tamamladı") || lowerText.includes("bitirdi")) targetStatus = 'done';
-                else if (lowerText.includes("yapmadı") || lowerText.includes("yok") || lowerText.includes("getirmedi")) targetStatus = 'missing';
-                else if (lowerText.includes("eksik") || lowerText.includes("yarım") || lowerText.includes("kısmen")) targetStatus = 'assigned';
-                else if (lowerText.includes("muaf")) targetStatus = 'exempt';
+                // 2. Konuları Ara
+                let foundTopics = [];
+                cls.topics.forEach(topic => {
+                    const topicWords = topic.title.toLowerCase().split(' ').filter(n => n.length > 2);
+                    const isTopicMatch = topicWords.some(word => lowerText.includes(word));
+                    
+                    if (isTopicMatch || lowerText.includes("hepsi") || lowerText.includes("tüm ödevler") || lowerText.includes("ödevleri")) {
+                        foundTopics.push(topic);
+                    }
+                });
 
-                // Eğer belirgin bir durum yoksa işlem yapma
-                if (!targetStatus) {
-                    setSpeechTranscript(text + " (Durum anlaşılamadı. 'Yaptı', 'Yapmadı' veya 'Eksik' gibi kelimeler kullanın.)");
-                    return;
+                // Eğer hiçbir şey bulunamadıysa (ne öğrenci ne konu), tüm listeyi getir ki öğretmen manuel seçebilsin
+                if (foundStudents.length === 0 && foundTopics.length === 0) {
+                     setAssistantFoundStudents(cls.students);
+                     setAssistantFoundTopics(cls.topics);
+                } else {
+                     // Sadece bulunanları göster (eğer biri boşsa, onu tümü olarak kabul et)
+                     setAssistantFoundStudents(foundStudents.length > 0 ? foundStudents : cls.students);
+                     setAssistantFoundTopics(foundTopics.length > 0 ? foundTopics : cls.topics);
                 }
 
-                // Sınıftaki tüm alt sütunları (kaynakları) düz bir liste yapalım kolay aramak için
-                let allColumns = [];
-                cls.topics.forEach(topic => {
-                    topic.subColumns.forEach(col => {
-                        allColumns.push({ topicId: topic.id, topicTitle: topic.title, colId: col.id, colTitle: col.title });
-                    });
-                });
-
-                // 2. Her bir öğrenci için metinde ismi geçiyor mu kontrol et
-                cls.students.forEach(student => {
-                    // İsmi küçük harfe çevir ve kelimelere böl (sadece ilk isimle veya soyisimle çağrılabilir)
-                    const studentNames = student.name.toLowerCase().split(' ');
-                    
-                    // Öğrencinin adının herhangi bir parçası metinde geçiyor mu? (Örn: "Emre", "Yılmaz")
-                    // Tam isim eşleşmesi de aranabilir ama tek isim kullanımı daha yaygındır
-                    const isStudentMentioned = studentNames.some(name => name.length > 2 && lowerText.includes(name));
-
-                    // Herkes istisnası
-                    const isEveryoneExcept = lowerText.includes("herkes") && lowerText.includes("dışında");
-                    const isEveryone = lowerText.includes("herkes");
-
-                    let shouldProcessStudent = isStudentMentioned;
-                    
-                    if (isEveryoneExcept) {
-                        shouldProcessStudent = !isStudentMentioned; // Adı geçenler HARİÇ herkes
-                    } else if (isEveryone) {
-                        shouldProcessStudent = true; // Herkes
-                    }
-
-                    if (shouldProcessStudent) {
-                        // 3. Öğrenci için hangi ödevden bahsedilmiş?
-                        // Tüm kaynakları dön ve metinde geçiyor mu bak
-                        allColumns.forEach(column => {
-                            const colTitleWords = column.colTitle.toLowerCase().split(' ');
-                            // Sütun isminin en az bir kelimesi (3 harften büyük) metinde geçiyorsa eşleşmiş say
-                            const isColMentioned = colTitleWords.some(word => word.length > 2 && lowerText.includes(word));
-                            
-                            // Eğer belirli bir ödev adı geçmiyorsa veya "bütün ödevleri", "hepsini" diyorsa son eklenen ödevi veya hepsini seçtirebiliriz.
-                            // Şimdilik sadece ismi geçenleri bulalım, veya metinde "ödev" kelimesi varsa ve belirli bir kaynak yoksa en sonuncuyu alalım.
-                            const isAllHomeworks = lowerText.includes("hepsini") || lowerText.includes("tüm ödevleri");
-
-                            if (isColMentioned || isAllHomeworks) {
-                                actions.push({
-                                    id: generateId('action'),
-                                    studentId: student.id,
-                                    studentName: student.name,
-                                    topicId: column.topicId,
-                                    topicTitle: column.topicTitle,
-                                    colId: column.colId,
-                                    colTitle: column.colTitle,
-                                    status: targetStatus,
-                                    note: "" // Başlangıçta not boş
-                                });
-                            }
-                        });
-                    }
-                });
-
-                setAssistantPendingActions(actions);
-                
-                if (actions.length === 0) {
-                     setSpeechTranscript(text + " (Öğrenci veya kaynak eşleşmesi bulunamadı.)");
+                // Varsayılan olarak ilk bulunan öğrenciyi seçili yap
+                if (foundStudents.length > 0) {
+                    setAssistantSelectedStudentId(foundStudents[0].id);
+                } else if (cls.students.length > 0) {
+                    setAssistantSelectedStudentId(cls.students[0].id);
                 }
             };
 
-            // --- YENİ FONKSİYON: ASİSTAN DEĞİŞİKLİKLERİNİ KAYDETME ---
-            const applyAssistantActions = () => {
-                if (!activeRiskClass || assistantPendingActions.length === 0) return; // Geçici olarak activeRiskClass değişkenini kullanacağız modalı açtığımız sınıfı tutmak için, istersen yeni state açılabilir.
+            // Draft (Taslak) notu güncelleme
+            const handleDraftGradeChange = (studentId, colId, status) => {
+                setAssistantDraftGrades(prev => ({
+                    ...prev,
+                    [studentId]: {
+                        ...(prev[studentId] || {}),
+                        [colId]: status
+                    }
+                }));
+            };
+
+            // Draftları veritabanına kaydetme
+            const applyAssistantDrafts = () => {
+                if (!activeRiskClass) return;
                 
-                // activeRiskClass yerine, asistanın hangi sınıfta açıldığını bilmemiz lazım.
-                // Modal açılırken selectedClass'ı kullanabiliriz çünkü sınıf içinde çalışıyoruz.
-                const classIdToUpdate = assistantPendingActions[0]?.classId || (classes.find(c => c.isOpen)?.id); 
-                
-                const cls = classes.find(c => c.id === classIdToUpdate);
+                const cls = classes.find(c => c.id === activeRiskClass.id);
                 if (!cls) return;
 
                 let updatedStudents = [...cls.students];
+                let hasChanges = false;
 
-                assistantPendingActions.forEach(action => {
-                    const studentIndex = updatedStudents.findIndex(s => s.id === action.studentId);
+                Object.keys(assistantDraftGrades).forEach(studentId => {
+                    const studentIndex = updatedStudents.findIndex(s => s.id === studentId);
                     if (studentIndex > -1) {
                         const student = updatedStudents[studentIndex];
-                        // Durumu güncelle
-                        const newGrades = { ...student.grades, [action.colId]: action.status };
+                        const newGrades = { ...student.grades };
                         
-                        // Not varsa notu da güncelle
-                        let newNotes = { ...student.assignmentNotes };
-                        if (action.note.trim()) {
-                            newNotes[action.colId] = action.note;
-                        }
+                        // Taslaktaki notları mevcut notların üzerine yaz
+                        Object.keys(assistantDraftGrades[studentId]).forEach(colId => {
+                            newGrades[colId] = assistantDraftGrades[studentId][colId];
+                            hasChanges = true;
+                        });
 
-                        updatedStudents[studentIndex] = { ...student, grades: newGrades, assignmentNotes: newNotes };
+                        updatedStudents[studentIndex] = { ...student, grades: newGrades };
                     }
                 });
 
-                updateClassInDb({ ...cls, students: updatedStudents });
+                if (hasChanges) {
+                    updateClassInDb({ ...cls, students: updatedStudents });
+                    alert("Değişiklikler başarıyla kaydedildi!");
+                }
+                
                 setShowAssistantModal(false);
-                setAssistantPendingActions([]);
-                alert("Değişiklikler başarıyla kaydedildi!");
-            };
-            
-            // Asistan tablosunda manuel düzenleme fonksiyonları
-            const updateActionStatus = (actionId, newStatus) => {
-                setAssistantPendingActions(prev => prev.map(a => a.id === actionId ? { ...a, status: newStatus } : a));
-            };
-            
-            const updateActionNote = (actionId, newNote) => {
-                setAssistantPendingActions(prev => prev.map(a => a.id === actionId ? { ...a, note: newNote } : a));
-            };
-
-            const removeAction = (actionId) => {
-                setAssistantPendingActions(prev => prev.filter(a => a.id !== actionId));
+                setAssistantDraftGrades({});
             };
 
 
@@ -578,7 +547,7 @@
             };
             // ======================= BÖLÜM 6 SONU ==================================
 
-// =======================================================================
+            // =======================================================================
             // BÖLÜM 7: ANA UYGULAMA BİLEŞENİ - ARAYÜZ (UI / Render)
             // =======================================================================
             if (loading) return <div className="flex h-screen items-center justify-center bg-slate-50 text-indigo-600"><Loader2 className="animate-spin" size={48}/></div>;
@@ -679,16 +648,16 @@
                                                     <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                                                         {cls.className} 
                                                         <button onClick={(e) => { e.stopPropagation(); setModalData({ classId: cls.id, currentName: cls.className }); setModalInputVal(cls.className); setModalType('edit-class'); }} className="text-slate-400 hover:text-indigo-600 p-1 rounded-full hover:bg-white/50"><Pencil size={14} /></button>
-                                                        {/* --- YENİ SESLİ ASİSTAN BUTONU --- */}
+                                                        
+                                                        {/* --- SESLİ ASİSTAN BUTONU --- */}
                                                         <button 
                                                             onClick={(e) => { 
                                                                 e.stopPropagation(); 
-                                                                // Hangi sınıfta açtığımızı geçici olarak kaydet (onaylarken kullanacağız)
                                                                 setActiveRiskClass(cls); 
                                                                 toggleListening(cls); 
                                                             }} 
                                                             className={`p-1.5 rounded-full transition-all duration-300 ml-2 ${isListening ? 'bg-indigo-600 text-white animate-pulse shadow-lg shadow-indigo-400/50' : 'bg-white text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200'}`}
-                                                            title="Sesli Asistan ile Hızlı Giriş"
+                                                            title="Sesli Hızlı İşlem Asistanı"
                                                         >
                                                             {isListening ? <Mic size={16} /> : <MicOff size={16} />}
                                                         </button>
@@ -896,111 +865,129 @@
                         </div>
                     )}
 
-                    {/* --- YENİ EKLENEN: SESLİ ASİSTAN ONAY MODALI --- */}
+                    {/* --- YENİ EKLENEN: AKILLI ARAMA VE HIZLI İŞLEM MODALI --- */}
                     {showAssistantModal && (
                         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                            <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg overflow-hidden modal-anim shadow-2xl flex flex-col max-h-[90vh]">
+                            <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-2xl overflow-hidden modal-anim shadow-2xl flex flex-col max-h-[90vh]">
+                                {/* Modal Başlık ve Animasyon */}
                                 <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50">
                                     <h3 className="font-black text-indigo-800 flex items-center gap-2">
                                         <Mic className="text-indigo-600 animate-pulse" size={20}/> 
-                                        Asistan
+                                        Hızlı İşlem Asistanı
                                     </h3>
                                     <button onClick={() => { setShowAssistantModal(false); if(recognitionRef.current) recognitionRef.current.stop(); setIsListening(false); }} className="text-slate-400 hover:text-rose-600 transition-colors"><X size={20}/></button>
                                 </div>
                                 
-                                <div className="p-6 bg-slate-50 border-b border-slate-200 flex flex-col items-center">
-                                    {/* Ses dalgası animasyonu */}
-                                    <div className="flex items-center justify-center h-12 mb-4">
+                                <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col items-center">
+                                    <div className="flex items-center justify-center h-8 mb-2">
                                         {isListening ? (
                                             <div className="flex items-center gap-1">
-                                                <div className="wave-bar wave-1"></div>
-                                                <div className="wave-bar wave-2"></div>
-                                                <div className="wave-bar wave-3"></div>
-                                                <div className="wave-bar wave-4"></div>
-                                                <div className="wave-bar wave-5"></div>
-                                                <div className="wave-bar wave-1"></div>
+                                                <div className="wave-bar wave-1"></div><div className="wave-bar wave-2"></div><div className="wave-bar wave-3"></div><div className="wave-bar wave-4"></div><div className="wave-bar wave-5"></div><div className="wave-bar wave-1"></div>
                                             </div>
                                         ) : (
-                                            <div className="text-slate-400 font-medium text-sm flex items-center gap-2">
-                                                <MicOff size={16} /> Dinleme durdu.
+                                            <div className="text-slate-400 font-medium text-xs flex items-center gap-2">
+                                                <MicOff size={14} /> Dinleme durdu.
                                             </div>
                                         )}
                                     </div>
                                     <p className="text-sm font-medium text-slate-700 text-center italic">"{speechTranscript}"</p>
                                 </div>
 
-                                <div className="flex-1 overflow-y-auto p-4">
-                                    {assistantPendingActions.length > 0 ? (
-                                        <div className="space-y-3">
-                                            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Algılanan Değişiklikler ({assistantPendingActions.length})</div>
-                                            {assistantPendingActions.map((action) => {
-                                                const statusOpt = STATUS_OPTIONS.find(o => o.id === action.status) || STATUS_OPTIONS[3];
-                                                const StatusIcon = statusOpt.icon;
-                                                return (
-                                                    <div key={action.id} className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex flex-col gap-2">
-                                                        <div className="flex justify-between items-start">
-                                                            <div>
-                                                                <div className="font-bold text-slate-800 text-sm">{action.studentName}</div>
-                                                                <div className="text-[10px] text-slate-500 uppercase tracking-wider">{action.topicTitle} / {action.colTitle}</div>
-                                                            </div>
-                                                            <button onClick={() => removeAction(action.id)} className="text-slate-300 hover:text-rose-500"><X size={16}/></button>
-                                                        </div>
-                                                        
-                                                        <div className="flex gap-2 items-center flex-wrap mt-2">
-                                                            {/* Durum Seçici */}
-                                                            <div className="flex bg-slate-100 rounded-lg p-1">
-                                                                {STATUS_OPTIONS.map(opt => (
-                                                                    <button 
-                                                                        key={opt.id} 
-                                                                        onClick={() => updateActionStatus(action.id, opt.id)}
-                                                                        className={`p-1.5 rounded-md transition-all ${action.status === opt.id ? `bg-white shadow-sm ${opt.color}` : 'text-slate-400 hover:bg-slate-200'}`}
-                                                                        title={opt.label}
-                                                                    >
-                                                                        <opt.icon size={14} strokeWidth={2.5} />
-                                                                    </button>
-                                                                ))}
-                                                            </div>
-                                                            
-                                                            {/* Not Ekleme / Düzenleme */}
-                                                            <input 
-                                                                type="text" 
-                                                                placeholder="Not ekle..." 
-                                                                className="flex-1 min-w-[120px] text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-indigo-400"
-                                                                value={action.note}
-                                                                onChange={(e) => updateActionNote(action.id, e.target.value)}
-                                                            />
+                                {/* Modal İçerik - İki Kolonlu Yapı */}
+                                <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+                                    
+                                    {/* Sol Kolon: Öğrenci Seçimi */}
+                                    <div className="w-full md:w-1/3 border-r border-slate-100 bg-white overflow-y-auto p-3 flex flex-col gap-2">
+                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 px-1">Öğrenciler ({assistantFoundStudents.length})</div>
+                                        {assistantFoundStudents.map(student => (
+                                            <button 
+                                                key={student.id} 
+                                                onClick={() => setAssistantSelectedStudentId(student.id)}
+                                                className={`text-left p-3 rounded-xl border transition-all ${assistantSelectedStudentId === student.id ? 'bg-indigo-50 border-indigo-300 shadow-sm' : 'border-transparent hover:bg-slate-50'}`}
+                                            >
+                                                <div className={`font-bold ${assistantSelectedStudentId === student.id ? 'text-indigo-700' : 'text-slate-700'}`}>{student.name}</div>
+                                            </button>
+                                        ))}
+                                        {assistantFoundStudents.length === 0 && <div className="text-xs text-slate-400 text-center py-4">Öğrenci bulunamadı.</div>}
+                                    </div>
+
+                                    {/* Sağ Kolon: Ödevler ve Hızlı İşlem */}
+                                    <div className="w-full md:w-2/3 bg-slate-50 overflow-y-auto p-4">
+                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Ödevler ve Kaynaklar</div>
+                                        
+                                        {assistantSelectedStudentId ? (
+                                            <div className="space-y-4">
+                                                {assistantFoundTopics.map(topic => (
+                                                    <div key={topic.id} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                                                        <h4 className="font-bold text-indigo-600 mb-3 border-b border-slate-100 pb-2">{topic.title}</h4>
+                                                        <div className="space-y-3">
+                                                            {topic.subColumns.map(col => {
+                                                                // Öğrencinin o anki veritabanındaki notu
+                                                                const studentData = activeRiskClass.students.find(s => s.id === assistantSelectedStudentId);
+                                                                const currentDbGrade = studentData?.grades?.[col.id] || 'exempt';
+                                                                
+                                                                // Eğer taslakta bir değişiklik varsa onu göster, yoksa veritabanındakini göster
+                                                                const draftGrade = assistantDraftGrades[assistantSelectedStudentId]?.[col.id];
+                                                                const displayGrade = draftGrade !== undefined ? draftGrade : currentDbGrade;
+                                                                
+                                                                // Değişiklik yapılmış mı görsel olarak belirtmek için
+                                                                const isChanged = draftGrade !== undefined && draftGrade !== currentDbGrade;
+
+                                                                return (
+                                                                    <div key={col.id} className={`flex flex-col gap-2 p-2 rounded-lg ${isChanged ? 'bg-amber-50/50 border border-amber-100' : ''}`}>
+                                                                        <div className="text-sm font-medium text-slate-700">{col.title}</div>
+                                                                        <div className="flex flex-wrap gap-1">
+                                                                            {STATUS_OPTIONS.map(opt => (
+                                                                                <button 
+                                                                                    key={opt.id}
+                                                                                    onClick={() => handleDraftGradeChange(assistantSelectedStudentId, col.id, opt.id)}
+                                                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1
+                                                                                        ${displayGrade === opt.id ? `${opt.bg} ${opt.color} ${opt.border} shadow-sm` : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'}`}
+                                                                                >
+                                                                                    <opt.icon size={14} /> {opt.label}
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )
+                                                            })}
                                                         </div>
                                                     </div>
-                                                )
-                                            })}
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center h-40 text-slate-400">
-                                            <Play size={32} className="mb-2 opacity-50" />
-                                            <p className="text-sm">Konuşmaya başlayın...</p>
-                                            <p className="text-xs mt-1">Örn: "Emre ebob ekok testini yaptı."</p>
-                                        </div>
-                                    )}
+                                                ))}
+                                                {assistantFoundTopics.length === 0 && <div className="text-xs text-slate-400 text-center py-4">Konu bulunamadı.</div>}
+                                            </div>
+                                        ) : (
+                                            <div className="flex h-full items-center justify-center text-sm text-slate-400 italic">
+                                                İşlem yapmak için soldan bir öğrenci seçin.
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
-                                <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-3">
-                                    <button 
-                                        onClick={() => { setShowAssistantModal(false); setAssistantPendingActions([]); }} 
-                                        className="flex-1 py-3 font-bold text-slate-500 hover:bg-slate-200 rounded-xl transition-colors"
-                                    >
-                                        Vazgeç
-                                    </button>
-                                    <button 
-                                        onClick={applyAssistantActions} 
-                                        disabled={assistantPendingActions.length === 0}
-                                        className={`flex-1 py-3 rounded-xl font-bold text-white shadow-md transition-all ${assistantPendingActions.length > 0 ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200' : 'bg-slate-300 cursor-not-allowed'}`}
-                                    >
-                                        Değişiklikleri Onayla
-                                    </button>
+                                <div className="p-4 border-t border-slate-100 bg-white flex justify-between items-center">
+                                    <div className="text-xs text-slate-500 font-medium">
+                                        {Object.keys(assistantDraftGrades).length > 0 ? (
+                                            <span className="text-amber-600 font-bold flex items-center gap-1"><AlertTriangle size={14}/> Kaydedilmemiş değişiklikler var</span>
+                                        ) : "Değişiklik yok"}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => { setShowAssistantModal(false); setAssistantDraftGrades({}); }} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors text-sm">
+                                            İptal
+                                        </button>
+                                        <button 
+                                            onClick={applyAssistantDrafts} 
+                                            disabled={Object.keys(assistantDraftGrades).length === 0}
+                                            className={`px-6 py-2 rounded-xl font-bold text-white shadow-md transition-all text-sm flex items-center gap-2
+                                                ${Object.keys(assistantDraftGrades).length > 0 ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200' : 'bg-slate-300 cursor-not-allowed'}`}
+                                        >
+                                            <Save size={16} /> Kaydet
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     )}
+
 
                     {(activeCell || activeColMenu || activeTopicMenu) && <div className="fixed inset-0 z-[60] bg-black/20 backdrop-blur-[1px]" onClick={() => { setActiveCell(null); setActiveColMenu(null); setActiveTopicMenu(null); }}/>}
                     {activeTopicMenu && (<div className="fixed z-menu bg-white rounded-xl shadow-2xl border border-slate-100 w-64 modal-anim" style={{ top: Math.min(activeTopicMenu.anchorEl.getBoundingClientRect().bottom + 5, window.innerHeight - 200), left: Math.min(Math.max(10, activeTopicMenu.anchorEl.getBoundingClientRect().left), window.innerWidth - 200) }} onClick={(e) => e.stopPropagation()}><div className="p-2"><div className="text-[10px] font-bold text-slate-400 px-3 py-2 uppercase tracking-wider">Toplu İşlem</div><button onClick={() => handleTopicBulkAction('assigned', activeTopicMenu.classId, activeTopicMenu.topicId)} className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-amber-50 text-amber-700 text-xs font-bold transition-colors"><ArrowDownToLine size={16}/> Herkese Ver</button><button onClick={() => handleTopicBulkAction('done', activeTopicMenu.classId, activeTopicMenu.topicId)} className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-green-50 text-green-700 text-xs font-bold transition-colors"><CheckCircle size={16}/> Herkese Yapıldı</button></div><div className="h-px bg-slate-100 my-1"></div><div className="p-2"><button onClick={() => { const cls = classes.find(c => c.id === activeTopicMenu.classId); const topic = cls.topics.find(t => t.id === activeTopicMenu.topicId); setModalData({ classId: cls.id, topicId: topic.id, currentTitle: topic.title }); setModalInputVal(topic.title); setModalDateVal(topic.date || ''); setModalType('edit-topic'); setActiveTopicMenu(null); }} className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-blue-50 text-blue-600 text-xs font-bold transition-colors"><Pencil size={16}/> Başlığı Düzenle</button><button onClick={() => handleTopicBulkAction('delete', activeTopicMenu.classId, activeTopicMenu.topicId)} className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-rose-50 text-rose-600 text-xs font-bold transition-colors"><Trash2 size={16}/> Ödevi Sil</button></div></div>)}
