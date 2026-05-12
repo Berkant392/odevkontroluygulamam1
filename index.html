@@ -113,8 +113,16 @@
         } from 'lucide-react';
 
         // =======================================================================
-        // BÖLÜM 3: FIREBASE BAĞLANTISI VE YAPILANDIRMA
+        // BÖLÜM 3: FIREBASE BAĞLANTISI VE YAPILANDIRMA & İMPORTLAR
         // =======================================================================
+        import { 
+            ChevronRight, ChevronLeft, CheckCircle, XCircle, Clock, Plus, Trash2, Lock, Unlock, Loader2, 
+            MoreVertical, MinusCircle, ArrowDownToLine, UserPlus, KeyRound, Megaphone, Edit3, Save, X, 
+            Layout, BookOpen, AlertTriangle, GraduationCap, Quote, RefreshCw, Library, List, Grid, CalendarDays,
+            FileSpreadsheet, MessageSquare, AlertOctagon, StickyNote, Calendar, Info, BarChart3, Pencil, User, ShieldAlert, LogOut, Printer, Settings,
+            Mic, MicOff, Play // Yeni eklenen ikonlar
+        } from 'lucide-react';
+
         const firebaseConfig = {
             apiKey: "AIzaSyDNfK49NR1dfbN0TSb35FI85huw8YJfcyQ",
             authDomain: "odevtakip-145f5.firebaseapp.com",
@@ -134,7 +142,6 @@
         const DEFAULT_PIN = "1234"; 
         const LIBRARY_TYPES = { EXCUSE: 'excuse', TOPIC: 'topic', SOURCE: 'source' };
         // ======================= BÖLÜM 3 SONU ==================================
-
         // =======================================================================
         // BÖLÜM 4: YARDIMCI FONKSİYONLAR VE SABİTLER (Utils & Constants)
         // =======================================================================
@@ -573,7 +580,7 @@
             };
             // ======================= BÖLÜM 6 SONU ==================================
 
-            // =======================================================================
+// =======================================================================
             // BÖLÜM 7: ANA UYGULAMA BİLEŞENİ - ARAYÜZ (UI / Render)
             // =======================================================================
             if (loading) return <div className="flex h-screen items-center justify-center bg-slate-50 text-indigo-600"><Loader2 className="animate-spin" size={48}/></div>;
@@ -671,7 +678,23 @@
                                             <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleClass(cls.id)}>
                                                 <div className="flex items-center gap-4">
                                                     <div className={`p-2 rounded-lg bg-indigo-100 text-indigo-600 transition-transform duration-300 ${cls.isOpen ? 'rotate-90' : ''}`}><ChevronRight size={20}/></div>
-                                                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">{cls.className} <button onClick={(e) => { e.stopPropagation(); setModalData({ classId: cls.id, currentName: cls.className }); setModalInputVal(cls.className); setModalType('edit-class'); }} className="text-slate-400 hover:text-indigo-600 p-1 rounded-full hover:bg-white/50"><Pencil size={14} /></button></h3>
+                                                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                                        {cls.className} 
+                                                        <button onClick={(e) => { e.stopPropagation(); setModalData({ classId: cls.id, currentName: cls.className }); setModalInputVal(cls.className); setModalType('edit-class'); }} className="text-slate-400 hover:text-indigo-600 p-1 rounded-full hover:bg-white/50"><Pencil size={14} /></button>
+                                                        {/* --- YENİ SESLİ ASİSTAN BUTONU --- */}
+                                                        <button 
+                                                            onClick={(e) => { 
+                                                                e.stopPropagation(); 
+                                                                // Hangi sınıfta açtığımızı geçici olarak kaydet (onaylarken kullanacağız)
+                                                                setActiveRiskClass(cls); 
+                                                                toggleListening(cls); 
+                                                            }} 
+                                                            className={`p-1.5 rounded-full transition-all duration-300 ml-2 ${isListening ? 'bg-indigo-600 text-white animate-pulse shadow-lg shadow-indigo-400/50' : 'bg-white text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200'}`}
+                                                            title="Sesli Asistan ile Hızlı Giriş"
+                                                        >
+                                                            {isListening ? <Mic size={16} /> : <MicOff size={16} />}
+                                                        </button>
+                                                    </h3>
                                                     <div className="hidden sm:flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm"><div className="w-8 h-8 rounded-full border-4 border-indigo-100 flex items-center justify-center relative"><svg className="w-full h-full transform -rotate-90 absolute" viewBox="0 0 36 36"><path className="text-indigo-600" strokeDasharray={`${stats.percentage}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" /></svg><span className="text-[8px] font-bold text-indigo-700">%{stats.percentage}</span></div><span className="text-xs font-medium text-slate-500">Başarı</span></div>
                                                 </div>
                                                 <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
@@ -870,6 +893,112 @@
                                     </div>
                                     <div className="mb-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Yeni Şifre Belirle</label><input type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none text-slate-800 font-medium tracking-widest" placeholder="En az 4 karakter" value={studentNewPassword} onChange={(e) => setStudentNewPassword(e.target.value)} /></div>
                                     <button onClick={updateStudentPassword} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md mt-4 transition-colors">Şifremi Güncelle</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* --- YENİ EKLENEN: SESLİ ASİSTAN ONAY MODALI --- */}
+                    {showAssistantModal && (
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                            <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg overflow-hidden modal-anim shadow-2xl flex flex-col max-h-[90vh]">
+                                <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50">
+                                    <h3 className="font-black text-indigo-800 flex items-center gap-2">
+                                        <Mic className="text-indigo-600 animate-pulse" size={20}/> 
+                                        Asistan
+                                    </h3>
+                                    <button onClick={() => { setShowAssistantModal(false); if(recognitionRef.current) recognitionRef.current.stop(); setIsListening(false); }} className="text-slate-400 hover:text-rose-600 transition-colors"><X size={20}/></button>
+                                </div>
+                                
+                                <div className="p-6 bg-slate-50 border-b border-slate-200 flex flex-col items-center">
+                                    {/* Ses dalgası animasyonu */}
+                                    <div className="flex items-center justify-center h-12 mb-4">
+                                        {isListening ? (
+                                            <div className="flex items-center gap-1">
+                                                <div className="wave-bar wave-1"></div>
+                                                <div className="wave-bar wave-2"></div>
+                                                <div className="wave-bar wave-3"></div>
+                                                <div className="wave-bar wave-4"></div>
+                                                <div className="wave-bar wave-5"></div>
+                                                <div className="wave-bar wave-1"></div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-slate-400 font-medium text-sm flex items-center gap-2">
+                                                <MicOff size={16} /> Dinleme durdu.
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="text-sm font-medium text-slate-700 text-center italic">"{speechTranscript}"</p>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto p-4">
+                                    {assistantPendingActions.length > 0 ? (
+                                        <div className="space-y-3">
+                                            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Algılanan Değişiklikler ({assistantPendingActions.length})</div>
+                                            {assistantPendingActions.map((action) => {
+                                                const statusOpt = STATUS_OPTIONS.find(o => o.id === action.status) || STATUS_OPTIONS[3];
+                                                const StatusIcon = statusOpt.icon;
+                                                return (
+                                                    <div key={action.id} className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex flex-col gap-2">
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <div className="font-bold text-slate-800 text-sm">{action.studentName}</div>
+                                                                <div className="text-[10px] text-slate-500 uppercase tracking-wider">{action.topicTitle} / {action.colTitle}</div>
+                                                            </div>
+                                                            <button onClick={() => removeAction(action.id)} className="text-slate-300 hover:text-rose-500"><X size={16}/></button>
+                                                        </div>
+                                                        
+                                                        <div className="flex gap-2 items-center flex-wrap mt-2">
+                                                            {/* Durum Seçici */}
+                                                            <div className="flex bg-slate-100 rounded-lg p-1">
+                                                                {STATUS_OPTIONS.map(opt => (
+                                                                    <button 
+                                                                        key={opt.id} 
+                                                                        onClick={() => updateActionStatus(action.id, opt.id)}
+                                                                        className={`p-1.5 rounded-md transition-all ${action.status === opt.id ? `bg-white shadow-sm ${opt.color}` : 'text-slate-400 hover:bg-slate-200'}`}
+                                                                        title={opt.label}
+                                                                    >
+                                                                        <opt.icon size={14} strokeWidth={2.5} />
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                            
+                                                            {/* Not Ekleme / Düzenleme */}
+                                                            <input 
+                                                                type="text" 
+                                                                placeholder="Not ekle..." 
+                                                                className="flex-1 min-w-[120px] text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-indigo-400"
+                                                                value={action.note}
+                                                                onChange={(e) => updateActionNote(action.id, e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-40 text-slate-400">
+                                            <Play size={32} className="mb-2 opacity-50" />
+                                            <p className="text-sm">Konuşmaya başlayın...</p>
+                                            <p className="text-xs mt-1">Örn: "Emre ebob ekok testini yaptı."</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-3">
+                                    <button 
+                                        onClick={() => { setShowAssistantModal(false); setAssistantPendingActions([]); }} 
+                                        className="flex-1 py-3 font-bold text-slate-500 hover:bg-slate-200 rounded-xl transition-colors"
+                                    >
+                                        Vazgeç
+                                    </button>
+                                    <button 
+                                        onClick={applyAssistantActions} 
+                                        disabled={assistantPendingActions.length === 0}
+                                        className={`flex-1 py-3 rounded-xl font-bold text-white shadow-md transition-all ${assistantPendingActions.length > 0 ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200' : 'bg-slate-300 cursor-not-allowed'}`}
+                                    >
+                                        Değişiklikleri Onayla
+                                    </button>
                                 </div>
                             </div>
                         </div>
