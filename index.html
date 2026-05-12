@@ -513,7 +513,7 @@
             const [showAssistantModal, setShowAssistantModal] = useState(false);
             const [assistantFoundStudents, setAssistantFoundStudents] = useState([]);
             const [assistantFoundTopics, setAssistantFoundTopics] = useState([]);
-            const [assistantSelectedStudent, setAssistantSelectedStudent] = useState(null); // Sadece ID değil, öğrenci ve classId bilgisini tutacağız { id, classId, ... }
+            const [assistantSelectedStudent, setAssistantSelectedStudent] = useState(null);
             const [assistantDraftGrades, setAssistantDraftGrades] = useState({});
             const [assistantDraftNotes, setAssistantDraftNotes] = useState({});
             
@@ -527,7 +527,14 @@
                 const unsubClasses = onSnapshot(qClasses, (snap) => { 
                     const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
                     loaded.sort((a, b) => a.className.localeCompare(b.className)); 
-                    setClasses(prev => loaded.map(newC => { const oldC = prev.find(p => p.id === newC.id); return { ...newC, isOpen: oldC ? oldC.isOpen : false }; })); 
+                    setClasses(prev => loaded.map(newC => { 
+                        const oldC = prev.find(p => p.id === newC.id); 
+                        // BÜTÜN KONULARI TARİHE GÖRE YENİDEN ESKİYE (NEWEST FIRST) SIRALAMA
+                        if (newC.topics) {
+                            newC.topics.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+                        }
+                        return { ...newC, isOpen: oldC ? oldC.isOpen : false }; 
+                    })); 
                     setLoading(false); 
                 });
                 const qLib = query(collection(db, LIBRARY_COLLECTION));
@@ -539,8 +546,15 @@
                 return () => { unsubClasses(); unsubLib(); unsubSettings(); };
             }, [user]);
 
-            // --- YENİLENEN ASİSTAN FONKSİYONLARI (TÜM SINIFLARDA ARAMA) ---
+            // --- ASİSTAN FONKSİYONLARI ---
             const toggleListening = () => {
+                const activeClass = classes.find(c => c.isOpen) || selectedClass;
+                if (!activeClass) { 
+                    alert("Lütfen önce işlem yapmak istediğiniz sınıfı açın (Tabloyu genişletin veya sınıfın içine girin)."); 
+                    return; 
+                }
+                setActiveRiskClass(activeClass);
+
                 if (isListening) { 
                     if (recognitionRef.current) { recognitionRef.current.stop(); } 
                     setIsListening(false); 
@@ -564,9 +578,8 @@
                     setSpeechTranscript("Sizi dinliyorum... (Örn: 'Emre logaritma')"); 
                     setShowAssistantModal(true); 
                     
-                    // Tüm öğrencileri ve konuları başlangıçta yükle
                     let allStudents = [];
-                    let allTopicsMap = new Map(); // Tekrar eden konu isimlerini önlemek için Map
+                    let allTopicsMap = new Map();
 
                     classes.forEach(cls => {
                         cls.students.forEach(std => {
@@ -574,14 +587,14 @@
                         });
                         cls.topics.forEach(topic => {
                              if (!allTopicsMap.has(topic.title)) {
-                                 // Konuya hangi sınıfa ait olduğunu da ekleyelim (aynı isimde konu birden fazla sınıfta olabilir ama şimdilik ilkini baz alalım)
                                  allTopicsMap.set(topic.title, { ...topic, classId: cls.id });
                              }
                         });
                     });
 
                     setAssistantFoundStudents(allStudents);
-                    setAssistantFoundTopics(Array.from(allTopicsMap.values()));
+                    // Konuları tarihe göre sıralı göster
+                    setAssistantFoundTopics(Array.from(allTopicsMap.values()).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)));
                     
                     setAssistantDraftGrades({}); 
                     setAssistantDraftNotes({}); 
@@ -613,17 +626,27 @@
                 let foundStudents = [];
                 let allTopicsMap = new Map();
 
-                // 1. Tüm Sınıflarda Öğrenci ve Konu Ara
+                // 1. Tüm Sınıflarda Öğrenci ve Konu Ara (Akıllı Skorlama Sistemi)
                 classes.forEach(cls => {
-                    // Öğrenciler
                     cls.students.forEach(student => {
-                        const studentNames = student.name.toLowerCase().split(' ').filter(n => n.length > 2);
-                        if (studentNames.some(name => lowerText.includes(name)) || lowerText.includes("herkes") || lowerText.includes("tüm öğrenciler")) {
-                            foundStudents.push({ ...student, classId: cls.id, className: cls.className });
+                        const studentNames = student.name.toLowerCase().split(' ').filter(n => n.trim().length > 0);
+                        let matchScore = 0;
+                        
+                        studentNames.forEach(namePart => {
+                            if (lowerText.includes(namePart)) {
+                                matchScore += 1;
+                            }
+                        });
+
+                        if (lowerText.includes("herkes") || lowerText.includes("tüm öğrenciler")) {
+                            matchScore = 1;
+                        }
+
+                        if (matchScore > 0) {
+                            foundStudents.push({ ...student, classId: cls.id, className: cls.className, matchScore });
                         }
                     });
 
-                    // Konular
                     cls.topics.forEach(topic => {
                         const topicWords = topic.title.toLowerCase().split(' ').filter(n => n.length > 2);
                         if (topicWords.some(word => lowerText.includes(word)) || lowerText.includes("hepsi") || lowerText.includes("tüm ödevler") || lowerText.includes("ödevleri")) {
@@ -634,22 +657,27 @@
                     });
                 });
 
+                // Öğrencileri skorlarına göre büyükten küçüğe sırala (Ad+Soyad uyuşan en üste çıkar)
+                foundStudents.sort((a, b) => b.matchScore - a.matchScore);
+
                 // 2. Sonuçları Güncelle
                 if (foundStudents.length > 0) { 
                     setAssistantFoundStudents(foundStudents); 
-                    setAssistantSelectedStudent(foundStudents[0]); // İlk bulunanı seç ({id, classId, className})
+                    setAssistantSelectedStudent(foundStudents[0]); // En yüksek skorlu olanı otomatik seç
                 } else {
-                    // Bulunamazsa tüm öğrencileri listele
                     let allStudents = [];
                     classes.forEach(cls => cls.students.forEach(std => allStudents.push({ ...std, classId: cls.id, className: cls.className })));
                     setAssistantFoundStudents(allStudents);
                 }
 
                 if (allTopicsMap.size > 0) { 
-                    setAssistantFoundTopics(Array.from(allTopicsMap.values())); 
+                    let topicsArray = Array.from(allTopicsMap.values());
+                    topicsArray.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+                    setAssistantFoundTopics(topicsArray); 
                 } else { 
                     let allT = [];
                     classes.forEach(cls => cls.topics.forEach(t => { if(!allT.some(xt => xt.title === t.title)) allT.push({...t, classId: cls.id}) }));
+                    allT.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
                     setAssistantFoundTopics(allT); 
                 }
             };
@@ -657,22 +685,15 @@
             const handleDraftGradeChange = (studentId, colId, status) => { setAssistantDraftGrades(prev => ({ ...prev, [studentId]: { ...(prev[studentId] || {}), [colId]: status } })); };
             const handleDraftNoteChange = (studentId, colId, note) => { setAssistantDraftNotes(prev => ({ ...prev, [studentId]: { ...(prev[studentId] || {}), [colId]: note } })); };
 
-            // YENİLENEN KAYDETME MANTIĞI (Öğrencinin kendi sınıfını bularak günceller)
             const applyAssistantDrafts = () => {
                 let hasChangesAnywhere = false;
-                
-                // Seçilen öğrencilerin hangi sınıflarda olduğunu gruplayalım
                 const allModifiedStudentIds = new Set([...Object.keys(assistantDraftGrades), ...Object.keys(assistantDraftNotes)]);
                 
                 if(allModifiedStudentIds.size === 0) return;
 
-                // Mevcut classes state'inin bir kopyasını alıyoruz, değişiklikleri burada yapıp tek seferde veri tabanına atacağız
-                // (Ya da her sınıfı ayrı ayrı doc update yapabiliriz)
-                
-                const classesToUpdate = {}; // { classId: newClassData }
+                const classesToUpdate = {}; 
 
                 allModifiedStudentIds.forEach(studentId => {
-                     // Bu studentId'ye sahip öğrenciyi asistantFoundStudents veya tüm listelerden bul
                      let studentClassId = null;
                      let studentData = null;
                      let studentIndexInClass = -1;
@@ -688,10 +709,8 @@
                      }
 
                      if(studentClassId && studentData) {
-                         // Sınıfı güncellenecekler listesine al
                          if(!classesToUpdate[studentClassId]) {
                              classesToUpdate[studentClassId] = { ...classes.find(c => c.id === studentClassId) };
-                             // students dizisini kopyala ki referans sorunu olmasın
                              classesToUpdate[studentClassId].students = [...classesToUpdate[studentClassId].students];
                          }
 
@@ -712,7 +731,6 @@
                             }); 
                         }
 
-                        // Sınıf kopyası içindeki öğrenciyi güncelle
                         classesToUpdate[studentClassId].students[studentIndexInClass] = { 
                             ...studentData, 
                             grades: newGrades, 
@@ -722,7 +740,6 @@
                 });
 
                 if (hasChangesAnywhere) {
-                    // Her değiştirilen sınıf için veri tabanı güncellemesi yap
                     Object.values(classesToUpdate).forEach(updatedClass => {
                         updateClassInDb(updatedClass);
                     });
@@ -732,7 +749,6 @@
                 setAssistantDraftGrades({}); 
                 setAssistantDraftNotes({});
             };
-
 
             const addClassToDb = async (newClass) => { await setDoc(doc(db, CLASSES_COLLECTION, String(newClass.id)), newClass); };
             const updateClassInDb = async (updatedClass) => { await setDoc(doc(db, CLASSES_COLLECTION, String(updatedClass.id)), updatedClass, { merge: true }); };
