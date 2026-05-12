@@ -89,10 +89,11 @@
             padding-bottom: 20px; 
         }
         
-        th, td { white-space: nowrap; padding: 12px 16px; }
-        .sticky-corner { position: sticky; left: 0; top: 0; z-index: 50 !important; background-color: white; border-right: 2px solid #f1f5f9; border-bottom: 2px solid #f1f5f9; height: 80px; }
-        .sticky-header-top { position: sticky; top: 0; z-index: 40; border-bottom: 1px solid rgba(0,0,0,0.05); height: 80px; }
-        .sticky-header-sub { position: sticky; top: 80px; z-index: 40; border-bottom: 2px solid rgba(0,0,0,0.05); height: 50px; } 
+        /* TABLO HİZALAMA DÜZELTMESİ (vertical-align: top eklendi) */
+        th, td { white-space: nowrap; padding: 12px 16px; vertical-align: top; }
+        .sticky-corner { position: sticky; left: 0; top: 0; z-index: 50 !important; background-color: white; border-right: 2px solid #f1f5f9; border-bottom: 2px solid #f1f5f9; }
+        .sticky-header-top { position: sticky; top: 0; z-index: 40; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .sticky-header-sub { position: sticky; top: 68px; z-index: 40; border-bottom: 2px solid rgba(0,0,0,0.05); } 
         .sticky-col-left { position: sticky; left: 0; z-index: 30; background-color: white; border-right: 2px solid #f1f5f9; box-shadow: 4px 0 6px -2px rgba(0,0,0,0.02); }
         
         tbody tr { transition: all 0.2s ease; border-bottom: 1px solid #f1f5f9; }
@@ -515,6 +516,7 @@
             const { width } = useWindowSize();
             const isMobile = width < 768;
 
+            // AKILLI ASİSTAN STATE'LERİ
             const [isListening, setIsListening] = useState(false);
             const [speechTranscript, setSpeechTranscript] = useState("");
             const [showAssistantModal, setShowAssistantModal] = useState(false);
@@ -536,17 +538,14 @@
                 const qClasses = query(collection(db, CLASSES_COLLECTION));
                 const unsubClasses = onSnapshot(qClasses, (snap) => { 
                     const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
-                    // Sınıfları isme göre sırala
                     loaded.sort((a, b) => a.className.localeCompare(b.className)); 
-                    setClasses(loaded.map(newC => { 
-                        // Ödevleri her zaman tarihe göre YENİDEN ESKİYE sırala (sola/üste gelmesi için)
-                        if (newC.topics) {
-                            newC.topics.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-                        }
-                        return newC; 
+                    setClasses(prev => loaded.map(newC => { 
+                        const oldC = prev.find(p => p.id === newC.id); 
+                        if (newC.topics) { newC.topics.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)); }
+                        return { ...newC, isOpen: oldC ? oldC.isOpen : false }; 
                     })); 
                     
-                    // Eğer açık olan bir sınıf varsa onu da güncelle
+                    // Eğer içerisine girilmiş bir sınıf varsa onun da güncel kalmasını sağla
                     if (selectedClass) {
                         const updatedSelected = loaded.find(c => c.id === selectedClass.id);
                         if (updatedSelected) setSelectedClass(updatedSelected);
@@ -560,10 +559,11 @@
                 initSettings();
                 const unsubSettings = onSnapshot(settingsRef, (snap) => { if (snap.exists()) { const d = snap.data(); if (d.pin !== undefined) setDbTeacherPin(String(d.pin).trim()); if (d.announcement !== undefined) setAnnouncement(d.announcement); } });
                 return () => { unsubClasses(); unsubLib(); unsubSettings(); };
-            }, [user, selectedClass?.id]); // selectedClass.id eklendi ki güncellemeler anlık yansısın
+            }, [user, selectedClass?.id]);
 
             // --- ASİSTAN FONKSİYONLARI ---
             const toggleListening = () => {
+                // ARTIK activeClass ZORUNLULUĞU YOK. Her Yerden Çalışır.
                 if (isListening) { if (recognitionRef.current) { recognitionRef.current.stop(); } setIsListening(false); return; }
 
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -573,9 +573,7 @@
                 recognition.lang = 'tr-TR'; recognition.interimResults = false; recognition.maxAlternatives = 1; recognitionRef.current = recognition;
 
                 recognition.onstart = () => { 
-                    setIsListening(true); 
-                    setSpeechTranscript("Sizi dinliyorum... (Örn: 'Emre logaritma')"); 
-                    setShowAssistantModal(true); 
+                    setIsListening(true); setSpeechTranscript("Sizi dinliyorum... (Örn: 'Emre logaritma')"); setShowAssistantModal(true); 
                     
                     let allStudents = []; let allTopicsMap = new Map(); 
                     classes.forEach(cls => {
@@ -585,7 +583,6 @@
                     });
 
                     setAssistantFoundStudents(allStudents);
-                    // Asistan listesinde de yeni ödevler üstte
                     setAssistantFoundTopics(Array.from(allTopicsMap.values()).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)));
                     setAssistantDraftGrades({}); setAssistantDraftNotes({}); setAssistantSelectedStudent(null); 
                 };
@@ -709,12 +706,13 @@
                 }
             };
 
+            const toggleClass = (id) => { setClasses(classes.map(c => c.id === id ? { ...c, isOpen: !c.isOpen } : c)); };
             const addStudent = (classId) => { 
                 if (!newStudentName.trim()) return; const cls = classes.find(c => c.id === classId); 
                 if (cls) { updateClassInDb({ ...cls, students: [...cls.students, { id: generateId('student'), name: newStudentName.trim(), username: generateUsername(newStudentName.trim()), password: generatePassword(), lastLogin: null, grades: {}, privateNotes: "" }] }); } setNewStudentName(""); 
             };
             const deleteStudent = (e, classId, sId) => { e.stopPropagation(); setConfirmModal({ message: "Öğrenciyi silmek istediğine emin misin?", type: 'danger', onConfirm: () => { const cls = classes.find(c => c.id === classId); if (cls) updateClassInDb({ ...cls, students: cls.students.filter(s => s.id !== sId) }); setConfirmModal(null); } }); };
-            const deleteClass = (e, id) => { e.stopPropagation(); setConfirmModal({ message: "Sınıfı/Dersi silmek istediğine emin misin?", type: 'danger', onConfirm: () => { deleteClassFromDb(id); setView('home'); setConfirmModal(null); } }); };
+            const deleteClass = (e, id) => { e.stopPropagation(); setConfirmModal({ message: "Sınıfı/Dersi silmek istediğine emin misin?", type: 'danger', onConfirm: () => { deleteClassFromDb(id); if(selectedClass?.id === id) setView('home'); setConfirmModal(null); } }); };
             const updateGrade = (cId, sId, colId, status) => { const cls = classes.find(c => c.id === cId); if (cls) { const updatedStudents = cls.students.map(s => s.id === sId ? { ...s, grades: { ...s.grades, [colId]: status } } : s); updateClassInDb({ ...cls, students: updatedStudents }); } setActiveCell(null); };
 
             const handleModalSubmit = () => {
@@ -775,7 +773,7 @@
 
             if (loading) return <div className="flex h-screen items-center justify-center bg-slate-50 text-indigo-600"><Loader2 className="animate-spin" size={48}/></div>;
 
-            // GİRİŞ EKRANI (AUTH YÖNLENDİRMELERİ)
+            // GİRİŞ EKRANI
             if (!currentUserRole && !loading) {
                 return (
                     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 relative overflow-hidden font-sans">
@@ -822,7 +820,7 @@
                     
                     {currentUserRole === 'vip-student' && <div className="fixed inset-0 vip-stardust-bg pointer-events-none"></div>}
 
-                    {/* --- HEADER --- DÜZELTME: Sabitliği (sticky top-0) kaldırıldı */}
+                    {/* --- HEADER --- (SABİT DEĞİL ARTIK - sticky ve top-0 kaldırıldı) */}
                     <header className={`backdrop-blur-lg shadow-sm no-print relative z-20 ${currentUserRole === 'vip-student' ? 'bg-slate-900/80 border-b border-slate-800' : 'bg-white/80 border-b border-slate-200'}`}>
                          <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col items-center gap-2">
                             <div className="flex items-center gap-3 w-full justify-between">
@@ -872,300 +870,602 @@
                     <main className="max-w-7xl mx-auto px-4 mt-8 no-print relative z-10">
                         
                         {/* --- ÖĞRETMEN YÖNETİM PANELİ --- */}
-                        {isTeacherMode && view === 'home' && (
+                        {isTeacherMode ? (
                             <div className="flex flex-col gap-10">
-                                <div>
-                                    <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6">
-                                        <h2 className="text-lg md:text-xl font-black text-slate-800 flex items-center gap-2"><Users className="text-indigo-600"/> Sınıf Yönetimi</h2>
-                                        <button onClick={() => { setModalType('class'); setModalInputVal(''); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 flex items-center gap-2 transition-transform hover:-translate-y-0.5"><Plus size={18}/> Yeni Sınıf</button>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {regularClasses.map((cls) => ( 
-                                            <div key={cls.id} onClick={() => openClass(cls)} className="neon-card-wrapper cursor-pointer group bg-white rounded-3xl p-6 shadow-soft border border-slate-100 flex flex-col items-center justify-center text-center">
-                                                <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300"><Users size={32}/></div>
-                                                <h2 className="text-2xl font-black text-slate-800 tracking-tight group-hover:text-indigo-700 transition-colors">{cls.className}</h2>
-                                                <p className="text-xs text-slate-400 mt-2 font-bold uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">Sınıfa Gir</p>
-                                            </div> 
-                                        ))}
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between items-center bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-2xl shadow-sm border border-amber-200 mb-6">
-                                        <h2 className="text-lg md:text-xl font-black text-amber-900 flex items-center gap-2"><Crown className="text-amber-500"/> Özel Ders Yönetimi</h2>
-                                        <button onClick={() => { setModalType('vip'); setModalInputVal(''); }} className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-amber-200 flex items-center gap-2 transition-transform hover:-translate-y-0.5"><Plus size={18}/> Yeni Özel Ders</button>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {vipClasses.map((cls) => ( 
-                                            <div key={cls.id} onClick={() => openClass(cls)} className="neon-card-wrapper cursor-pointer group bg-white rounded-3xl p-6 shadow-soft border border-amber-200 flex flex-col items-center justify-center text-center relative overflow-hidden">
-                                                <div className="absolute inset-0 vip-stardust-bg opacity-30 pointer-events-none"></div>
-                                                <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-white transition-all duration-300 relative z-10"><Crown size={32}/></div>
-                                                <h2 className="text-2xl font-black text-amber-700 tracking-tight group-hover:text-amber-800 transition-colors relative z-10">{cls.className}</h2>
-                                                <p className="text-xs text-amber-600 mt-2 font-bold uppercase tracking-widest bg-amber-100 px-3 py-1 rounded-full relative z-10">Giriş Yap</p>
-                                            </div> 
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* --- ÖĞRETMEN VE ÖĞRENCİ TABLO GÖRÜNÜMÜ --- */}
-                        {view === 'class-detail' && selectedClass && (
-                            <div className="bg-white rounded-[2rem] shadow-soft border border-slate-200 overflow-hidden transition-all duration-300">
-                                {/* Sınıf Başlığı (Accordion Header benzeri ama sabit) */}
-                                <div className={`p-4 md:p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${selectedClass.type === 'vip' ? 'bg-gradient-to-r from-amber-50 to-white' : 'bg-gradient-to-r from-slate-50 to-white'}`}>
-                                    <div className="flex items-center gap-4 w-full md:w-auto">
-                                        <div className={`p-3 rounded-xl ${selectedClass.type === 'vip' ? 'bg-amber-100 text-amber-600' : 'bg-indigo-100 text-indigo-600'} shadow-inner`}><Layout size={24}/></div>
-                                        <div>
-                                            <h3 className={`text-xl md:text-2xl font-black flex items-center gap-2 ${selectedClass.type === 'vip' ? 'text-amber-700' : 'text-slate-800'}`}>
-                                                {selectedClass.type === 'vip' && <Crown size={20} className="text-amber-500"/>}
-                                                {selectedClass.className} 
-                                                {isTeacherMode && <button onClick={() => { setModalData({ classId: selectedClass.id, currentName: selectedClass.className }); setModalInputVal(selectedClass.className); setModalType('edit-class'); }} className={`p-1.5 rounded-lg transition-colors ${selectedClass.type === 'vip' ? 'text-amber-400 hover:text-amber-600 hover:bg-amber-100' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}><Pencil size={16} /></button>}
-                                            </h3>
-                                            <div className="text-xs text-slate-500 font-medium mt-1">{selectedClass.students?.length || 0} Öğrenci • {selectedClass.topics?.length || 0} Görev</div>
+                                
+                                {/* MOBİL İÇİN ÖĞRETMEN ANA EKRANI (KARTLAR) */}
+                                {isMobile && view === 'home' && (
+                                     <div className="flex flex-col gap-8 animate-scale-in">
+                                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
+                                            <h2 className="text-lg font-black text-slate-800"><Users size={20} className="inline mr-2 text-indigo-600"/> Sınıflar</h2>
+                                            <button onClick={() => { setModalType('class'); setModalInputVal(''); }} className="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold"><Plus size={14} className="inline mr-1"/> Ekle</button>
                                         </div>
-                                    </div>
-
-                                    {isTeacherMode && (
-                                        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
-                                            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm mr-2">
-                                                <div className={`w-8 h-8 rounded-full border-4 ${selectedClass.type === 'vip' ? 'border-amber-100' : 'border-indigo-100'} flex items-center justify-center relative`}>
-                                                    <svg className="w-full h-full transform -rotate-90 absolute" viewBox="0 0 36 36"><path className={selectedClass.type === 'vip' ? "text-amber-500" : "text-indigo-600"} strokeDasharray={`${calculateStats(selectedClass.students, selectedClass.topics).percentage}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" /></svg>
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {regularClasses.map(cls => (
+                                                <div key={cls.id} onClick={() => openClass(cls)} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center cursor-pointer hover:shadow-md transition-shadow">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl"><Layout size={20}/></div>
+                                                        <div className="font-bold text-slate-800 text-lg">{cls.className}</div>
+                                                    </div>
+                                                    <ChevronRight className="text-slate-400"/>
                                                 </div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs font-black text-slate-800">%{calculateStats(selectedClass.students, selectedClass.topics).percentage}</span>
-                                                    <span className="text-[9px] font-bold text-slate-400 uppercase">Başarı</span>
+                                            ))}
+                                            {regularClasses.length === 0 && <p className="text-center text-xs text-slate-400">Sınıf yok.</p>}
+                                        </div>
+
+                                        <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-2xl shadow-sm border border-amber-200 flex justify-between items-center mt-4">
+                                            <h2 className="text-lg font-black text-amber-900"><Crown size={20} className="inline mr-2 text-amber-500"/> Özel Dersler</h2>
+                                            <button onClick={() => { setModalType('vip'); setModalInputVal(''); }} className="bg-amber-200 text-amber-800 px-3 py-1.5 rounded-lg text-xs font-bold"><Plus size={14} className="inline mr-1"/> Ekle</button>
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {vipClasses.map(cls => (
+                                                <div key={cls.id} onClick={() => openClass(cls)} className="bg-white p-5 rounded-2xl shadow-sm border border-amber-200 flex justify-between items-center relative overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
+                                                    <div className="absolute inset-0 vip-stardust-bg opacity-30 pointer-events-none"></div>
+                                                    <div className="flex items-center gap-3 relative z-10">
+                                                        <div className="p-3 bg-amber-100 text-amber-600 rounded-xl"><Crown size={20}/></div>
+                                                        <div className="font-bold text-amber-800 text-lg">{cls.className}</div>
+                                                    </div>
+                                                    <ChevronRight className="text-amber-500 relative z-10"/>
+                                                </div>
+                                            ))}
+                                            {vipClasses.length === 0 && <p className="text-center text-xs text-slate-400">Özel ders yok.</p>}
+                                        </div>
+                                     </div>
+                                )}
+
+                                {/* MOBİL İÇİN ÖĞRETMEN SINIF İÇİ (ÖĞRENCİ LİSTESİ) */}
+                                {isMobile && view === 'class-detail' && selectedClass && (
+                                    <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 animate-scale-in space-y-4">
+                                        <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-4">
+                                            <h3 className="font-black text-lg text-slate-800 flex items-center gap-2">
+                                                {selectedClass.type === 'vip' ? <Crown size={20} className="text-amber-500"/> : <Layout size={20} className="text-indigo-600"/>}
+                                                {selectedClass.className} 
+                                            </h3>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => { setModalData({ classId: selectedClass.id }); setModalType('topic'); }} className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-bold"><Plus size={14} className="inline"/> Ödev</button>
+                                                <button onClick={(e) => deleteClass(e, selectedClass.id)} className="p-1.5 text-rose-400 bg-rose-50 rounded-lg"><Trash2 size={16}/></button>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-2 mb-4">
+                                            <input type="text" placeholder="Yeni Öğrenci Ekle..." className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-700 w-full focus:border-indigo-500 outline-none font-medium" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(selectedClass.id); }} />
+                                            <button onClick={() => addStudent(selectedClass.id)} className={`text-white px-4 rounded-xl text-sm font-bold shadow-md ${selectedClass.type === 'vip' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}>EKLE</button>
+                                        </div>
+
+                                        {selectedClass.students?.map((std) => (
+                                            <div key={std.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between">
+                                                <div className="flex items-center gap-3 cursor-pointer flex-1" onClick={() => openStudent(std)}>
+                                                    <div className={`w-10 h-10 rounded-full ${selectedClass.type === 'vip' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'} flex items-center justify-center font-black text-sm`}>{std.name.charAt(0)}</div>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-slate-700">{std.name}</span>
+                                                        <span className="text-[10px] text-slate-400 font-mono">{std.username}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={(e) => { e.stopPropagation(); setModalData({ classId: selectedClass.id, studentId: std.id, currentName: std.name }); setModalInputVal(std.name); setModalType('edit-student'); }} className="p-2 text-slate-400 hover:text-indigo-600 bg-white rounded-lg shadow-sm"><Pencil size={14}/></button>
+                                                    <button onClick={(e) => deleteStudent(e, selectedClass.id, std.id)} className="p-2 text-rose-400 hover:text-rose-600 bg-white rounded-lg shadow-sm"><Trash2 size={14}/></button>
+                                                    <button onClick={() => openStudent(std)} className="p-2 text-indigo-500 bg-indigo-50 rounded-lg"><ChevronRight size={16}/></button>
                                                 </div>
                                             </div>
-                                            {!selectedClass.type === 'vip' && <button onClick={() => handleOpenRisk(selectedClass)} className="text-xs bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 px-3 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1 transition-colors"><AlertOctagon size={14}/> Risk</button>}
-                                            <button onClick={() => downloadReport(selectedClass)} className="text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 px-3 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1 transition-colors"><FileSpreadsheet size={14}/> Excel</button>
-                                            <button onClick={() => handlePrintPasswords(selectedClass)} className="text-xs bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 px-3 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1 transition-colors"><KeyRound size={14}/> Şifreler</button>
-                                            <button onClick={() => { setModalData({ classId: selectedClass.id }); setModalType('topic'); }} className={`text-xs text-white px-4 py-2 rounded-xl font-bold shadow-md flex items-center gap-1 transition-transform hover:-translate-y-0.5 ${selectedClass.type === 'vip' ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'}`}><Plus size={14}/> Ödev</button>
-                                            <button onClick={(e) => deleteClass(e, selectedClass.id)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"><Trash2 size={18}/></button>
-                                        </div>
-                                    )}
-                                </div>
+                                        ))}
+                                        {selectedClass.students?.length === 0 && <p className="text-center text-xs text-slate-400 py-4">Öğrenci yok.</p>}
+                                    </div>
+                                )}
 
-                                {/* Tablo İçeriği */}
-                                <div className={`p-4 animate-scale-in ${selectedClass.type === 'vip' ? 'bg-amber-50/30' : 'bg-slate-50/50'}`}>
-                                    <div className="table-container">
-                                        <table className="w-full text-left border-collapse">
-                                            <thead>
-                                                <tr>
-                                                    <th rowSpan={2} className="sticky-corner border-b border-r border-slate-200 min-w-[250px] shadow-sm p-4 text-xs font-black text-slate-500 uppercase tracking-widest bg-white">Öğrenci Listesi</th>
-                                                    {selectedClass.topics?.map((topic, i) => {
-                                                        const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
-                                                        return ( 
-                                                            <th key={topic.id} colSpan={Math.max(1, (topic.subColumns?.length || 0) + 1)} className={`text-center p-3 border-b border-r border-slate-200 sticky-header-top ${theme.main} min-w-[280px]`}>
-                                                                <div className="flex flex-col justify-center items-center gap-1.5">
-                                                                    {topic.date && ( 
-                                                                        <div className="text-[10px] bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full text-slate-600 font-bold flex items-center gap-1 cursor-pointer hover:bg-white shadow-sm border border-white/50 mb-1 transition-colors" onContextMenu={(e) => { e.preventDefault(); if(isTeacherMode){ setModalData({ classId: selectedClass.id, topicId: topic.id }); setModalDateVal(topic.date); setModalType('edit-date');} }}>
-                                                                            <Calendar size={12}/> Son Teslim: <span className={theme.main.split(' ')[1]}>{formatDate(topic.date)}</span>
-                                                                        </div> 
-                                                                    )}
-                                                                    <div className={`flex items-center gap-2 text-sm font-black uppercase tracking-wider mt-1`}>
-                                                                        {topic.title}
-                                                                        {isTeacherMode && <button onClick={(e) => { e.stopPropagation(); setActiveTopicMenu({ classId: selectedClass.id, topicId: topic.id, anchorEl: e.currentTarget }); }} className="p-1 rounded-md hover:bg-black/5 transition-colors"><MoreVertical size={16}/></button>}
+                                {/* MASAÜSTÜ İÇİN ÖĞRETMEN ANA EKRANI (TABLOLAR) */}
+                                {!isMobile && view === 'home' && (
+                                    <>
+                                        {/* NORMAL SINIFLAR */}
+                                        <div>
+                                            <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6">
+                                                <h2 className="text-lg md:text-xl font-black text-slate-800 flex items-center gap-2"><Users className="text-indigo-600"/> Sınıf Yönetimi</h2>
+                                                <button onClick={() => { setModalType('class'); setModalInputVal(''); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 flex items-center gap-2 transition-transform hover:-translate-y-0.5"><Plus size={18}/> Yeni Sınıf</button>
+                                            </div>
+                                            {regularClasses.length === 0 ? <p className="text-center text-slate-400 py-4">Kayıtlı sınıf yok.</p> : 
+                                                regularClasses.map(cls => (
+                                                    <div key={cls.id} className="bg-white rounded-[2rem] shadow-soft border border-slate-200 overflow-hidden transition-all duration-300 mb-6">
+                                                        {/* Accordion Header */}
+                                                        <div className="p-4 md:p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors bg-gradient-to-r from-slate-50 to-white" onClick={() => toggleClass(cls.id)}>
+                                                            <div className="flex items-center gap-4 w-full md:w-auto">
+                                                                <div className={`p-3 rounded-xl bg-indigo-100 text-indigo-600 transition-transform duration-300 shadow-inner ${cls.isOpen ? 'rotate-90' : ''}`}><ChevronRight size={24}/></div>
+                                                                <div>
+                                                                    <h3 className="text-xl md:text-2xl font-black flex items-center gap-2 text-slate-800">
+                                                                        {cls.className} 
+                                                                        <button onClick={(e) => { e.stopPropagation(); setModalData({ classId: cls.id, currentName: cls.className }); setModalInputVal(cls.className); setModalType('edit-class'); }} className="p-1.5 rounded-lg transition-colors text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"><Pencil size={16} /></button>
+                                                                    </h3>
+                                                                    <div className="text-xs text-slate-500 font-medium mt-1">{cls.students?.length || 0} Öğrenci • {cls.topics?.length || 0} Görev</div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end" onClick={(e) => e.stopPropagation()}>
+                                                                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm mr-2">
+                                                                    <div className="w-8 h-8 rounded-full border-4 border-indigo-100 flex items-center justify-center relative">
+                                                                        <svg className="w-full h-full transform -rotate-90 absolute" viewBox="0 0 36 36"><path className="text-indigo-600" strokeDasharray={`${calculateStats(cls.students, cls.topics).percentage}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" /></svg>
+                                                                    </div>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-xs font-black text-slate-800">%{calculateStats(cls.students, cls.topics).percentage}</span>
+                                                                        <span className="text-[9px] font-bold text-slate-400 uppercase">Başarı</span>
                                                                     </div>
                                                                 </div>
-                                                            </th> 
-                                                        );
-                                                    })}
-                                                </tr>
-                                                <tr>
-                                                    {selectedClass.topics?.map((topic, i) => {
-                                                        const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
-                                                        return ( 
-                                                            <React.Fragment key={topic.id}>
-                                                                {topic.subColumns?.map(col => ( 
-                                                                    <th key={col.id} className={`p-3 border-b border-r border-slate-200 sticky-header-sub ${theme.sub} min-w-[160px] text-center relative group`}>
-                                                                        <div className="flex flex-col items-center justify-center gap-2 h-full">
-                                                                            <div className="font-bold text-xs line-clamp-2 text-slate-700">{col.title}</div>
+
+                                                                <button onClick={() => handleOpenRisk(cls)} className="text-xs bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 px-3 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1 transition-colors"><AlertOctagon size={14}/> Risk</button>
+                                                                <button onClick={() => downloadReport(cls)} className="text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 px-3 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1 transition-colors"><FileSpreadsheet size={14}/> Excel</button>
+                                                                <button onClick={() => handlePrintPasswords(cls)} className="text-xs bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 px-3 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1 transition-colors"><KeyRound size={14}/> Şifreler</button>
+                                                                <button onClick={() => { setModalData({ classId: cls.id }); setModalType('topic'); }} className="text-xs bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-xl font-bold shadow-md flex items-center gap-1 transition-transform hover:-translate-y-0.5"><Plus size={14}/> Ödev</button>
+                                                                <button onClick={(e) => deleteClass(e, cls.id)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"><Trash2 size={18}/></button>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Tablo */}
+                                                        {cls.isOpen && (
+                                                            <div className="p-4 bg-slate-50/50 animate-scale-in">
+                                                                <div className="table-container">
+                                                                    <table className="w-full text-left border-collapse">
+                                                                        <thead>
+                                                                            <tr>
+                                                                                <th rowSpan={2} className="sticky-corner border-b border-r border-slate-200 min-w-[250px] shadow-sm p-4 text-xs font-black text-slate-500 uppercase tracking-widest bg-white">Öğrenci Listesi</th>
+                                                                                {cls.topics?.map((topic, i) => {
+                                                                                    const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
+                                                                                    return ( 
+                                                                                        <th key={topic.id} colSpan={Math.max(1, (topic.subColumns?.length || 0) + 1)} className={`text-center p-3 border-b border-r border-slate-200 sticky-header-top ${theme.main} min-w-[280px]`}>
+                                                                                            <div className="flex flex-col justify-center items-center gap-1.5">
+                                                                                                {topic.date && ( 
+                                                                                                    <div className="text-[10px] bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full text-slate-600 font-bold flex items-center gap-1 cursor-pointer hover:bg-white shadow-sm border border-white/50 mb-1 transition-colors" onContextMenu={(e) => { e.preventDefault(); setModalData({ classId: cls.id, topicId: topic.id }); setModalDateVal(topic.date); setModalType('edit-date'); }}>
+                                                                                                        <Calendar size={12}/> Son Teslim: <span className={theme.main.split(' ')[1]}>{formatDate(topic.date)}</span>
+                                                                                                    </div> 
+                                                                                                )}
+                                                                                                <div className={`flex items-center gap-2 text-sm font-black uppercase tracking-wider mt-1`}>
+                                                                                                    {topic.title}
+                                                                                                    <button onClick={(e) => { e.stopPropagation(); setActiveTopicMenu({ classId: cls.id, topicId: topic.id, anchorEl: e.currentTarget }); }} className="p-1 rounded-md hover:bg-black/5 transition-colors"><MoreVertical size={16}/></button>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </th> 
+                                                                                    );
+                                                                                })}
+                                                                            </tr>
+                                                                            <tr>
+                                                                                {cls.topics?.map((topic, i) => {
+                                                                                    const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
+                                                                                    return ( 
+                                                                                        <React.Fragment key={topic.id}>
+                                                                                            {topic.subColumns?.map(col => ( 
+                                                                                                <th key={col.id} className={`p-3 border-b border-r border-slate-200 sticky-header-sub ${theme.sub} min-w-[160px] text-center relative group`}>
+                                                                                                    <div className="flex flex-col items-center justify-center gap-2 h-full">
+                                                                                                        <div className="font-bold text-xs line-clamp-2 text-slate-700">{col.title}</div>
+                                                                                                        {col.pdfLink && (
+                                                                                                            <a href={formatDriveLink(col.pdfLink)} target="_blank" rel="noopener noreferrer" className="absolute top-1 right-1 text-rose-500 bg-white rounded-full p-1 shadow-md hover:bg-rose-500 hover:text-white transition-colors" title="PDF İndir">
+                                                                                                                <FileDown size={14}/>
+                                                                                                            </a>
+                                                                                                        )}
+                                                                                                        <button onClick={(e) => { e.stopPropagation(); setActiveColMenu({ classId: cls.id, topicId: topic.id, colId: col.id, anchorEl: e.currentTarget }); }} className="text-xs bg-white/50 hover:bg-white p-1 rounded text-slate-500 hover:text-indigo-600 transition-colors shadow-sm"><MoreVertical size={12}/></button>
+                                                                                                    </div>
+                                                                                                </th> 
+                                                                                            ))} 
+                                                                                            <th className={`p-0 border-b border-r border-slate-200 w-16 text-center sticky-header-sub ${theme.sub}`}>
+                                                                                                <button onClick={() => { setModalData({ classId: cls.id, topicId: topic.id }); setModalType('source'); }} className={`w-full h-full flex items-center justify-center transition-colors ${theme.btn} bg-white/30 hover:bg-white`} title="Kaynak Ekle"><Plus size={20}/></button>
+                                                                                            </th>
+                                                                                        </React.Fragment> 
+                                                                                    );
+                                                                                })}
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            {cls.students?.map((std) => (
+                                                                                <tr key={std.id} className="border-b border-slate-100 bg-white">
+                                                                                    <td className="sticky-col-left p-4 border-r border-slate-200">
+                                                                                        <div className="flex justify-between items-center group">
+                                                                                            <div className="flex flex-col gap-1 cursor-pointer" onClick={() => openStudent(std)}>
+                                                                                                <div className="flex items-center gap-3">
+                                                                                                    <div className={`w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-xs`}>{std.name.charAt(0)}</div>
+                                                                                                    <span className={`text-sm font-bold text-slate-700 group-hover:text-indigo-600 transition-colors`}>{std.name}</span>
+                                                                                                    <button onClick={(e) => { e.stopPropagation(); setModalData({ classId: cls.id, studentId: std.id, currentName: std.name }); setModalInputVal(std.name); setModalType('edit-student'); }} className="text-slate-300 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size={14}/></button>
+                                                                                                </div>
+                                                                                                {std.username && ( 
+                                                                                                    <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 mt-1 ml-11" onClick={e=>e.stopPropagation()}>
+                                                                                                        <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{std.username}</span>
+                                                                                                        <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-1"><KeyRound size={10}/> {std.password}</span>
+                                                                                                    </div> 
+                                                                                                )}
+                                                                                            </div>
+                                                                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                                                <button onClick={(e) => { e.stopPropagation(); handlePrintStudentReport(cls, std); }} className="bg-indigo-50 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-100 p-2 rounded-lg transition-colors" title="Rapor Yazdır"><Printer size={16}/></button>
+                                                                                                <button onClick={(e) => deleteStudent(e, cls.id, std.id)} className="bg-rose-50 text-rose-400 hover:text-rose-600 hover:bg-rose-100 p-2 rounded-lg transition-colors"><Trash2 size={16}/></button>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </td>
+                                                                                    {cls.topics?.map((topic, i) => {
+                                                                                        const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
+                                                                                        return ( 
+                                                                                            <React.Fragment key={topic.id}>
+                                                                                                {topic.subColumns?.map(col => ( 
+                                                                                                    <td key={col.id} className={`p-2 border-r border-slate-100 text-center ${theme.cell}`} onContextMenu={(e) => { e.preventDefault(); openCellNoteModal(cls.id, std.id, col.id, std.assignmentNotes?.[col.id]); }}>
+                                                                                                        <div onClick={(e) => { e.stopPropagation(); setActiveCell({ classId: cls.id, studentId: std.id, colId: col.id, anchorEl: e.currentTarget }); }} className="cursor-pointer hover:scale-105 transition-transform">
+                                                                                                            <StatusBadge status={std.grades?.[col.id] || 'exempt'} hasNote={!!std.assignmentNotes?.[col.id]} />
+                                                                                                        </div>
+                                                                                                    </td> 
+                                                                                                ))}
+                                                                                                <td className={`border-r border-slate-100 ${theme.cell}`}></td>
+                                                                                            </React.Fragment> 
+                                                                                        );
+                                                                                    })}
+                                                                                </tr>
+                                                                            ))}
+                                                                            <tr>
+                                                                                <td className="sticky-col-left p-4 border-r border-slate-200 border-t border-slate-200 bg-slate-50">
+                                                                                    <div className="flex gap-2">
+                                                                                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 shrink-0"><UserPlus size={16}/></div>
+                                                                                        <input type="text" placeholder="Yeni Öğrenci Ekle..." className="bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-sm text-slate-700 w-full focus:border-indigo-500 outline-none font-medium shadow-sm" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(cls.id); }} />
+                                                                                        <button onClick={() => addStudent(cls.id)} className="bg-indigo-600 text-white px-3 rounded-xl text-xs font-bold shadow-md hover:bg-indigo-700 transition-colors">EKLE</button>
+                                                                                    </div>
+                                                                                </td>
+                                                                                {cls.topics?.map((t, i) => <td key={i} colSpan={Math.max(1, t.subColumns.length + 1)} className="border-t border-slate-200 bg-slate-50/50"></td>)}
+                                                                            </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
+
+                                        {/* VIP SINIFLAR (Tablo Görünümü) */}
+                                        <div>
+                                            <div className="flex justify-between items-center bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-2xl shadow-sm border border-amber-200 mb-6 mt-10">
+                                                <h2 className="text-lg md:text-xl font-black text-amber-900 flex items-center gap-2"><Crown className="text-amber-500"/> Özel Ders Yönetimi</h2>
+                                                <button onClick={() => { setModalType('vip'); setModalInputVal(''); }} className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-amber-200 flex items-center gap-2 transition-transform hover:-translate-y-0.5"><Plus size={18}/> Yeni Özel Ders</button>
+                                            </div>
+                                            {vipClasses.length === 0 ? <p className="text-center text-slate-400 py-4">Kayıtlı özel ders öğrencisi yok.</p> : 
+                                                vipClasses.map(cls => (
+                                                    <div key={cls.id} className="bg-white rounded-[2rem] shadow-soft border border-amber-200 overflow-hidden transition-all duration-300 mb-6">
+                                                        <div className="p-4 md:p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors bg-gradient-to-r from-amber-50 to-white" onClick={() => toggleClass(cls.id)}>
+                                                            <div className="flex items-center gap-4 w-full md:w-auto">
+                                                                <div className={`p-3 rounded-xl bg-amber-100 text-amber-600 transition-transform duration-300 shadow-inner ${cls.isOpen ? 'rotate-90' : ''}`}><ChevronRight size={24}/></div>
+                                                                <div>
+                                                                    <h3 className="text-xl md:text-2xl font-black flex items-center gap-2 text-amber-700">
+                                                                        <Crown size={20} className="text-amber-500"/>
+                                                                        {cls.className} 
+                                                                        <button onClick={(e) => { e.stopPropagation(); setModalData({ classId: cls.id, currentName: cls.className }); setModalInputVal(cls.className); setModalType('edit-class'); }} className="p-1.5 rounded-lg transition-colors text-amber-400 hover:text-amber-600 hover:bg-amber-100"><Pencil size={16} /></button>
+                                                                    </h3>
+                                                                    <div className="text-xs text-slate-500 font-medium mt-1">{cls.students?.length || 0} Öğrenci • {cls.topics?.length || 0} Görev</div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end" onClick={(e) => e.stopPropagation()}>
+                                                                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm mr-2">
+                                                                    <div className="w-8 h-8 rounded-full border-4 border-amber-100 flex items-center justify-center relative">
+                                                                        <svg className="w-full h-full transform -rotate-90 absolute" viewBox="0 0 36 36"><path className="text-amber-500" strokeDasharray={`${calculateStats(cls.students, cls.topics).percentage}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" /></svg>
+                                                                    </div>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-xs font-black text-slate-800">%{calculateStats(cls.students, cls.topics).percentage}</span>
+                                                                        <span className="text-[9px] font-bold text-slate-400 uppercase">Başarı</span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <button onClick={() => downloadReport(cls)} className="text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 px-3 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1 transition-colors"><FileSpreadsheet size={14}/> Excel</button>
+                                                                <button onClick={() => handlePrintPasswords(cls)} className="text-xs bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 px-3 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1 transition-colors"><KeyRound size={14}/> Şifreler</button>
+                                                                <button onClick={() => { setModalData({ classId: cls.id }); setModalType('topic'); }} className="text-xs bg-amber-500 text-white hover:bg-amber-600 px-4 py-2 rounded-xl font-bold shadow-md shadow-amber-200 flex items-center gap-1 transition-transform hover:-translate-y-0.5"><Plus size={14}/> Ödev</button>
+                                                                <button onClick={(e) => deleteClass(e, cls.id)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"><Trash2 size={18}/></button>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Tablo */}
+                                                        {cls.isOpen && (
+                                                            <div className="p-4 bg-amber-50/30 animate-scale-in">
+                                                                <div className="table-container">
+                                                                    <table className="w-full text-left border-collapse">
+                                                                        <thead>
+                                                                            <tr>
+                                                                                <th rowSpan={2} className="sticky-corner border-b border-r border-slate-200 min-w-[250px] shadow-sm p-4 text-xs font-black text-slate-500 uppercase tracking-widest bg-white">Öğrenci Listesi</th>
+                                                                                {cls.topics?.map((topic, i) => {
+                                                                                    const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
+                                                                                    return ( 
+                                                                                        <th key={topic.id} colSpan={Math.max(1, (topic.subColumns?.length || 0) + 1)} className={`text-center p-3 border-b border-r border-slate-200 sticky-header-top ${theme.main} min-w-[280px]`}>
+                                                                                            <div className="flex flex-col justify-center items-center gap-1.5">
+                                                                                                {topic.date && ( 
+                                                                                                    <div className="text-[10px] bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full text-slate-600 font-bold flex items-center gap-1 cursor-pointer hover:bg-white shadow-sm border border-white/50 mb-1 transition-colors" onContextMenu={(e) => { e.preventDefault(); setModalData({ classId: cls.id, topicId: topic.id }); setModalDateVal(topic.date); setModalType('edit-date'); }}>
+                                                                                                        <Calendar size={12}/> Son Teslim: <span className={theme.main.split(' ')[1]}>{formatDate(topic.date)}</span>
+                                                                                                    </div> 
+                                                                                                )}
+                                                                                                <div className={`flex items-center gap-2 text-sm font-black uppercase tracking-wider mt-1`}>
+                                                                                                    {topic.title}
+                                                                                                    <button onClick={(e) => { e.stopPropagation(); setActiveTopicMenu({ classId: cls.id, topicId: topic.id, anchorEl: e.currentTarget }); }} className="p-1 rounded-md hover:bg-black/5 transition-colors"><MoreVertical size={16}/></button>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </th> 
+                                                                                    );
+                                                                                })}
+                                                                            </tr>
+                                                                            <tr>
+                                                                                {cls.topics?.map((topic, i) => {
+                                                                                    const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
+                                                                                    return ( 
+                                                                                        <React.Fragment key={topic.id}>
+                                                                                            {topic.subColumns?.map(col => ( 
+                                                                                                <th key={col.id} className={`p-3 border-b border-r border-slate-200 sticky-header-sub ${theme.sub} min-w-[160px] text-center relative group`}>
+                                                                                                    <div className="flex flex-col items-center justify-center gap-2 h-full">
+                                                                                                        <div className="font-bold text-xs line-clamp-2 text-slate-700">{col.title}</div>
+                                                                                                        {col.pdfLink && (
+                                                                                                            <a href={formatDriveLink(col.pdfLink)} target="_blank" rel="noopener noreferrer" className="absolute top-1 right-1 text-rose-500 bg-white rounded-full p-1 shadow-md hover:bg-rose-500 hover:text-white transition-colors" title="PDF İndir">
+                                                                                                                <FileDown size={14}/>
+                                                                                                            </a>
+                                                                                                        )}
+                                                                                                        <button onClick={(e) => { e.stopPropagation(); setActiveColMenu({ classId: cls.id, topicId: topic.id, colId: col.id, anchorEl: e.currentTarget }); }} className="text-xs bg-white/50 hover:bg-white p-1 rounded text-slate-500 hover:text-indigo-600 transition-colors shadow-sm"><MoreVertical size={12}/></button>
+                                                                                                    </div>
+                                                                                                </th> 
+                                                                                            ))} 
+                                                                                            <th className={`p-0 border-b border-r border-slate-200 w-16 text-center sticky-header-sub ${theme.sub}`}>
+                                                                                                <button onClick={() => { setModalData({ classId: cls.id, topicId: topic.id }); setModalType('source'); }} className={`w-full h-full flex items-center justify-center transition-colors ${theme.btn} bg-white/30 hover:bg-white`} title="Kaynak Ekle"><Plus size={20}/></button>
+                                                                                            </th>
+                                                                                        </React.Fragment> 
+                                                                                    );
+                                                                                })}
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            {cls.students?.map((std) => (
+                                                                                <tr key={std.id} className="border-b border-slate-100 bg-white">
+                                                                                    <td className="sticky-col-left p-4 border-r border-slate-200">
+                                                                                        <div className="flex justify-between items-center group">
+                                                                                            <div className="flex flex-col gap-1 cursor-pointer" onClick={() => openStudent(std)}>
+                                                                                                <div className="flex items-center gap-3">
+                                                                                                    <div className={`w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-black text-xs`}>{std.name.charAt(0)}</div>
+                                                                                                    <span className={`text-sm font-bold text-slate-700 group-hover:text-amber-600 transition-colors`}>{std.name}</span>
+                                                                                                    <button onClick={(e) => { e.stopPropagation(); setModalData({ classId: cls.id, studentId: std.id, currentName: std.name }); setModalInputVal(std.name); setModalType('edit-student'); }} className="text-slate-300 hover:text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size={14}/></button>
+                                                                                                </div>
+                                                                                                {std.username && ( 
+                                                                                                    <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 mt-1 ml-11" onClick={e=>e.stopPropagation()}>
+                                                                                                        <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{std.username}</span>
+                                                                                                        <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-1"><KeyRound size={10}/> {std.password}</span>
+                                                                                                    </div> 
+                                                                                                )}
+                                                                                            </div>
+                                                                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                                                <button onClick={(e) => { e.stopPropagation(); handlePrintStudentReport(cls, std); }} className="bg-amber-50 text-amber-500 hover:text-amber-700 hover:bg-amber-100 p-2 rounded-lg transition-colors" title="Rapor Yazdır"><Printer size={16}/></button>
+                                                                                                <button onClick={(e) => deleteStudent(e, cls.id, std.id)} className="bg-rose-50 text-rose-400 hover:text-rose-600 hover:bg-rose-100 p-2 rounded-lg transition-colors"><Trash2 size={16}/></button>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </td>
+                                                                                    {cls.topics?.map((topic, i) => {
+                                                                                        const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
+                                                                                        return ( 
+                                                                                            <React.Fragment key={topic.id}>
+                                                                                                {topic.subColumns?.map(col => ( 
+                                                                                                    <td key={col.id} className={`p-2 border-r border-slate-100 text-center ${theme.cell}`} onContextMenu={(e) => { e.preventDefault(); openCellNoteModal(cls.id, std.id, col.id, std.assignmentNotes?.[col.id]); }}>
+                                                                                                        <div onClick={(e) => { e.stopPropagation(); setActiveCell({ classId: cls.id, studentId: std.id, colId: col.id, anchorEl: e.currentTarget }); }} className="cursor-pointer hover:scale-105 transition-transform">
+                                                                                                            <StatusBadge status={std.grades?.[col.id] || 'exempt'} hasNote={!!std.assignmentNotes?.[col.id]} />
+                                                                                                        </div>
+                                                                                                    </td> 
+                                                                                                ))}
+                                                                                                <td className={`border-r border-slate-100 ${theme.cell}`}></td>
+                                                                                            </React.Fragment> 
+                                                                                        );
+                                                                                    })}
+                                                                                </tr>
+                                                                            ))}
+                                                                            <tr>
+                                                                                <td className="sticky-col-left p-4 border-r border-slate-200 border-t border-slate-200 bg-slate-50">
+                                                                                    <div className="flex gap-2">
+                                                                                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 shrink-0"><UserPlus size={16}/></div>
+                                                                                        <input type="text" placeholder="Yeni Öğrenci Ekle..." className="bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-sm text-slate-700 w-full focus:border-indigo-500 outline-none font-medium shadow-sm" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(cls.id); }} />
+                                                                                        <button onClick={() => addStudent(cls.id)} className="bg-amber-500 text-white px-3 rounded-xl text-xs font-bold shadow-md hover:bg-amber-600 transition-colors">EKLE</button>
+                                                                                    </div>
+                                                                                </td>
+                                                                                {cls.topics?.map((t, i) => <td key={i} colSpan={Math.max(1, t.subColumns.length + 1)} className="border-t border-slate-200 bg-slate-50/50"></td>)}
+                                                                            </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                                
+                                {/* MOBİL ÖĞRETMEN: ÖĞRENCİ DETAY */}
+                                {isMobile && view === 'student-detail' && selectedClass && selectedStudentForView && (
+                                     <div className={`${selectedClass.type === 'vip' ? 'bg-slate-800/80 backdrop-blur-xl border-slate-700 vip-card-glow' : 'bg-white border-slate-100 shadow-2xl'} rounded-[2.5rem] p-4 md:p-10 border animate-scale-in`}>
+                                        <div className={`flex flex-col md:flex-row items-center md:items-start gap-6 mb-10 pb-8 border-b ${selectedClass.type === 'vip' ? 'border-slate-700' : 'border-slate-100'} text-center md:text-left`}>
+                                            <div className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl font-black shadow-xl shrink-0 border-4 ${selectedClass.type === 'vip' ? 'bg-gradient-to-br from-amber-400 to-orange-600 text-slate-900 border-amber-300 shadow-amber-500/30' : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-white shadow-indigo-200'}`}>
+                                                {selectedStudentForView.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h2 className={`text-3xl md:text-5xl font-black mb-2 tracking-tight flex items-center justify-center md:justify-start gap-3 ${selectedClass.type === 'vip' ? 'text-white' : 'text-slate-800'}`}>
+                                                    {selectedStudentForView.name}
+                                                    {selectedClass.type === 'vip' && <Sparkle className="text-amber-400 animate-pulse"/>}
+                                                </h2>
+                                                <div className="flex items-center justify-center md:justify-start gap-3">
+                                                    <span className={`font-bold px-3 py-1 rounded-lg ${selectedClass.type === 'vip' ? 'bg-slate-700 text-amber-400' : 'bg-slate-100 text-slate-500'}`}>{selectedClass.className}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-8">
+                                            {selectedClass.topics?.map((topic, i) => {
+                                                const theme = selectedClass.type === 'vip' ? { tag: 'bg-amber-500', text: 'text-amber-400' } : TOPIC_THEMES[i % TOPIC_THEMES.length]; 
+                                                const isLate = isOverdue(topic.date);
+                                                
+                                                return (
+                                                    <div key={topic.id} className={`${selectedClass.type === 'vip' ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'} rounded-3xl p-4 md:p-6 border`}>
+                                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`w-2 h-8 rounded-full ${theme.tag}`}></div>
+                                                                <h3 className={`text-xl font-black uppercase tracking-wide ${selectedClass.type === 'vip' ? 'text-amber-400' : 'text-slate-800'}`}>{topic.title}</h3>
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                            {topic.subColumns?.map(col => {
+                                                                const status = selectedStudentForView.grades?.[col.id] || 'exempt'; 
+                                                                const hasNote = !!selectedStudentForView.assignmentNotes?.[col.id];
+                                                                const cardStyle = selectedClass.type === 'vip' ? `bg-slate-800 border-slate-600` : `bg-white border-slate-100`;
+                                                                const titleStyle = selectedClass.type === 'vip' ? 'text-slate-200' : 'text-slate-800';
+
+                                                                return (
+                                                                    <div key={col.id} className={`border-2 rounded-2xl p-5 flex flex-col justify-between gap-4 hover:shadow-lg transition-all duration-300 group ${cardStyle}`}>
+                                                                        <div className="flex justify-between items-start">
+                                                                            <div>
+                                                                                <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 mb-2 ${selectedClass.type === 'vip' ? 'text-slate-400' : 'text-slate-400'}`}>
+                                                                                    <div className={`w-2 h-2 rounded-full ${theme.tag}`}></div> KAYNAK
+                                                                                </span>
+                                                                                <span className={`text-lg font-bold leading-tight ${titleStyle}`}>{col.title}</span>
+                                                                            </div>
+                                                                            <button onClick={() => openCellNoteModal(selectedClass.id, selectedStudentForView.id, col.id, selectedStudentForView.assignmentNotes?.[col.id] || "")} className={`p-1.5 rounded-md transition-colors ${hasNote ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400 hover:text-amber-500'}`} title="Öğretmen Notu"><StickyNote size={14} /></button>
+                                                                        </div>
+                                                                        
+                                                                        <div className="flex flex-col gap-3">
+                                                                            <div className="grid grid-cols-4 gap-1 mt-2 bg-slate-100 p-1 rounded-xl">
+                                                                                {STATUS_OPTIONS.map(opt => (
+                                                                                    <button key={opt.id} onClick={() => updateGrade(selectedClass.id, selectedStudentForView.id, col.id, opt.id)} className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all ${status === opt.id ? `${opt.bg} ${opt.color} shadow-sm border ${opt.border} scale-105` : 'text-slate-400 hover:bg-white'}`}>
+                                                                                        <opt.icon size={16} className="mb-1" />
+                                                                                    </button>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                            </div>
+                        ) : (
+                            
+                            // --- ÖĞRENCİ PANELİ (Burası öğrenci girişinde zaten mobilde kart şeklinde çalışıyor, pc de aynısı) ---
+                            // NOT: Öğrenci tarafı önceki kodunuzda zaten mobil uyumlu kartlar şeklindeydi, o yüzden aynı bırakıldı.
+                            // Kod kalabalık olmasın diye sadece gerekli kısımları yazdım.
+                            <div>
+                                {view === 'home' && ( <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{classes.map((cls, idx) => ( <div key={cls.id} onClick={() => openClass(cls)} className="neon-card-wrapper cursor-pointer group bg-white rounded-3xl p-6 shadow-soft border border-slate-100 flex flex-col items-center justify-center text-center"><div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300"><Users size={32}/></div><h2 className="text-2xl font-black text-slate-800 tracking-tight group-hover:text-indigo-700 transition-colors">{cls.className}</h2><p className="text-xs text-slate-400 mt-2 font-bold uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">Sınıfa Gir</p></div> ))}</div> )}
+                                
+                                {view === 'class-detail' && selectedClass && (
+                                    <div className="bg-white rounded-[2.5rem] p-6 md:p-10 min-h-[500px] shadow-xl border border-slate-100 animate-scale-in">
+                                        <h2 className="text-2xl md:text-3xl font-black text-slate-800 mb-8 flex items-center gap-3 pb-6 border-b border-slate-100">
+                                            <div className="bg-indigo-100 p-3 rounded-2xl text-indigo-600"><Layout size={28}/></div>
+                                            {selectedClass.className} <span className="text-slate-400 text-base font-medium hidden md:inline">/ Öğrenci Listesi</span>
+                                        </h2>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {selectedClass.students?.map(std => (
+                                                <div key={std.id} onClick={() => openStudent(std)} className="bg-slate-50 hover:bg-white border-2 border-transparent hover:border-indigo-200 hover:shadow-lg rounded-2xl p-5 cursor-pointer flex items-center gap-4 transition-all duration-300 group">
+                                                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-600 flex items-center justify-center font-black text-xl shadow-inner group-hover:from-indigo-500 group-hover:to-purple-600 group-hover:text-white transition-all duration-500">{std.name.charAt(0)}</div>
+                                                    <span className="font-bold text-slate-700 text-lg group-hover:text-indigo-700 transition-colors">{std.name}</span>
+                                                    <ChevronRight size={20} className="ml-auto text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all"/>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {view === 'student-detail' && selectedClass && selectedStudentForView && (
+                                    <div className={`${currentUserRole === 'vip-student' ? 'bg-slate-800/80 backdrop-blur-xl border-slate-700 vip-card-glow' : 'bg-white border-slate-100 shadow-2xl'} rounded-[2.5rem] p-4 md:p-10 border animate-scale-in`}>
+                                        
+                                        <div className={`flex flex-col md:flex-row items-center md:items-start gap-6 mb-10 pb-8 border-b ${currentUserRole === 'vip-student' ? 'border-slate-700' : 'border-slate-100'} text-center md:text-left`}>
+                                            <div className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl font-black shadow-xl shrink-0 border-4 ${currentUserRole === 'vip-student' ? 'bg-gradient-to-br from-amber-400 to-orange-600 text-slate-900 border-amber-300 shadow-amber-500/30' : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-white shadow-indigo-200'}`}>
+                                                {selectedStudentForView.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h2 className={`text-3xl md:text-5xl font-black mb-2 tracking-tight flex items-center justify-center md:justify-start gap-3 ${currentUserRole === 'vip-student' ? 'text-white' : 'text-slate-800'}`}>
+                                                    {selectedStudentForView.name}
+                                                    {currentUserRole === 'vip-student' && <Sparkle className="text-amber-400 animate-pulse"/>}
+                                                </h2>
+                                                <div className="flex items-center justify-center md:justify-start gap-3">
+                                                    <span className={`font-bold px-3 py-1 rounded-lg ${currentUserRole === 'vip-student' ? 'bg-slate-700 text-amber-400' : 'bg-slate-100 text-slate-500'}`}>{selectedClass.className}</span>
+                                                    <span className={`font-black px-3 py-1 rounded-lg border ${currentUserRole === 'vip-student' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+                                                        %{calculateStats([selectedStudentForView], selectedClass.topics).percentage} Genel Başarı
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-8">
+                                            {selectedClass.topics?.map((topic, i) => {
+                                                const theme = currentUserRole === 'vip-student' ? { tag: 'bg-amber-500 text-slate-900' } : TOPIC_THEMES[i % TOPIC_THEMES.length]; 
+                                                const topicStats = calculateStats([selectedStudentForView], [{...topic, subColumns: topic.subColumns}]);
+                                                const pct = topicStats.percentage || 0;
+                                                const isLate = isOverdue(topic.date);
+                                                
+                                                return (
+                                                    <div key={topic.id} className={`${currentUserRole === 'vip-student' ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'} rounded-3xl p-4 md:p-6 border`}>
+                                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`w-2 h-8 rounded-full ${theme.tag}`}></div>
+                                                                <h3 className={`text-xl font-black uppercase tracking-wide ${currentUserRole === 'vip-student' ? 'text-amber-400' : 'text-slate-800'}`}>{topic.title}</h3>
+                                                            </div>
+                                                            <div className="flex flex-wrap items-center gap-3">
+                                                                {topic.date && ( 
+                                                                    <div className={`text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm border ${isLate && pct < 100 ? 'bg-red-500/20 text-red-400 border-red-500/30 animate-pulse' : (currentUserRole === 'vip-student' ? 'bg-slate-800 text-slate-400 border-slate-600' : 'bg-white text-slate-500 border-slate-200')}`}>
+                                                                        <Calendar size={14}/> Son Teslim: {formatDate(topic.date)}
+                                                                    </div> 
+                                                                )}
+                                                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border shadow-sm ${currentUserRole === 'vip-student' ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-200'}`}>
+                                                                    <div className={`w-16 h-2 rounded-full overflow-hidden ${currentUserRole === 'vip-student' ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                                                                        <div className={`h-full ${theme.tag}`} style={{ width: `${pct}%` }}></div>
+                                                                    </div>
+                                                                    <span className={`text-xs font-black ${currentUserRole === 'vip-student' ? 'text-white' : 'text-slate-700'}`}>%{pct}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                            {topic.subColumns?.map(col => {
+                                                                const status = selectedStudentForView.grades?.[col.id] || 'exempt'; 
+                                                                const statusData = STATUS_OPTIONS.find(o => o.id === status) || STATUS_OPTIONS[3]; 
+                                                                const StatusIcon = statusData.icon; 
+                                                                const note = selectedStudentForView.assignmentNotes?.[col.id]; 
+                                                                const isMissed = isLate && status !== 'done' && status !== 'exempt';
+                                                                
+                                                                const cardStyle = currentUserRole === 'vip-student'
+                                                                    ? `bg-slate-800 border-slate-600 ${isMissed ? 'border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : ''}`
+                                                                    : `bg-white border-slate-100 ${isMissed ? 'border-red-300 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : ''}`;
+
+                                                                const titleStyle = currentUserRole === 'vip-student' ? 'text-slate-200' : 'text-slate-800';
+
+                                                                return (
+                                                                    <div key={col.id} className={`border-2 rounded-2xl p-5 flex flex-col justify-between gap-4 hover:shadow-lg transition-all duration-300 group ${cardStyle}`}>
+                                                                        <div>
+                                                                            <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 mb-2 ${currentUserRole === 'vip-student' ? 'text-slate-400' : 'text-slate-400'}`}>
+                                                                                <div className={`w-2 h-2 rounded-full ${theme.tag}`}></div> KAYNAK
+                                                                            </span>
+                                                                            <span className={`text-lg font-bold leading-tight ${titleStyle}`}>{col.title}</span>
+                                                                        </div>
+                                                                        
+                                                                        <div className="flex flex-col gap-3">
+                                                                            <div className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border ${statusData.bg} ${statusData.border} ${statusData.color}`}>
+                                                                                <StatusIcon size={20} strokeWidth={2.5} />
+                                                                                <span className="text-sm font-black uppercase tracking-widest">{statusData.label}</span>
+                                                                            </div>
+                                                                            
+                                                                            {note && ( 
+                                                                                <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 flex gap-2 items-start text-xs text-amber-900 shadow-inner">
+                                                                                    <Info size={16} className="mt-0.5 shrink-0 text-amber-500"/> 
+                                                                                    <span className="font-medium leading-relaxed">{note}</span>
+                                                                                </div> 
+                                                                            )}
+
                                                                             {col.pdfLink && (
-                                                                                <a href={formatDriveLink(col.pdfLink)} target="_blank" rel="noopener noreferrer" className="absolute top-1 right-1 text-rose-500 bg-white rounded-full p-1 shadow-md hover:bg-rose-500 hover:text-white transition-colors" title="PDF İndir">
-                                                                                    <FileDown size={14}/>
+                                                                                <a href={formatDriveLink(col.pdfLink)} target="_blank" rel="noopener noreferrer" className={`mt-2 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-black transition-all shadow-sm group/pdf ${currentUserRole === 'vip-student' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-white border border-amber-500/30' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white border border-indigo-200'}`}>
+                                                                                    <FileDown size={16} className="group-hover/pdf:animate-bounce" /> KAYNAK (PDF) İNDİR
                                                                                 </a>
                                                                             )}
-                                                                            {isTeacherMode && <button onClick={(e) => { e.stopPropagation(); setActiveColMenu({ classId: selectedClass.id, topicId: topic.id, colId: col.id, anchorEl: e.currentTarget }); }} className="text-xs bg-white/50 hover:bg-white p-1 rounded text-slate-500 hover:text-indigo-600 transition-colors shadow-sm"><MoreVertical size={12}/></button>}
                                                                         </div>
-                                                                    </th> 
-                                                                ))} 
-                                                                {isTeacherMode && <th className={`p-0 border-b border-r border-slate-200 w-16 text-center sticky-header-sub ${theme.sub}`}>
-                                                                    <button onClick={() => { setModalData({ classId: selectedClass.id, topicId: topic.id }); setModalType('source'); }} className={`w-full h-full flex items-center justify-center transition-colors ${theme.btn} bg-white/30 hover:bg-white`} title="Kaynak Ekle"><Plus size={20}/></button>
-                                                                </th>}
-                                                            </React.Fragment> 
-                                                        );
-                                                    })}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {selectedClass.students?.map((std) => (
-                                                    <tr key={std.id} className="border-b border-slate-100 bg-white">
-                                                        <td className="sticky-col-left p-4 border-r border-slate-200">
-                                                            <div className="flex justify-between items-center group">
-                                                                <div className="flex flex-col gap-1 cursor-pointer" onClick={() => openStudent(std)}>
-                                                                    <div className="flex items-center gap-3">
-                                                                        <div className={`w-8 h-8 rounded-full ${selectedClass.type === 'vip' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'} flex items-center justify-center font-black text-xs`}>{std.name.charAt(0)}</div>
-                                                                        <span className={`text-sm font-bold text-slate-700 group-hover:${selectedClass.type === 'vip' ? 'text-amber-600' : 'text-indigo-600'} transition-colors`}>{std.name}</span>
-                                                                        {isTeacherMode && <button onClick={(e) => { e.stopPropagation(); setModalData({ classId: selectedClass.id, studentId: std.id, currentName: std.name }); setModalInputVal(std.name); setModalType('edit-student'); }} className="text-slate-300 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size={14}/></button>}
                                                                     </div>
-                                                                    {isTeacherMode && std.username && ( 
-                                                                        <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 mt-1 ml-11" onClick={e=>e.stopPropagation()}>
-                                                                            <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{std.username}</span>
-                                                                            <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-1"><KeyRound size={10}/> {std.password}</span>
-                                                                        </div> 
-                                                                    )}
-                                                                </div>
-                                                                {isTeacherMode && (
-                                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                    <button onClick={(e) => { e.stopPropagation(); handlePrintStudentReport(selectedClass, std); }} className={`p-2 rounded-lg transition-colors ${selectedClass.type === 'vip' ? 'bg-amber-50 text-amber-500 hover:text-amber-700 hover:bg-amber-100' : 'bg-indigo-50 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-100'}`} title="Rapor Yazdır"><Printer size={16}/></button>
-                                                                    <button onClick={(e) => deleteStudent(e, selectedClass.id, std.id)} className="bg-rose-50 text-rose-400 hover:text-rose-600 hover:bg-rose-100 p-2 rounded-lg transition-colors"><Trash2 size={16}/></button>
-                                                                </div>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                        {selectedClass.topics?.map((topic, i) => {
-                                                            const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
-                                                            return ( 
-                                                                <React.Fragment key={topic.id}>
-                                                                    {topic.subColumns?.map(col => ( 
-                                                                        <td key={col.id} className={`p-2 border-r border-slate-100 text-center ${theme.cell}`} onContextMenu={(e) => { e.preventDefault(); if(isTeacherMode) openCellNoteModal(selectedClass.id, std.id, col.id, std.assignmentNotes?.[col.id]); }}>
-                                                                            <div onClick={(e) => { e.stopPropagation(); if(isTeacherMode) setActiveCell({ classId: selectedClass.id, studentId: std.id, colId: col.id, anchorEl: e.currentTarget }); }} className={`cursor-pointer transition-transform ${isTeacherMode ? 'hover:scale-105' : ''}`}>
-                                                                                <StatusBadge status={std.grades?.[col.id] || 'exempt'} hasNote={!!std.assignmentNotes?.[col.id]} />
-                                                                            </div>
-                                                                        </td> 
-                                                                    ))}
-                                                                    {isTeacherMode && <td className={`border-r border-slate-100 ${theme.cell}`}></td>}
-                                                                </React.Fragment> 
-                                                            );
-                                                        })}
-                                                    </tr>
-                                                ))}
-                                                {isTeacherMode && (
-                                                <tr>
-                                                    <td className="sticky-col-left p-4 border-r border-slate-200 border-t border-slate-200 bg-slate-50">
-                                                        <div className="flex gap-2">
-                                                            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 shrink-0"><UserPlus size={16}/></div>
-                                                            <input type="text" placeholder="Yeni Öğrenci Ekle..." className="bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-sm text-slate-700 w-full focus:border-indigo-500 outline-none font-medium shadow-sm" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(selectedClass.id); }} />
-                                                            <button onClick={() => addStudent(selectedClass.id)} className={`text-white px-3 rounded-xl text-xs font-bold shadow-md transition-colors ${selectedClass.type === 'vip' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}>EKLE</button>
+                                                                );
+                                                            })}
                                                         </div>
-                                                    </td>
-                                                    {selectedClass.topics?.map((t, i) => <td key={i} colSpan={Math.max(1, t.subColumns.length + 1)} className="border-t border-slate-200 bg-slate-50/50"></td>)}
-                                                </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* --- ÖĞRENCİ DETAY GÖRÜNÜMÜ --- */}
-                        {view === 'student-detail' && selectedClass && selectedStudentForView && (
-                            // (Mevcut öğrenci detay kodu aynı - yer kaplamasın diye kısalttım, sen değiştirmeyeceksin sadece yukarıları yapıştıracaksın)
-                            <div className={`${currentUserRole === 'vip-student' ? 'bg-slate-800/80 backdrop-blur-xl border-slate-700 vip-card-glow' : 'bg-white border-slate-100 shadow-2xl'} rounded-[2.5rem] p-4 md:p-10 border animate-scale-in`}>
-                                        
-                                <div className={`flex flex-col md:flex-row items-center md:items-start gap-6 mb-10 pb-8 border-b ${currentUserRole === 'vip-student' ? 'border-slate-700' : 'border-slate-100'} text-center md:text-left`}>
-                                    <div className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl font-black shadow-xl shrink-0 border-4 ${currentUserRole === 'vip-student' ? 'bg-gradient-to-br from-amber-400 to-orange-600 text-slate-900 border-amber-300 shadow-amber-500/30' : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-white shadow-indigo-200'}`}>
-                                        {selectedStudentForView.name.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <h2 className={`text-3xl md:text-5xl font-black mb-2 tracking-tight flex items-center justify-center md:justify-start gap-3 ${currentUserRole === 'vip-student' ? 'text-white' : 'text-slate-800'}`}>
-                                            {selectedStudentForView.name}
-                                            {currentUserRole === 'vip-student' && <Sparkle className="text-amber-400 animate-pulse"/>}
-                                        </h2>
-                                        <div className="flex items-center justify-center md:justify-start gap-3">
-                                            <span className={`font-bold px-3 py-1 rounded-lg ${currentUserRole === 'vip-student' ? 'bg-slate-700 text-amber-400' : 'bg-slate-100 text-slate-500'}`}>{selectedClass.className}</span>
-                                            <span className={`font-black px-3 py-1 rounded-lg border ${currentUserRole === 'vip-student' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-                                                %{calculateStats([selectedStudentForView], selectedClass.topics).percentage} Genel Başarı
-                                            </span>
+                                                    </div>
+                                                );
+                                            })}
+                                            {selectedClass.topics?.length === 0 && <div className="text-center text-slate-500 py-10 font-medium">Bu sınıfa henüz ödev eklenmemiş.</div>}
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="space-y-8">
-                                    {selectedClass.topics?.map((topic, i) => {
-                                        const theme = currentUserRole === 'vip-student' 
-                                            ? { tag: 'bg-amber-500 text-slate-900' } // VIP için sabit renk
-                                            : TOPIC_THEMES[i % TOPIC_THEMES.length]; // Normal için döngüsel renk
-                                        
-                                        const topicStats = calculateStats([selectedStudentForView], [{...topic, subColumns: topic.subColumns}]);
-                                        const pct = topicStats.percentage || 0;
-                                        const isLate = isOverdue(topic.date);
-                                        
-                                        return (
-                                            <div key={topic.id} className={`${currentUserRole === 'vip-student' ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'} rounded-3xl p-4 md:p-6 border`}>
-                                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`w-2 h-8 rounded-full ${theme.tag}`}></div>
-                                                        <h3 className={`text-xl font-black uppercase tracking-wide ${currentUserRole === 'vip-student' ? 'text-amber-400' : 'text-slate-800'}`}>{topic.title}</h3>
-                                                    </div>
-                                                    <div className="flex flex-wrap items-center gap-3">
-                                                        {topic.date && ( 
-                                                            <div className={`text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm border ${isLate && pct < 100 ? 'bg-red-500/20 text-red-400 border-red-500/30 animate-pulse' : (currentUserRole === 'vip-student' ? 'bg-slate-800 text-slate-400 border-slate-600' : 'bg-white text-slate-500 border-slate-200')}`}>
-                                                                <Calendar size={14}/> Son Teslim: {formatDate(topic.date)}
-                                                            </div> 
-                                                        )}
-                                                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border shadow-sm ${currentUserRole === 'vip-student' ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-200'}`}>
-                                                            <div className={`w-16 h-2 rounded-full overflow-hidden ${currentUserRole === 'vip-student' ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                                                                <div className={`h-full ${theme.tag}`} style={{ width: `${pct}%` }}></div>
-                                                            </div>
-                                                            <span className={`text-xs font-black ${currentUserRole === 'vip-student' ? 'text-white' : 'text-slate-700'}`}>%{pct}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                    {topic.subColumns?.map(col => {
-                                                        const status = selectedStudentForView.grades?.[col.id] || 'exempt'; 
-                                                        const statusData = STATUS_OPTIONS.find(o => o.id === status) || STATUS_OPTIONS[3]; 
-                                                        const StatusIcon = statusData.icon; 
-                                                        const note = selectedStudentForView.assignmentNotes?.[col.id]; 
-                                                        const isMissed = isLate && status !== 'done' && status !== 'exempt';
-                                                        
-                                                        const cardStyle = currentUserRole === 'vip-student'
-                                                            ? `bg-slate-800 border-slate-600 ${isMissed ? 'border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : ''}`
-                                                            : `bg-white border-slate-100 ${isMissed ? 'border-red-300 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : ''}`;
-
-                                                        const titleStyle = currentUserRole === 'vip-student' ? 'text-slate-200' : 'text-slate-800';
-
-                                                        return (
-                                                            <div key={col.id} className={`border-2 rounded-2xl p-5 flex flex-col justify-between gap-4 hover:shadow-lg transition-all duration-300 group ${cardStyle}`}>
-                                                                <div>
-                                                                    <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 mb-2 ${currentUserRole === 'vip-student' ? 'text-slate-400' : 'text-slate-400'}`}>
-                                                                        <div className={`w-2 h-2 rounded-full ${theme.tag}`}></div> KAYNAK
-                                                                    </span>
-                                                                    <span className={`text-lg font-bold leading-tight ${titleStyle}`}>{col.title}</span>
-                                                                </div>
-                                                                
-                                                                <div className="flex flex-col gap-3">
-                                                                    <div className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border ${statusData.bg} ${statusData.border} ${statusData.color}`}>
-                                                                        <StatusIcon size={20} strokeWidth={2.5} />
-                                                                        <span className="text-sm font-black uppercase tracking-widest">{statusData.label}</span>
-                                                                    </div>
-                                                                    
-                                                                    {note && ( 
-                                                                        <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 flex gap-2 items-start text-xs text-amber-900 shadow-inner">
-                                                                            <Info size={16} className="mt-0.5 shrink-0 text-amber-500"/> 
-                                                                            <span className="font-medium leading-relaxed">{note}</span>
-                                                                        </div> 
-                                                                    )}
-
-                                                                    {/* PDF İNDİR BUTONU */}
-                                                                    {col.pdfLink && (
-                                                                        <a href={formatDriveLink(col.pdfLink)} target="_blank" rel="noopener noreferrer" className={`mt-2 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-black transition-all shadow-sm group/pdf ${currentUserRole === 'vip-student' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-white border border-amber-500/30' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white border border-indigo-200'}`}>
-                                                                            <FileDown size={16} className="group-hover/pdf:animate-bounce" /> KAYNAK (PDF) İNDİR
-                                                                        </a>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                    {selectedClass.topics?.length === 0 && <div className="text-center text-slate-500 py-10 font-medium">Bu sınıfa henüz ödev eklenmemiş.</div>}
-                                </div>
+                                )}
                             </div>
                         )}
                     </main>
