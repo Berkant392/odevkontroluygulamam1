@@ -751,7 +751,7 @@
             const handlePrintPasswords = (cls) => { setPrintData({ type: 'passwords', classData: cls }); setTimeout(() => window.print(), 300); };
             const handlePrintStudentReport = (cls, student) => { setPrintData({ type: 'report', classData: cls, studentData: student }); setTimeout(() => window.print(), 300); };
 
-       // =======================================================================
+// =======================================================================
             // === 7. RENDER (GÖRÜNÜM) EKRANLARI VE MODALLAR =========================
             // =======================================================================
 
@@ -1407,6 +1407,7 @@
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
+        // ======================= BÖLÜM 7 SONU ==================================
     </script>
 </body>
 </html>
