@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <!-- ======================================================================= -->
+<!-- ======================================================================= -->
     <!-- BÖLÜM 1: HEAD & AYARLAR (Meta, Kütüphaneler, Tailwind)                -->
     <!-- ======================================================================= -->
     <meta charset="UTF-8">
@@ -29,10 +29,16 @@
             theme: {
                 extend: {
                     colors: { primary: '#4f46e5', secondary: '#8b5cf6', accent: '#ec4899' },
-                    animation: { 'spin-slow': 'spin 4s linear infinite', 'pulse-red': 'pulseRed 2s cubic-bezier(0.4, 0, 0.6, 1) infinite', 'blob': 'blob 7s infinite' },
+                    animation: { 
+                        'spin-slow': 'spin 4s linear infinite', 
+                        'pulse-red': 'pulseRed 2s cubic-bezier(0.4, 0, 0.6, 1) infinite', 
+                        'blob': 'blob 7s infinite',
+                        'sound-wave': 'soundWave 1s ease-in-out infinite alternate' // Yeni animasyon
+                    },
                     keyframes: {
                         pulseRed: { '0%, 100%': { backgroundColor: 'rgba(254, 226, 226, 0.5)', borderColor: 'rgba(239, 68, 68, 0.5)' }, '50%': { backgroundColor: 'rgba(254, 202, 202, 0.8)', borderColor: 'rgba(239, 68, 68, 1)' } },
-                        blob: { '0%': { transform: 'translate(0px, 0px) scale(1)' }, '33%': { transform: 'translate(30px, -50px) scale(1.1)' }, '66%': { transform: 'translate(-20px, 20px) scale(0.9)' }, '100%': { transform: 'translate(0px, 0px) scale(1)' } }
+                        blob: { '0%': { transform: 'translate(0px, 0px) scale(1)' }, '33%': { transform: 'translate(30px, -50px) scale(1.1)' }, '66%': { transform: 'translate(-20px, 20px) scale(0.9)' }, '100%': { transform: 'translate(0px, 0px) scale(1)' } },
+                        soundWave: { '0%': { transform: 'scaleY(0.5)', opacity: '0.5' }, '100%': { transform: 'scaleY(1.5)', opacity: '1' } } // Yeni keyframe
                     },
                     fontSize: { 'xxs': '0.6rem' }
                 }
@@ -70,6 +76,14 @@
         .animation-delay-2000 { animation-delay: 2s; }
         .animation-delay-4000 { animation-delay: 4s; }
         
+        /* Ses Dalgaları İçin Yeni Stiller */
+        .wave-bar { width: 4px; border-radius: 2px; background-color: #4f46e5; margin: 0 2px; }
+        .wave-1 { animation: soundWave 0.8s ease-in-out infinite alternate; height: 12px; }
+        .wave-2 { animation: soundWave 1.2s ease-in-out infinite alternate; height: 20px; }
+        .wave-3 { animation: soundWave 0.6s ease-in-out infinite alternate; height: 16px; }
+        .wave-4 { animation: soundWave 1.0s ease-in-out infinite alternate; height: 24px; }
+        .wave-5 { animation: soundWave 0.9s ease-in-out infinite alternate; height: 14px; }
+
         /* Yazdırma (Print) Stilleri */
         @media print {
             body { background-color: white !important; margin: 0; padding: 0; }
@@ -216,7 +230,7 @@
         };
         // ======================= BÖLÜM 5 SONU ==================================
 
-        // =======================================================================
+// =======================================================================
         // BÖLÜM 6: ANA UYGULAMA BİLEŞENİ - STATE & MANTIK
         // =======================================================================
         const HomeworkTracker = () => {
@@ -275,6 +289,13 @@
             const [useLibrary, setUseLibrary] = useState(false); 
             const [dailyQuote, setDailyQuote] = useState(MOTIVATIONAL_QUOTES[0]);
 
+            // --- YENİ EKLENEN STATE'LER: SESLİ ASİSTAN İÇİN ---
+            const [isListening, setIsListening] = useState(false);
+            const [speechTranscript, setSpeechTranscript] = useState("");
+            const [showAssistantModal, setShowAssistantModal] = useState(false);
+            const [assistantPendingActions, setAssistantPendingActions] = useState([]);
+            const recognitionRef = useRef(null);
+
             useEffect(() => { const initAuth = async () => { try { await signInAnonymously(auth); } catch (e) { console.error(e); } }; initAuth(); setDailyQuote(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]); return onAuthStateChanged(auth, (u) => u && setUser(u)); }, []);
             
             useEffect(() => {
@@ -294,6 +315,186 @@
                 const unsubSettings = onSnapshot(settingsRef, (snap) => { if (snap.exists()) { const d = snap.data(); if (d.pin !== undefined) setDbTeacherPin(String(d.pin).trim()); if (d.announcement !== undefined) setAnnouncement(d.announcement); } });
                 return () => { unsubClasses(); unsubLib(); unsubSettings(); };
             }, [user]);
+
+            // --- YENİ FONKSİYON: SES TANIMA BAŞLATMA ---
+            const toggleListening = (cls) => {
+                if (isListening) {
+                    if (recognitionRef.current) { recognitionRef.current.stop(); }
+                    setIsListening(false);
+                    return;
+                }
+
+                // Tarayıcı destek kontrolü
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    alert("Tarayıcınız ses tanıma özelliğini desteklemiyor. Lütfen Chrome kullanın.");
+                    return;
+                }
+
+                const recognition = new SpeechRecognition();
+                recognition.lang = 'tr-TR';
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+                recognitionRef.current = recognition;
+
+                recognition.onstart = () => {
+                    setIsListening(true);
+                    setSpeechTranscript("Sizi dinliyorum...");
+                    setShowAssistantModal(true);
+                    setAssistantPendingActions([]); // Önceki işlemleri temizle
+                };
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    setSpeechTranscript(transcript);
+                    processVoiceCommand(transcript, cls); // Algoritmayı çalıştır
+                };
+
+                recognition.onerror = (event) => {
+                    console.error("Ses tanıma hatası:", event.error);
+                    setSpeechTranscript("Bir hata oluştu veya ses anlaşılamadı. (" + event.error + ")");
+                    setIsListening(false);
+                };
+
+                recognition.onend = () => {
+                    setIsListening(false);
+                };
+
+                recognition.start();
+            };
+
+            // --- YENİ FONKSİYON: METİN PARÇALAMA VE KURAL TABANLI EŞLEŞTİRME ---
+            const processVoiceCommand = (text, cls) => {
+                const lowerText = text.toLowerCase();
+                let actions = [];
+
+                // 1. Durum Kelimelerini Bul
+                let targetStatus = null;
+                if (lowerText.includes("yaptı") || lowerText.includes("tamamladı") || lowerText.includes("bitirdi")) targetStatus = 'done';
+                else if (lowerText.includes("yapmadı") || lowerText.includes("yok") || lowerText.includes("getirmedi")) targetStatus = 'missing';
+                else if (lowerText.includes("eksik") || lowerText.includes("yarım") || lowerText.includes("kısmen")) targetStatus = 'assigned';
+                else if (lowerText.includes("muaf")) targetStatus = 'exempt';
+
+                // Eğer belirgin bir durum yoksa işlem yapma
+                if (!targetStatus) {
+                    setSpeechTranscript(text + " (Durum anlaşılamadı. 'Yaptı', 'Yapmadı' veya 'Eksik' gibi kelimeler kullanın.)");
+                    return;
+                }
+
+                // Sınıftaki tüm alt sütunları (kaynakları) düz bir liste yapalım kolay aramak için
+                let allColumns = [];
+                cls.topics.forEach(topic => {
+                    topic.subColumns.forEach(col => {
+                        allColumns.push({ topicId: topic.id, topicTitle: topic.title, colId: col.id, colTitle: col.title });
+                    });
+                });
+
+                // 2. Her bir öğrenci için metinde ismi geçiyor mu kontrol et
+                cls.students.forEach(student => {
+                    // İsmi küçük harfe çevir ve kelimelere böl (sadece ilk isimle veya soyisimle çağrılabilir)
+                    const studentNames = student.name.toLowerCase().split(' ');
+                    
+                    // Öğrencinin adının herhangi bir parçası metinde geçiyor mu? (Örn: "Emre", "Yılmaz")
+                    // Tam isim eşleşmesi de aranabilir ama tek isim kullanımı daha yaygındır
+                    const isStudentMentioned = studentNames.some(name => name.length > 2 && lowerText.includes(name));
+
+                    // Herkes istisnası
+                    const isEveryoneExcept = lowerText.includes("herkes") && lowerText.includes("dışında");
+                    const isEveryone = lowerText.includes("herkes");
+
+                    let shouldProcessStudent = isStudentMentioned;
+                    
+                    if (isEveryoneExcept) {
+                        shouldProcessStudent = !isStudentMentioned; // Adı geçenler HARİÇ herkes
+                    } else if (isEveryone) {
+                        shouldProcessStudent = true; // Herkes
+                    }
+
+                    if (shouldProcessStudent) {
+                        // 3. Öğrenci için hangi ödevden bahsedilmiş?
+                        // Tüm kaynakları dön ve metinde geçiyor mu bak
+                        allColumns.forEach(column => {
+                            const colTitleWords = column.colTitle.toLowerCase().split(' ');
+                            // Sütun isminin en az bir kelimesi (3 harften büyük) metinde geçiyorsa eşleşmiş say
+                            const isColMentioned = colTitleWords.some(word => word.length > 2 && lowerText.includes(word));
+                            
+                            // Eğer belirli bir ödev adı geçmiyorsa veya "bütün ödevleri", "hepsini" diyorsa son eklenen ödevi veya hepsini seçtirebiliriz.
+                            // Şimdilik sadece ismi geçenleri bulalım, veya metinde "ödev" kelimesi varsa ve belirli bir kaynak yoksa en sonuncuyu alalım.
+                            const isAllHomeworks = lowerText.includes("hepsini") || lowerText.includes("tüm ödevleri");
+
+                            if (isColMentioned || isAllHomeworks) {
+                                actions.push({
+                                    id: generateId('action'),
+                                    studentId: student.id,
+                                    studentName: student.name,
+                                    topicId: column.topicId,
+                                    topicTitle: column.topicTitle,
+                                    colId: column.colId,
+                                    colTitle: column.colTitle,
+                                    status: targetStatus,
+                                    note: "" // Başlangıçta not boş
+                                });
+                            }
+                        });
+                    }
+                });
+
+                setAssistantPendingActions(actions);
+                
+                if (actions.length === 0) {
+                     setSpeechTranscript(text + " (Öğrenci veya kaynak eşleşmesi bulunamadı.)");
+                }
+            };
+
+            // --- YENİ FONKSİYON: ASİSTAN DEĞİŞİKLİKLERİNİ KAYDETME ---
+            const applyAssistantActions = () => {
+                if (!activeRiskClass || assistantPendingActions.length === 0) return; // Geçici olarak activeRiskClass değişkenini kullanacağız modalı açtığımız sınıfı tutmak için, istersen yeni state açılabilir.
+                
+                // activeRiskClass yerine, asistanın hangi sınıfta açıldığını bilmemiz lazım.
+                // Modal açılırken selectedClass'ı kullanabiliriz çünkü sınıf içinde çalışıyoruz.
+                const classIdToUpdate = assistantPendingActions[0]?.classId || (classes.find(c => c.isOpen)?.id); 
+                
+                const cls = classes.find(c => c.id === classIdToUpdate);
+                if (!cls) return;
+
+                let updatedStudents = [...cls.students];
+
+                assistantPendingActions.forEach(action => {
+                    const studentIndex = updatedStudents.findIndex(s => s.id === action.studentId);
+                    if (studentIndex > -1) {
+                        const student = updatedStudents[studentIndex];
+                        // Durumu güncelle
+                        const newGrades = { ...student.grades, [action.colId]: action.status };
+                        
+                        // Not varsa notu da güncelle
+                        let newNotes = { ...student.assignmentNotes };
+                        if (action.note.trim()) {
+                            newNotes[action.colId] = action.note;
+                        }
+
+                        updatedStudents[studentIndex] = { ...student, grades: newGrades, assignmentNotes: newNotes };
+                    }
+                });
+
+                updateClassInDb({ ...cls, students: updatedStudents });
+                setShowAssistantModal(false);
+                setAssistantPendingActions([]);
+                alert("Değişiklikler başarıyla kaydedildi!");
+            };
+            
+            // Asistan tablosunda manuel düzenleme fonksiyonları
+            const updateActionStatus = (actionId, newStatus) => {
+                setAssistantPendingActions(prev => prev.map(a => a.id === actionId ? { ...a, status: newStatus } : a));
+            };
+            
+            const updateActionNote = (actionId, newNote) => {
+                setAssistantPendingActions(prev => prev.map(a => a.id === actionId ? { ...a, note: newNote } : a));
+            };
+
+            const removeAction = (actionId) => {
+                setAssistantPendingActions(prev => prev.filter(a => a.id !== actionId));
+            };
+
 
             const addClassToDb = async (newClass) => { await setDoc(doc(db, CLASSES_COLLECTION, String(newClass.id)), newClass); };
             const updateClassInDb = async (updatedClass) => { await setDoc(doc(db, CLASSES_COLLECTION, String(updatedClass.id)), updatedClass, { merge: true }); };
