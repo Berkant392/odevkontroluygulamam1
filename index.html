@@ -546,14 +546,9 @@
                 return () => { unsubClasses(); unsubLib(); unsubSettings(); };
             }, [user]);
 
-            // --- ASİSTAN FONKSİYONLARI ---
+// --- YENİLENEN ASİSTAN FONKSİYONLARI (TÜM SINIFLARDA ARAMA - GLOBAL) ---
             const toggleListening = () => {
-                const activeClass = classes.find(c => c.isOpen) || selectedClass;
-                if (!activeClass) { 
-                    alert("Lütfen önce işlem yapmak istediğiniz sınıfı açın (Tabloyu genişletin veya sınıfın içine girin)."); 
-                    return; 
-                }
-                setActiveRiskClass(activeClass);
+                // ARTIK activeClass ZORUNLULUĞU YOK! HER YERDEN ÇALIŞIR.
 
                 if (isListening) { 
                     if (recognitionRef.current) { recognitionRef.current.stop(); } 
@@ -578,8 +573,9 @@
                     setSpeechTranscript("Sizi dinliyorum... (Örn: 'Emre logaritma')"); 
                     setShowAssistantModal(true); 
                     
+                    // Tüm öğrencileri ve konuları başlangıçta yükle
                     let allStudents = [];
-                    let allTopicsMap = new Map();
+                    let allTopicsMap = new Map(); 
 
                     classes.forEach(cls => {
                         cls.students.forEach(std => {
@@ -593,7 +589,6 @@
                     });
 
                     setAssistantFoundStudents(allStudents);
-                    // Konuları tarihe göre sıralı göster
                     setAssistantFoundTopics(Array.from(allTopicsMap.values()).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)));
                     
                     setAssistantDraftGrades({}); 
@@ -619,7 +614,7 @@
                 
                 recognition.start();
             };
-
+            
             const processGlobalSearchCommand = (text) => {
                 const lowerText = text.toLowerCase();
                 
