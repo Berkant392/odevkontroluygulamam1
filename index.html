@@ -524,7 +524,7 @@
                     loaded.sort((a, b) => a.className.localeCompare(b.className)); 
                     setClasses(prev => loaded.map(newC => { 
                         const oldC = prev.find(p => p.id === newC.id); 
-                        // SADECE ÖDEVLERİ (TOPICS) SIRALA, KAYNAKLARI (SUBCOLUMNS) DEĞİL
+                        // Veritabanından çekerken de her zaman tarihe göre yeni -> eski sırala
                         if (newC.topics) {
                             newC.topics.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
                         }
@@ -751,6 +751,180 @@
             const handlePrintPasswords = (cls) => { setPrintData({ type: 'passwords', classData: cls }); setTimeout(() => window.print(), 300); };
             const handlePrintStudentReport = (cls, student) => { setPrintData({ type: 'report', classData: cls, studentData: student }); setTimeout(() => window.print(), 300); };
 
+            // YARDIMCI RENDER FONKSİYONU: DÜZELTİLDİ (Fragment eklendi)
+            const renderClassList = (clsList, isVipList = false) => {
+                return clsList.map(cls => {
+                    const stats = calculateStats(cls.students, cls.topics);
+                    const isVip = cls.type === 'vip';
+                    
+                    return (
+                        <div key={cls.id} className={`bg-white rounded-[2rem] shadow-soft border ${isVip ? 'border-amber-200' : 'border-slate-200'} overflow-hidden transition-all duration-300 mb-6`}>
+                            {/* Accordion Header */}
+                            <div className={`p-4 md:p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors ${isVip ? 'bg-gradient-to-r from-amber-50 to-white' : 'bg-gradient-to-r from-slate-50 to-white'}`} onClick={() => toggleClass(cls.id)}>
+                                <div className="flex items-center gap-4 w-full md:w-auto">
+                                    <div className={`p-3 rounded-xl ${isVip ? 'bg-amber-100 text-amber-600' : 'bg-indigo-100 text-indigo-600'} transition-transform duration-300 shadow-inner ${cls.isOpen ? 'rotate-90' : ''}`}><ChevronRight size={24}/></div>
+                                    <div>
+                                        <h3 className={`text-xl md:text-2xl font-black flex items-center gap-2 ${isVip ? 'text-amber-700' : 'text-slate-800'}`}>
+                                            {isVip && <Crown size={20} className="text-amber-500"/>}
+                                            {cls.className} 
+                                            <button onClick={(e) => { e.stopPropagation(); setModalData({ classId: cls.id, currentName: cls.className }); setModalInputVal(cls.className); setModalType('edit-class'); }} className={`p-1.5 rounded-lg transition-colors ${isVip ? 'text-amber-400 hover:text-amber-600 hover:bg-amber-100' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}><Pencil size={16} /></button>
+                                        </h3>
+                                        <div className="text-xs text-slate-500 font-medium mt-1">{cls.students?.length || 0} Öğrenci • {cls.topics?.length || 0} Görev</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm mr-2">
+                                        <div className={`w-8 h-8 rounded-full border-4 ${isVip ? 'border-amber-100' : 'border-indigo-100'} flex items-center justify-center relative`}>
+                                            <svg className="w-full h-full transform -rotate-90 absolute" viewBox="0 0 36 36"><path className={isVip ? "text-amber-500" : "text-indigo-600"} strokeDasharray={`${stats.percentage}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" /></svg>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-black text-slate-800">%{stats.percentage}</span>
+                                            <span className="text-[9px] font-bold text-slate-400 uppercase">Başarı</span>
+                                        </div>
+                                    </div>
+
+                                    {!isVip && <button onClick={() => handleOpenRisk(cls)} className="text-xs bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 px-3 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1 transition-colors"><AlertOctagon size={14}/> Risk</button>}
+                                    <button onClick={() => downloadReport(cls)} className="text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 px-3 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1 transition-colors"><FileSpreadsheet size={14}/> Excel</button>
+                                    <button onClick={() => handlePrintPasswords(cls)} className="text-xs bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 px-3 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1 transition-colors"><KeyRound size={14}/> Şifreler</button>
+                                    <button onClick={() => { setModalData({ classId: cls.id }); setModalType('topic'); }} className={`text-xs text-white px-4 py-2 rounded-xl font-bold shadow-md flex items-center gap-1 transition-transform hover:-translate-y-0.5 ${isVip ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'}`}><Plus size={14}/> Ödev</button>
+                                    <button onClick={(e) => deleteClass(e, cls.id)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"><Trash2 size={18}/></button>
+                                </div>
+                            </div>
+
+                            {/* Accordion Content */}
+                            {cls.isOpen && (
+                                <>
+                                    {isMobile ? (
+                                        <div className={`p-4 animate-scale-in ${isVip ? 'bg-amber-50/30' : 'bg-slate-50/50'}`}>
+                                            <div className="space-y-4">
+                                                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex gap-2">
+                                                    <input type="text" placeholder="Yeni Öğrenci Ekle..." className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-700 w-full focus:border-indigo-500 outline-none font-medium" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(cls.id); }} />
+                                                    <button onClick={() => addStudent(cls.id)} className={`text-white px-4 rounded-xl text-sm font-bold shadow-md ${isVip ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}>EKLE</button>
+                                                </div>
+                                                {cls.students?.map((std) => (
+                                                    <MobileStudentCard key={std.id} student={std} cls={cls} updateGrade={updateGrade} onOpenNote={openCellNoteModal} onEditStudent={(s) => { setModalData({ classId: cls.id, studentId: s.id, currentName: s.name }); setModalInputVal(s.name); setModalType('edit-student'); }} onDeleteStudent={deleteStudent} onPrintReport={handlePrintStudentReport} />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className={`p-4 animate-scale-in ${isVip ? 'bg-amber-50/30' : 'bg-slate-50/50'}`}>
+                                            <div className="table-container">
+                                                <table className="w-full text-left border-collapse">
+                                                    <thead>
+                                                        <tr>
+                                                            <th rowSpan={2} className="sticky-corner border-b border-r border-slate-200 min-w-[250px] shadow-sm p-4 text-xs font-black text-slate-500 uppercase tracking-widest bg-white">Öğrenci Listesi</th>
+                                                            {cls.topics?.map((topic, i) => {
+                                                                const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
+                                                                return ( 
+                                                                    <th key={topic.id} colSpan={Math.max(1, (topic.subColumns?.length || 0) + 1)} className={`text-center p-3 border-b border-r border-slate-200 sticky-header-top ${theme.main} min-w-[280px]`}>
+                                                                        <div className="flex flex-col justify-center items-center gap-1.5">
+                                                                            {topic.date && ( 
+                                                                                <div className="text-[10px] bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full text-slate-600 font-bold flex items-center gap-1 cursor-pointer hover:bg-white shadow-sm border border-white/50 mb-1 transition-colors" onContextMenu={(e) => { e.preventDefault(); setModalData({ classId: cls.id, topicId: topic.id }); setModalDateVal(topic.date); setModalType('edit-date'); }}>
+                                                                                    <Calendar size={12}/> Son Teslim: <span className={theme.main.split(' ')[1]}>{formatDate(topic.date)}</span>
+                                                                                </div> 
+                                                                            )}
+                                                                            <div className={`flex items-center gap-2 text-sm font-black uppercase tracking-wider mt-1`}>
+                                                                                {topic.title}
+                                                                                <button onClick={(e) => { e.stopPropagation(); setActiveTopicMenu({ classId: cls.id, topicId: topic.id, anchorEl: e.currentTarget }); }} className="p-1 rounded-md hover:bg-black/5 transition-colors"><MoreVertical size={16}/></button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </th> 
+                                                                );
+                                                            })}
+                                                        </tr>
+                                                        <tr>
+                                                            {cls.topics?.map((topic, i) => {
+                                                                const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
+                                                                return ( 
+                                                                    <React.Fragment key={topic.id}>
+                                                                        <th className={`p-0 border-b border-r border-slate-200 w-16 text-center sticky-header-sub ${theme.sub}`}>
+                                                                            <button onClick={() => { setModalData({ classId: cls.id, topicId: topic.id }); setModalType('source'); }} className={`w-full h-full flex items-center justify-center transition-colors ${theme.btn} bg-white/30 hover:bg-white`} title="Kaynak Ekle"><Plus size={20}/></button>
+                                                                        </th>
+                                                                        {topic.subColumns?.map(col => ( 
+                                                                            <th key={col.id} className={`p-3 border-b border-r border-slate-200 sticky-header-sub ${theme.sub} min-w-[150px] align-top`}>
+                                                                                <div className="flex flex-col items-center justify-between h-full min-h-[50px]">
+                                                                                    <span className="font-bold text-xs text-slate-700 whitespace-normal text-center leading-tight mb-2 break-words max-w-[140px]">{col.title}</span>
+                                                                                    <div className="flex items-center gap-2 shrink-0">
+                                                                                        {col.pdfLink && (
+                                                                                            <a href={formatDriveLink(col.pdfLink)} target="_blank" rel="noopener noreferrer" className="text-rose-500 hover:text-rose-700 bg-white/50 p-1 rounded-full shadow-sm transition-colors" title="PDF İndir">
+                                                                                                <FileDown size={14}/>
+                                                                                            </a>
+                                                                                        )}
+                                                                                        <button onClick={(e) => { e.stopPropagation(); setActiveColMenu({ classId: cls.id, topicId: topic.id, colId: col.id, anchorEl: e.currentTarget }); }} className="text-slate-400 hover:text-indigo-600 bg-white/50 hover:bg-white p-1 rounded-full transition-colors"><MoreVertical size={14}/></button>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </th> 
+                                                                        ))} 
+                                                                    </React.Fragment> 
+                                                                );
+                                                            })}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {cls.students?.map((std) => (
+                                                            <tr key={std.id} className="border-b border-slate-100 bg-white">
+                                                                <td className="sticky-col-left p-4 border-r border-slate-200">
+                                                                    <div className="flex justify-between items-center group">
+                                                                        <div className="flex flex-col gap-1 cursor-pointer" onClick={() => openStudent(std)}>
+                                                                            <div className="flex items-center gap-3">
+                                                                                <div className={`w-8 h-8 rounded-full ${isVip ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'} flex items-center justify-center font-black text-xs`}>{std.name.charAt(0)}</div>
+                                                                                <span className={`text-sm font-bold text-slate-700 group-hover:${isVip ? 'text-amber-600' : 'text-indigo-600'} transition-colors`}>{std.name}</span>
+                                                                                <button onClick={(e) => { e.stopPropagation(); setModalData({ classId: cls.id, studentId: std.id, currentName: std.name }); setModalInputVal(std.name); setModalType('edit-student'); }} className="text-slate-300 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size={14}/></button>
+                                                                            </div>
+                                                                            {std.username && ( 
+                                                                                <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 mt-1 ml-11" onClick={e=>e.stopPropagation()}>
+                                                                                    <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{std.username}</span>
+                                                                                    <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-1"><KeyRound size={10}/> {std.password}</span>
+                                                                                </div> 
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                            <button onClick={(e) => { e.stopPropagation(); handlePrintStudentReport(cls, std); }} className={`p-2 rounded-lg transition-colors ${isVip ? 'bg-amber-50 text-amber-500 hover:text-amber-700 hover:bg-amber-100' : 'bg-indigo-50 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-100'}`} title="Rapor Yazdır"><Printer size={16}/></button>
+                                                                            <button onClick={(e) => deleteStudent(e, cls.id, std.id)} className="bg-rose-50 text-rose-400 hover:text-rose-600 hover:bg-rose-100 p-2 rounded-lg transition-colors"><Trash2 size={16}/></button>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                {cls.topics?.map((topic, i) => {
+                                                                    const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
+                                                                    return ( 
+                                                                        <React.Fragment key={topic.id}>
+                                                                            <td className={`border-r border-slate-100 ${theme.cell}`}></td>
+                                                                            {topic.subColumns?.map(col => ( 
+                                                                                <td key={col.id} className={`p-2 border-r border-slate-100 text-center ${theme.cell}`} onContextMenu={(e) => { e.preventDefault(); openCellNoteModal(cls.id, std.id, col.id, std.assignmentNotes?.[col.id]); }}>
+                                                                                    <div onClick={(e) => { e.stopPropagation(); setActiveCell({ classId: cls.id, studentId: std.id, colId: col.id, anchorEl: e.currentTarget }); }} className="cursor-pointer transition-transform hover:scale-105">
+                                                                                        <StatusBadge status={std.grades?.[col.id] || 'exempt'} hasNote={!!std.assignmentNotes?.[col.id]} />
+                                                                                    </div>
+                                                                                </td> 
+                                                                            ))}
+                                                                        </React.Fragment> 
+                                                                    );
+                                                                })}
+                                                            </tr>
+                                                        ))}
+                                                        <tr>
+                                                            <td className="sticky-col-left p-4 border-r border-slate-200 border-t border-slate-200 bg-slate-50">
+                                                                <div className="flex gap-2">
+                                                                    <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 shrink-0"><UserPlus size={16}/></div>
+                                                                    <input type="text" placeholder="Yeni Öğrenci Ekle..." className="bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-sm text-slate-700 w-full focus:border-indigo-500 outline-none font-medium shadow-sm" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(cls.id); }} />
+                                                                    <button onClick={() => addStudent(cls.id)} className={`text-white px-3 rounded-xl text-xs font-bold shadow-md transition-colors ${isVip ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}>EKLE</button>
+                                                                </div>
+                                                            </td>
+                                                            {cls.topics?.map((t, i) => <td key={i} colSpan={Math.max(1, t.subColumns.length + 1)} className="border-t border-slate-200 bg-slate-50/50"></td>)}
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    );
+                });
+            };
+
+            // ======================= BÖLÜM 6 SONU ==================================
 // =======================================================================
             // === 7. RENDER (GÖRÜNÜM) EKRANLARI VE MODALLAR =========================
             // =======================================================================
