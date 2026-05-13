@@ -991,7 +991,7 @@
                             </div>
                         )}
 
-                        {/* --- ÖĞRENCİ KART (DETAY) GÖRÜNÜMÜ --- */}
+                        {/* --- ÖĞRENCİ DETAY GÖRÜNÜMÜ --- */}
                         {view === 'student-detail' && selectedClass && selectedStudentForView && (
                             <div className={`${currentUserRole === 'vip-student' ? 'bg-slate-800/80 backdrop-blur-xl border-slate-700 vip-card-glow' : 'bg-white border-slate-100 shadow-2xl'} rounded-[2.5rem] p-4 md:p-10 border animate-scale-in`}>
                                 <div className={`flex flex-col md:flex-row items-center md:items-start gap-6 mb-10 pb-8 border-b ${currentUserRole === 'vip-student' ? 'border-slate-700' : 'border-slate-100'} text-center md:text-left`}>
@@ -1057,18 +1057,35 @@
 
                                                         return (
                                                             <div key={col.id} className={`border-2 rounded-2xl p-5 flex flex-col justify-between gap-4 hover:shadow-lg transition-all duration-300 group ${cardStyle}`}>
-                                                                <div>
-                                                                    <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 mb-2 ${currentUserRole === 'vip-student' ? 'text-slate-400' : 'text-slate-400'}`}>
-                                                                        <div className={`w-2 h-2 rounded-full ${theme.tag}`}></div> KAYNAK
-                                                                    </span>
-                                                                    <span className={`text-lg font-bold leading-tight ${titleStyle}`}>{col.title}</span>
+                                                                <div className="flex justify-between items-start">
+                                                                    <div>
+                                                                        <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 mb-2 ${currentUserRole === 'vip-student' ? 'text-slate-400' : 'text-slate-400'}`}>
+                                                                            <div className={`w-2 h-2 rounded-full ${theme.tag}`}></div> KAYNAK
+                                                                        </span>
+                                                                        <span className={`text-lg font-bold leading-tight ${titleStyle}`}>{col.title}</span>
+                                                                    </div>
+                                                                    {isTeacherMode && (
+                                                                        <button onClick={() => openCellNoteModal(selectedClass.id, selectedStudentForView.id, col.id, selectedStudentForView.assignmentNotes?.[col.id] || "")} className={`p-1.5 rounded-md transition-colors ${note ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400 hover:text-amber-500'}`} title="Öğretmen Notu"><StickyNote size={14} /></button>
+                                                                    )}
                                                                 </div>
                                                                 
                                                                 <div className="flex flex-col gap-3">
-                                                                    <div className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border ${statusData.bg} ${statusData.border} ${statusData.color}`}>
-                                                                        <StatusIcon size={20} strokeWidth={2.5} />
-                                                                        <span className="text-sm font-black uppercase tracking-widest">{statusData.label}</span>
-                                                                    </div>
+                                                                    {/* DÜZELTME BURADA: Öğretmense butonlar çıkar, Öğrenciyse sadece rozet çıkar */}
+                                                                    {isTeacherMode ? (
+                                                                        <div className="grid grid-cols-4 gap-1 bg-slate-100 p-1.5 rounded-xl">
+                                                                            {STATUS_OPTIONS.map(opt => (
+                                                                                <button key={opt.id} onClick={() => updateGrade(selectedClass.id, selectedStudentForView.id, col.id, opt.id)} className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all ${status === opt.id ? `${opt.bg} ${opt.color} shadow-sm border ${opt.border} scale-105` : 'text-slate-400 hover:bg-white'}`}>
+                                                                                    <opt.icon size={16} className="mb-1" strokeWidth={2.5}/>
+                                                                                    <span className="text-[9px] font-bold">{opt.label}</span>
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border ${statusData.bg} ${statusData.border} ${statusData.color}`}>
+                                                                            <StatusIcon size={20} strokeWidth={2.5} />
+                                                                            <span className="text-sm font-black uppercase tracking-widest">{statusData.label}</span>
+                                                                        </div>
+                                                                    )}
                                                                     
                                                                     {note && ( 
                                                                         <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 flex gap-2 items-start text-xs text-amber-900 shadow-inner">
