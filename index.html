@@ -365,7 +365,7 @@
             );
         };
 
-        // =======================================================================
+// =======================================================================
         // === BÖLÜM 6: ANA UYGULAMA MANTIĞI VE STATE YÖNETİMİ ===
         // =======================================================================
         const App = () => {
@@ -404,6 +404,7 @@
             const [modalPdfVal, setModalPdfVal] = useState(""); 
             
             const [printData, setPrintData] = useState(null);
+
             const [showChangePinModal, setShowChangePinModal] = useState(false);
             const [showLibraryManager, setShowLibraryManager] = useState(false); 
             const [showRiskModal, setShowRiskModal] = useState(false); 
@@ -475,7 +476,7 @@
                 recognition.lang = 'tr-TR'; recognition.interimResults = false; recognition.maxAlternatives = 1; recognitionRef.current = recognition;
 
                 recognition.onstart = () => { 
-                    setIsListening(true); setSpeechTranscript("Sizi dinliyorum... (Örn: 'Emre logaritma')"); setShowAssistantModal(true); 
+                    setIsListening(true); setSpeechTranscript("Sizi dinliyorum... (Örn: 'Ahmet Logaritma Acil VDD yapıldı')"); setShowAssistantModal(true); 
                     let allStudents = []; let allTopicsMap = new Map(); 
                     classes.forEach(cls => {
                         const isVip = cls.type === 'vip'; 
@@ -492,12 +493,32 @@
                 recognition.start();
             };
 
+            // YENİ: ZEKİ KOMUT ALGISI (AUTO-GRADING NLP)
             const processGlobalSearchCommand = (text) => {
-                const lowerText = text.toLowerCase();
-                let foundStudents = []; let allTopicsMap = new Map();
+                const lowerText = text.toLowerCase().trim();
+                let foundStudents = []; 
+                let allTopicsMap = new Map();
+
+                // 1. Emir (Durum) Kelimelerini Tanıma Sözlüğü
+                const statusKeywords = {
+                    'done': ['yapıldı', 'yaptı', 'tamamlandı', 'tamam', 'bitti', 'çözdü', 'çözülmüş', 'full'],
+                    'missing': ['eksik', 'yapmadı', 'yapılmadı', 'yarım', 'boş'],
+                    'exempt': ['muaf', 'gerek yok', 'yapmayacak', 'atlanacak'],
+                    'assigned': ['verildi', 'ödev verildi', 'çözecek']
+                };
+
+                // Konuşmada emir kelimesi var mı bul
+                let detectedStatus = null;
+                for (const [status, keywords] of Object.entries(statusKeywords)) {
+                    if (keywords.some(kw => lowerText.includes(kw))) {
+                        detectedStatus = status;
+                        break;
+                    }
+                }
 
                 classes.forEach(cls => {
                     const isVip = cls.type === 'vip'; 
+                    // Öğrenci Bulma Skoru
                     cls.students.forEach(student => {
                         const studentNames = student.name.toLowerCase().split(' ').filter(n => n.trim().length > 0);
                         let matchScore = 0;
@@ -505,18 +526,72 @@
                         if (lowerText.includes("herkes") || lowerText.includes("tüm öğrenciler")) matchScore = 1;
                         if (matchScore > 0) foundStudents.push({ ...student, classId: cls.id, className: cls.className, isVip, matchScore });
                     });
+                    
+                    // Konu ve Kaynak Bulma Skoru
                     cls.topics.forEach(topic => {
                         const topicWords = topic.title.toLowerCase().split(' ').filter(n => n.length > 2);
-                        if (topicWords.some(word => lowerText.includes(word)) || lowerText.includes("hepsi") || lowerText.includes("ödev")) { if (!allTopicsMap.has(topic.title)) allTopicsMap.set(topic.title, { ...topic, classId: cls.id }); }
+                        let topicMatch = topicWords.some(word => lowerText.includes(word)) || lowerText.includes("hepsi") || lowerText.includes("ödev");
+                        
+                        let matchedColIds = [];
+                        topic.subColumns.forEach(col => {
+                            const colWords = col.title.toLowerCase().split(' ').filter(n => n.length > 2);
+                            if (colWords.some(word => lowerText.includes(word))) {
+                                matchedColIds.push(col.id);
+                            }
+                        });
+
+                        if (topicMatch || matchedColIds.length > 0) {
+                             if (!allTopicsMap.has(topic.title)) {
+                                 allTopicsMap.set(topic.title, { ...topic, classId: cls.id, matchedColIds });
+                             } else {
+                                 // Mevcut eşleşmeye yeni kolonları da ekle
+                                 const existing = allTopicsMap.get(topic.title);
+                                 existing.matchedColIds = [...new Set([...existing.matchedColIds, ...matchedColIds])];
+                             }
+                        }
                     });
                 });
+
                 foundStudents.sort((a, b) => b.matchScore - a.matchScore);
+                const bestStudentMatch = foundStudents.length > 0 ? foundStudents[0] : null;
 
-                if (foundStudents.length > 0) { setAssistantFoundStudents(foundStudents); setAssistantSelectedStudent(foundStudents[0]); 
-                } else { let allStudents = []; classes.forEach(cls => cls.students.forEach(std => allStudents.push({ ...std, classId: cls.id, className: cls.className, isVip: cls.type === 'vip' }))); setAssistantFoundStudents(allStudents); }
+                // EMİR İŞLEME (AUTO-GRADING)
+                if (bestStudentMatch && detectedStatus) {
+                    let draftsToApply = { ...assistantDraftGrades }; 
+                    if (!draftsToApply[bestStudentMatch.id]) draftsToApply[bestStudentMatch.id] = {};
 
-                if (allTopicsMap.size > 0) { let topicsArray = Array.from(allTopicsMap.values()); topicsArray.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)); setAssistantFoundTopics(topicsArray); 
-                } else { let allT = []; classes.forEach(cls => cls.topics.forEach(t => { if(!allT.some(xt => xt.title === t.title)) allT.push({...t, classId: cls.id}) })); allT.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)); setAssistantFoundTopics(allT); }
+                    const targetClassTopics = Array.from(allTopicsMap.values()).filter(t => t.classId === bestStudentMatch.classId);
+                    
+                    targetClassTopics.forEach(t => {
+                        if (t.matchedColIds && t.matchedColIds.length > 0) {
+                            // Sadece adı söylenen kaynağı (Örn: Acil VDD) işaretle
+                            t.matchedColIds.forEach(colId => {
+                                draftsToApply[bestStudentMatch.id][colId] = detectedStatus;
+                            });
+                        } else {
+                            // Kaynak belirtilmemişse, bulunan konunun tüm kaynaklarını işaretle
+                            t.subColumns.forEach(col => {
+                                draftsToApply[bestStudentMatch.id][col.id] = detectedStatus;
+                            });
+                        }
+                    });
+
+                    // React State'ini güncelle
+                    setAssistantDraftGrades(draftsToApply);
+                }
+
+                // Arayüzü Güncelleme (UI)
+                if (foundStudents.length > 0) { 
+                    setAssistantFoundStudents(foundStudents); setAssistantSelectedStudent(bestStudentMatch); 
+                } else { 
+                    let allStudents = []; classes.forEach(cls => cls.students.forEach(std => allStudents.push({ ...std, classId: cls.id, className: cls.className, isVip: cls.type === 'vip' }))); setAssistantFoundStudents(allStudents); 
+                }
+
+                if (allTopicsMap.size > 0) { 
+                    let topicsArray = Array.from(allTopicsMap.values()); topicsArray.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)); setAssistantFoundTopics(topicsArray); 
+                } else { 
+                    let allT = []; classes.forEach(cls => cls.topics.forEach(t => { if(!allT.some(xt => xt.title === t.title)) allT.push({...t, classId: cls.id}) })); allT.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)); setAssistantFoundTopics(allT); 
+                }
             };
 
             const handleDraftGradeChange = (studentId, colId, status) => { setAssistantDraftGrades(prev => ({ ...prev, [studentId]: { ...(prev[studentId] || {}), [colId]: status } })); };
@@ -616,6 +691,7 @@
             const handlePrintPasswords = (cls) => { setPrintData({ type: 'passwords', classData: cls }); setTimeout(() => window.print(), 300); };
             const handlePrintStudentReport = (cls, student) => { setPrintData({ type: 'report', classData: cls, studentData: student }); setTimeout(() => window.print(), 300); };
 
+        // ======================= BÖLÜM 6 SONU ==================================
             // =======================================================================
             // === BÖLÜM 7: GİRİŞ EKRANI RENDER ======================================
             // =======================================================================
