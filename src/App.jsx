@@ -349,48 +349,50 @@ const App = () => {
 
 if (!currentUserRole) {
         return (
-            <div className={`min-h-screen transition-colors duration-700 flex items-center justify-center p-4 relative overflow-hidden font-sans ${authView === 'vip-login' ? 'bg-vipBg' : 'bg-slate-900'}`}>
+            <div className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-sans transition-colors duration-1000 ${authView === 'vip-login' ? 'bg-[#05040a]' : 'bg-vipBg'}`}>
                 
-                {/* Dinamik Arka Plan Efektleri */}
-                {authView === 'vip-login' ? (
-                    <div className="absolute inset-0 vip-stardust-bg opacity-100 transition-opacity duration-1000"></div>
-                ) : (
-                    <>
-                        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-brandPurple rounded-full mix-blend-screen filter blur-[120px] opacity-20 animate-blob"></div>
-                        <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-blue-600 rounded-full mix-blend-screen filter blur-[120px] opacity-10 animate-blob animation-delay-4000"></div>
-                    </>
-                )}
+                {/* 🌌 V3 Ambient Orbs (Ortam Işıkları) */}
+                <div className="absolute top-[-10%] left-[-10%] w-[380px] h-[380px] rounded-full mix-blend-screen filter blur-[100px] opacity-30 animate-orb-float" style={{background: 'radial-gradient(circle, rgba(109,40,217,0.8) 0%, transparent 70%)'}}></div>
+                <div className="absolute bottom-[-5%] right-[-5%] w-[300px] h-[300px] rounded-full mix-blend-screen filter blur-[100px] opacity-20 animate-orb-float" style={{background: 'radial-gradient(circle, rgba(180,130,0,0.8) 0%, transparent 70%)', animationDelay: '2s'}}></div>
+                <div className="absolute bottom-[10%] left-[5%] w-[220px] h-[220px] rounded-full mix-blend-screen filter blur-[90px] opacity-20 animate-orb-float" style={{background: 'radial-gradient(circle, rgba(79,70,229,0.8) 0%, transparent 70%)', animationDelay: '4s'}}></div>
 
-                {/* Ana Kart (Glassmorphism veya düz koyu kart) */}
-                <div className={`p-8 md:p-10 rounded-[2.5rem] w-full max-w-md relative z-10 animate-card-enter border transition-all duration-500 ${authView === 'vip-login' ? 'glass-panel shadow-vip-card border-vipGold/20' : 'bg-slate-800/80 backdrop-blur-xl shadow-2xl border-slate-700/50'}`}>
+                {/* 🌌 V3 3-Katmanlı Parallaks Yıldızlar (Sadece VIP Seçilince Aktif) */}
+                <div className={`parallax-container transition-opacity duration-1000 ${authView === 'vip-login' ? 'opacity-100' : 'opacity-0'}`}>
+                    <div className="stars-layer-1"></div>
+                    <div className="stars-layer-2"></div>
+                    <div className="stars-layer-3"></div>
+                </div>
+
+                {/* 💎 V3 Glassmorphism Ana Kart */}
+                <div className="glass-panel p-8 md:p-10 rounded-[2.5rem] w-full max-w-md relative z-10 animate-card-enter shadow-vip-card">
                     
-                    {/* Logo Alanı */}
+                    {/* Logo */}
                     <div className="text-center mb-10">
-                        <div className={`w-20 h-20 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6 transition-all duration-700 ${authView === 'vip-login' ? 'bg-gradient-to-tr from-vipGoldAccent to-vipGold shadow-vip-glow rotate-0 scale-105' : 'bg-gradient-to-tr from-brandPurple to-blue-500 shadow-glow rotate-3 hover:rotate-0'}`}>
-                            {authView === 'vip-login' ? <Crown size={40} className="text-vipBg animate-pulse"/> : <GraduationCap size={40} className="text-white" />}
+                        <div className={`w-20 h-20 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6 transition-all duration-700 hover-lift ${authView === 'vip-login' ? 'bg-gradient-to-tr from-vipGoldAccent to-vipGold shadow-vip-glow' : 'bg-gradient-to-tr from-brandPurple to-blue-600 shadow-glow'}`}>
+                            {authView === 'vip-login' ? <Crown size={40} className="text-vipBg animate-pulse" strokeWidth={2.5}/> : <GraduationCap size={40} className="text-white" strokeWidth={2.5}/>}
                         </div>
                         <h1 className={`text-3xl md:text-4xl font-black tracking-tight mb-2 transition-colors duration-500 ${authView === 'vip-login' ? 'vip-text-gradient' : 'text-white'}`}>BERKANT HOCA</h1>
-                        <p className={`text-xs font-bold tracking-[0.4em] uppercase transition-colors duration-500 ${authView === 'vip-login' ? 'text-vipGold/70' : 'text-slate-400'}`}>Eğitim Platformu</p>
+                        <p className={`text-xs font-bold tracking-[0.4em] uppercase transition-colors duration-500 ${authView === 'vip-login' ? 'text-vipGold/60' : 'text-slate-400'}`}>Eğitim Platformu</p>
                     </div>
                     
                     {/* SEÇİM EKRANI */}
                     {authView === 'selection' && (
                         <div className="space-y-4">
-                            <button onClick={() => setAuthView('student-login')} className="w-full hover-lift group relative overflow-hidden rounded-2xl p-5 bg-slate-800 border border-slate-700 hover:border-brandPurple/50 transition-all flex items-center gap-5">
-                                <div className="bg-brandPurple/20 p-3 rounded-xl text-brandPurple group-hover:bg-brandPurple/30 transition-colors"><User size={24}/></div>
+                            <button onClick={() => setAuthView('student-login')} className="w-full hover-lift group relative overflow-hidden rounded-2xl p-5 bg-[#1a152e] border border-[#3b2b73] hover:border-brandPurple transition-all flex items-center gap-5">
+                                <div className="bg-brandPurple/20 p-3 rounded-xl text-brandPurple group-hover:bg-brandPurple group-hover:text-white transition-colors"><User size={24}/></div>
                                 <div className="text-left"><h3 className="text-white font-bold text-lg tracking-wide">Öğrenci Girişi</h3><p className="text-slate-400 text-xs mt-0.5">Sınıf öğrencileri için</p></div>
                                 <ChevronRight className="ml-auto text-slate-500 group-hover:text-white transition-colors" size={20}/>
                             </button>
                             
-                            <button onClick={() => setAuthView('vip-login')} className="w-full hover-lift group relative overflow-hidden rounded-2xl p-5 bg-gradient-to-r from-vipGold/5 to-vipGoldAccent/5 border border-vipGold/30 hover:border-vipGold/60 transition-all flex items-center gap-5">
-                                <div className="bg-vipGold/20 p-3 rounded-xl text-vipGold group-hover:bg-vipGold/30 transition-colors relative z-10"><Crown size={24}/></div>
-                                <div className="text-left relative z-10"><h3 className="text-vipGold font-bold text-lg tracking-wide flex items-center gap-2">Özel Ders <Sparkles size={14} className="text-vipGold animate-pulse"/></h3><p className="text-vipGold/50 text-xs mt-0.5">Özel ders öğrenci girişi</p></div>
+                            <button onClick={() => setAuthView('vip-login')} className="w-full hover-lift group relative overflow-hidden rounded-2xl p-5 bg-gradient-to-r from-vipGold/5 to-vipGoldAccent/10 border border-vipGoldAccent/50 hover:border-vipGold transition-all flex items-center gap-5 animate-glimmer">
+                                <div className="bg-vipGold/20 p-3 rounded-xl text-vipGold group-hover:bg-vipGold group-hover:text-vipBg transition-colors relative z-10"><Crown size={24}/></div>
+                                <div className="text-left relative z-10"><h3 className="text-vipGold font-bold text-lg tracking-wide flex items-center gap-2">Özel Ders <Sparkles size={14} className="text-vipGold animate-pulse"/></h3><p className="text-vipGold/50 text-xs mt-0.5">VIP Öğrenci Girişi</p></div>
                                 <ChevronRight className="ml-auto text-vipGold/50 group-hover:text-vipGold transition-colors relative z-10" size={20}/>
                             </button>
                             
-                            <button onClick={() => setAuthView('teacher-login')} className="w-full hover-lift group relative overflow-hidden rounded-2xl p-5 bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700 transition-all flex items-center gap-5 mt-8">
-                                <div className="bg-slate-900 p-3 rounded-xl text-slate-400 group-hover:text-white transition-colors"><Briefcase size={24}/></div>
-                                <div className="text-left"><h3 className="text-slate-300 font-bold text-lg tracking-wide">Yönetici Girişi 👔</h3></div>
+                            <button onClick={() => setAuthView('teacher-login')} className="w-full hover-lift group relative overflow-hidden rounded-2xl p-4 bg-transparent border border-white/10 hover:bg-white/5 transition-all flex items-center gap-4 mt-6">
+                                <div className="bg-white/10 p-2.5 rounded-xl text-slate-300 group-hover:text-white transition-colors"><Briefcase size={20}/></div>
+                                <div className="text-left"><h3 className="text-slate-300 font-bold text-base tracking-wide">Yönetici Girişi</h3></div>
                                 <ChevronRight className="ml-auto text-slate-500 group-hover:text-white transition-colors" size={20}/>
                             </button>
                         </div>
@@ -406,15 +408,15 @@ if (!currentUserRole) {
                             
                             <div>
                                 <label className={`text-[10px] font-black uppercase tracking-widest mb-1.5 block ml-1 ${authView === 'vip-login' ? 'text-vipGold/70' : 'text-slate-400'}`}>Kullanıcı Adı</label>
-                                <input type="text" className={`w-full bg-slate-900/60 border rounded-2xl p-4 text-white outline-none transition-all font-medium hover-lift ${authView === 'vip-login' ? 'border-vipGold/30 focus:border-vipGold placeholder:text-vipGold/30' : 'border-slate-700 focus:border-brandPurple placeholder:text-slate-600'}`} placeholder="örn: ahmet.yilmaz.123" value={studentUsernameInput} onChange={e => setStudentUsernameInput(e.target.value)} />
+                                <input type="text" className={`w-full bg-[#130f25] border rounded-2xl p-4 text-white outline-none transition-all font-medium hover-lift focus:ring-2 ${authView === 'vip-login' ? 'border-vipGoldAccent/40 focus:border-vipGold focus:ring-vipGold/20 placeholder:text-vipGold/30' : 'border-[#3b2b73] focus:border-brandPurple focus:ring-brandPurple/20 placeholder:text-slate-600'}`} placeholder="örn: ahmet.yilmaz.123" value={studentUsernameInput} onChange={e => setStudentUsernameInput(e.target.value)} />
                             </div>
                             
                             <div>
                                 <label className={`text-[10px] font-black uppercase tracking-widest mb-1.5 block ml-1 ${authView === 'vip-login' ? 'text-vipGold/70' : 'text-slate-400'}`}>Şifre</label>
-                                <input type="password" className={`w-full bg-slate-900/60 border rounded-2xl p-4 text-white outline-none transition-all font-medium tracking-widest hover-lift ${authView === 'vip-login' ? 'border-vipGold/30 focus:border-vipGold placeholder:text-vipGold/30' : 'border-slate-700 focus:border-brandPurple placeholder:text-slate-600'}`} placeholder="••••••" value={studentPasswordInput} onChange={e => setStudentPasswordInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleStudentLogin(authView === 'vip-login')} />
+                                <input type="password" className={`w-full bg-[#130f25] border rounded-2xl p-4 text-white outline-none transition-all font-medium tracking-widest hover-lift focus:ring-2 ${authView === 'vip-login' ? 'border-vipGoldAccent/40 focus:border-vipGold focus:ring-vipGold/20 placeholder:text-vipGold/30' : 'border-[#3b2b73] focus:border-brandPurple focus:ring-brandPurple/20 placeholder:text-slate-600'}`} placeholder="••••••" value={studentPasswordInput} onChange={e => setStudentPasswordInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleStudentLogin(authView === 'vip-login')} />
                             </div>
                             
-                            <button onClick={() => handleStudentLogin(authView === 'vip-login')} className={`w-full py-4 rounded-2xl font-black mt-6 shadow-xl transition-all text-lg tracking-wide hover-lift ${authView === 'vip-login' ? 'bg-gradient-to-r from-vipGold to-vipGoldAccent text-vipBg shadow-vip-glow hover:shadow-[0_0_30px_rgba(255,215,0,0.4)]' : 'bg-brandPurple hover:bg-purple-500 text-white shadow-glow'}`}>
+                            <button onClick={() => handleStudentLogin(authView === 'vip-login')} className={`w-full py-4 rounded-2xl font-black mt-6 shadow-xl transition-all text-lg tracking-wide hover-lift ${authView === 'vip-login' ? 'bg-gradient-to-r from-vipGold to-vipGoldAccent text-vipBg shadow-vip-glow hover:brightness-110' : 'bg-brandPurple hover:bg-purple-600 text-white shadow-glow'}`}>
                                 GİRİŞ YAP
                             </button>
                         </div>
@@ -426,7 +428,7 @@ if (!currentUserRole) {
                             <button onClick={() => setAuthView('selection')} className="text-slate-400 hover:text-white hover-lift text-sm font-bold flex items-center gap-1 mb-6 transition-colors"><ChevronLeft size={18}/> Geri Dön</button>
                             <div>
                                 <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2 block text-center">Yönetici PIN Kodu 🔐</label>
-                                <input type="password" autoFocus className="w-full bg-slate-900/60 border border-slate-700 focus:border-slate-400 rounded-2xl p-4 text-white placeholder:text-slate-600 outline-none transition-all text-center text-4xl tracking-[0.5em] font-black hover-lift" placeholder="••••" value={pinInput} onChange={e => setPinInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && verifyPin()} />
+                                <input type="password" autoFocus className="w-full bg-[#130f25] border border-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-400/20 rounded-2xl p-4 text-white placeholder:text-slate-600 outline-none transition-all text-center text-4xl tracking-[0.5em] font-black hover-lift" placeholder="••••" value={pinInput} onChange={e => setPinInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && verifyPin()} />
                             </div>
                             <button onClick={verifyPin} className="w-full py-4 bg-white hover:bg-slate-200 text-slate-900 rounded-2xl font-black mt-6 shadow-xl transition-all text-lg tracking-wide hover-lift">
                                 SİSTEME GİR
@@ -437,7 +439,6 @@ if (!currentUserRole) {
             </div>
         );
     }
-
     return (
         <div className={`min-h-screen pb-32 relative transition-colors duration-700 ${currentUserRole === 'vip-student' ? 'bg-vipBg' : 'bg-lightBg'}`}>
             {currentUserRole === 'vip-student' && <div className="fixed inset-0 vip-stardust-bg pointer-events-none"></div>}
