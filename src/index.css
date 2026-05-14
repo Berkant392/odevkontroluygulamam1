@@ -118,7 +118,12 @@
 }
 .vip-input {
     color: #ffffff !important; 
-    background-color: rgba(30, 41, 59, 0.8) !important; 
+    background-color: #334155 !important; /* Asil Gri (Slate 700) */
+    border-color: #475569 !important; /* Asil Gri Sınır (Slate 600) */
+}
+.vip-input:focus {
+    border-color: #d4af37 !important;
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2) !important;
 }
 
 /* =========================================================
