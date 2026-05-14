@@ -7,64 +7,69 @@ export default {
   theme: {
     extend: {
       colors: { 
-          // Eski Renkler (Bozulma olmaması için)
-          primary: '#4f46e5', 
-          secondary: '#8b5cf6', 
-          accent: '#ec4899',
-          surface: '#f8fafc',
-          surfaceDark: '#f1f5f9',
+          // Eski Renkler (Geriye dönük uyumluluk)
+          primary: '#4f46e5', secondary: '#8b5cf6', accent: '#ec4899', surface: '#f8fafc', surfaceDark: '#f1f5f9',
           
-          // YENİ V2 TASARIM SİSTEMİ RENKLERİ
-          vipBg: '#0a0a1f',         // Öğrenci modu derin lacivert
-          vipCard: '#12123a',       // VIP Kart yüzeyi
-          vipGold: '#ffd700',       // VIP Altın
-          vipGoldAccent: '#c99600', // Altın vurgu (koyu)
-          brandPurple: '#7c3aed',   // Yeni Mor Birincil
-          lightBg: '#f8f7ff',       // Yeni Yönetici Paneli (Ferah arka plan)
-          successGreen: '#22c55e',  // Başarı
-          errorRed: '#ef4444'       // Eksik/Hata
+          // 💎 V3 ULTRA-PREMIUM TASARIM SİSTEMİ
+          vipBg: '#0a0812',         // Derin lüks uzay siyahı (Yüklediğin tasarımdan)
+          vipCard: '#130f25',       // Cam kartların arka plan tonu
+          vipGold: '#ffd700',       // Saf Altın
+          vipGoldAccent: '#b48200', // Koyu/Mat Altın (Derinlik için)
+          brandPurple: '#6d28d9',   // V3 Mor Birincil (Daha asil ve tok)
+          lightBg: '#f8f9fa',       // Yönetici Paneli için ultra ferah arka plan
+          successGreen: '#10b981',
+          errorRed: '#ef4444'
       },
       transitionTimingFunction: {
-          'overshoot': 'cubic-bezier(0.16, 1, 0.3, 1)',   // Giriş (Apple tarzı)
-          'exit': 'cubic-bezier(0.5, 0, 0.75, 0)',        // Çıkış
-          'spring': 'cubic-bezier(0.34, 1.56, 0.64, 1)',  // Zıplama
+          'apple-ease': 'cubic-bezier(0.16, 1, 0.3, 1)', // Apple tarzı kusursuz akış
       },
       boxShadow: {
-          'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
-          'glow': '0 0 20px rgba(124, 58, 237, 0.3)',
-          'float': '0 10px 30px -5px rgba(0, 0, 0, 0.15)',
-          'vip-glow': '0 0 25px rgba(255, 215, 0, 0.15)',
-          'vip-card': '0 10px 40px -10px rgba(0, 0, 0, 0.5)'
+          'float': '0 20px 40px -10px rgba(0,0,0,0.08)',
+          'glow': '0 0 30px rgba(109, 40, 217, 0.3)',
+          'vip-glow': '0 0 40px rgba(255, 215, 0, 0.15)',
+          'vip-card': '0 30px 60px -10px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.12)' // Üstten ışık vuran cam efekti
       },
       animation: { 
-          // Eski animasyonlar
-          'spin-slow': 'spin 4s linear infinite', 
-          'pulse-red': 'pulseRed 2s cubic-bezier(0.4, 0, 0.6, 1) infinite', 
-          'blob': 'blob 7s infinite',
-          'sound-wave': 'soundWave 1s ease-in-out infinite alternate',
-          'bounce-slight': 'bounceSlight 2s infinite',
+          // V3 YENİ NESİL ANİMASYONLAR
+          'card-enter': 'cardEnter 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          'glimmer': 'glimmer 4s ease-in-out infinite alternate',
+          'orb-float': 'orbFloat 10s ease-in-out infinite alternate',
+          'parallax-slow': 'parallax 60s linear infinite',
+          'parallax-med': 'parallax 40s linear infinite',
+          'parallax-fast': 'parallax 20s linear infinite',
           
-          // YENİ V2 ANİMASYONLARI
-          'card-enter': 'cardEnter 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          // Eski animasyonlar
           'fade-in-up': 'fadeInUp 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
           'scale-in': 'scaleIn 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
-          'shimmer': 'shimmer 3s ease-in-out infinite alternate',
-          'twinkle': 'twinkle 3s ease-in-out infinite'
+          'bounce-slight': 'bounceSlight 2s infinite',
+          'spin-slow': 'spin 4s linear infinite', 
       },
       keyframes: {
-          pulseRed: { '0%, 100%': { backgroundColor: 'rgba(254, 226, 226, 0.5)', borderColor: 'rgba(239, 68, 68, 0.5)' }, '50%': { backgroundColor: 'rgba(254, 202, 202, 0.8)', borderColor: 'rgba(239, 68, 68, 1)' } },
-          blob: { '0%': { transform: 'translate(0px, 0px) scale(1)' }, '33%': { transform: 'translate(30px, -50px) scale(1.1)' }, '66%': { transform: 'translate(-20px, 20px) scale(0.9)' }, '100%': { transform: 'translate(0px, 0px) scale(1)' } },
-          soundWave: { '0%': { transform: 'scaleY(0.5)', opacity: '0.5' }, '100%': { transform: 'scaleY(1.5)', opacity: '1' } },
-          bounceSlight: { '0%, 100%': { transform: 'translateY(-5%)' }, '50%': { transform: 'translateY(0)' } },
+          // Kartın aşağıdan, yavaşça büyüyerek ve opaklaşarak süzülmesi
+          cardEnter: { 
+              '0%': { opacity: 0, transform: 'translateY(40px) scale(0.95)' }, 
+              '100%': { opacity: 1, transform: 'translateY(0) scale(1)' } 
+          },
+          // Altın ve mor renklerin nefes alır gibi parlaması
+          glimmer: { 
+              '0%': { opacity: 0.6, filter: 'brightness(1)' }, 
+              '100%': { opacity: 1, filter: 'brightness(1.3)' } 
+          },
+          // Arkadaki renk kürelerinin (Orbs) yavaşça süzülmesi
+          orbFloat: { 
+              '0%': { transform: 'translateY(0px) scale(1)' }, 
+              '100%': { transform: 'translateY(-30px) scale(1.05)' } 
+          },
+          // 3 Katmanlı yıldızların yukarı doğru sonsuz akışı
+          parallax: { 
+              '0%': { transform: 'translateY(0)' }, 
+              '100%': { transform: 'translateY(-1000px)' } 
+          },
           
-          // YENİ V2 KEYFRAMES
-          cardEnter: { '0%': { opacity: 0, transform: 'translateY(24px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
           fadeInUp: { '0%': { opacity: 0, transform: 'translateY(20px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
           scaleIn: { '0%': { opacity: 0, transform: 'scale(0.95)' }, '100%': { opacity: 1, transform: 'scale(1)' } },
-          shimmer: { '0%': { opacity: 0.6, transform: 'scale(1)' }, '100%': { opacity: 1, transform: 'scale(1.02)' } },
-          twinkle: { '0%, 100%': { opacity: 0.2, transform: 'scale(0.8)' }, '50%': { opacity: 1, transform: 'scale(1.2)' } }
-      },
-      fontSize: { 'xxs': '0.6rem' }
+          bounceSlight: { '0%, 100%': { transform: 'translateY(-5%)' }, '50%': { transform: 'translateY(0)' } },
+      }
     }
   },
   plugins: [],
