@@ -482,51 +482,53 @@ const App = () => {
                     
                     {(authView === 'student-login' || authView === 'vip-login') && (
                         <div className="login-btns" style={{animation: 'bi 0.55s both cubic-bezier(0.16,1,0.3,1)'}}>
-                            <button onClick={() => setAuthView('selection')} className="lbtn lbtn-a" style={{padding: '10px 17px', animation:'none', marginBottom: '10px'}}>
+                            <button onClick={() => setAuthView('selection')} className="lbtn lbtn-a" style={{padding: '10px 17px', animation:'none', marginBottom: '16px', width: 'fit-content'}}>
                                 <ChevronLeft className="lch" size={18}/>
                                 <div className="lbl"><div className="lts" style={{fontSize:'12px'}}>Geri Dön</div></div>
                             </button>
 
-                            <div style={{marginBottom: '20px', textAlign: 'center'}}>
-                                <h2 className="ltv" style={{fontSize: '18px', textAlign: 'center', background: authView === 'vip-login' ? '' : '#fff', WebkitTextFillColor: authView === 'vip-login' ? 'transparent' : '#fff'}}>
-                                    {authView === 'vip-login' ? 'VIP GİRİŞİ' : 'ÖĞRENCİ GİRİŞİ'}
+                            <div style={{marginBottom: '24px', textAlign: 'center'}}>
+                                <h2 className={authView === 'vip-login' ? 'ltv' : ''} style={{fontSize: '20px', fontWeight: '900', letterSpacing: '0.1em', color: authView === 'vip-login' ? 'transparent' : '#fff', textTransform: 'uppercase'}}>
+                                    {authView === 'vip-login' ? 'Özel Ders Öğrencisi' : 'Öğrenci Girişi'}
                                 </h2>
+                                <p style={{fontSize: '11px', color: authView === 'vip-login' ? 'rgba(255,215,0,0.5)' : 'rgba(255,255,255,0.4)', marginTop: '4px', letterSpacing: '0.05em'}}>Lütfen bilgilerinizi girin</p>
                             </div>
                             
                             <div className="login-input-group" style={{animationDelay: '0.1s'}}>
-                                <label className="login-label" style={{color: authView === 'vip-login' ? 'rgba(255,215,0,0.5)' : ''}}>Kullanıcı Adı</label>
+                                <label className="login-label" style={{color: authView === 'vip-login' ? 'rgba(255,215,0,0.7)' : 'rgba(255,255,255,0.6)'}}>Kullanıcı Adı</label>
                                 <input type="text" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} placeholder="örn: ahmet.yilmaz.123" value={studentUsernameInput} onChange={e => setStudentUsernameInput(e.target.value)} />
                             </div>
                             
-                            <div className="login-input-group" style={{animationDelay: '0.2s', marginTop: '10px'}}>
-                                <label className="login-label" style={{color: authView === 'vip-login' ? 'rgba(255,215,0,0.5)' : ''}}>Şifre</label>
-                                <input type="password" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} style={{letterSpacing: '0.3em'}} placeholder="••••••" value={studentPasswordInput} onChange={e => setStudentPasswordInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleStudentLogin(authView === 'vip-login')} />
+                            <div className="login-input-group" style={{animationDelay: '0.2s', marginTop: '12px'}}>
+                                <label className="login-label" style={{color: authView === 'vip-login' ? 'rgba(255,215,0,0.7)' : 'rgba(255,255,255,0.6)'}}>Şifre</label>
+                                <input type="password" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} style={{letterSpacing: '0.3em', fontSize: '18px'}} placeholder="••••••" value={studentPasswordInput} onChange={e => setStudentPasswordInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleStudentLogin(authView === 'vip-login')} />
                             </div>
                             
-                            <button onClick={() => handleStudentLogin(authView === 'vip-login')} className={`lbtn ${authView === 'vip-login' ? 'lbtn-v' : 'lbtn-s'}`} style={{marginTop: '20px', justifyContent: 'center'}}>
-                                <div className="lts" style={{color: authView === 'vip-login' ? '#ffd700' : '#fff'}}>GİRİŞ YAP</div>
+                            <button onClick={() => handleStudentLogin(authView === 'vip-login')} className={`lbtn ${authView === 'vip-login' ? 'lbtn-v' : 'lbtn-s'}`} style={{marginTop: '24px', justifyContent: 'center', padding: '16px'}}>
+                                <div className="lts" style={{color: authView === 'vip-login' ? '#ffd700' : '#fff', fontSize: '16px', letterSpacing: '0.05em'}}>GİRİŞ YAP</div>
                             </button>
                         </div>
                     )}
                     
                     {authView === 'teacher-login' && (
                         <div className="login-btns" style={{animation: 'bi 0.55s both cubic-bezier(0.16,1,0.3,1)'}}>
-                            <button onClick={() => setAuthView('selection')} className="lbtn lbtn-a" style={{padding: '10px 17px', animation:'none', marginBottom: '10px'}}>
+                            <button onClick={() => setAuthView('selection')} className="lbtn lbtn-a" style={{padding: '10px 17px', animation:'none', marginBottom: '16px', width: 'fit-content'}}>
                                 <ChevronLeft className="lch" size={18}/>
                                 <div className="lbl"><div className="lts" style={{fontSize:'12px'}}>Geri Dön</div></div>
                             </button>
 
-                            <div style={{marginBottom: '20px', textAlign: 'center'}}>
-                                <h2 className="lts" style={{fontSize: '16px', color: '#60a5fa'}}>YÖNETİCİ GİRİŞİ</h2>
+                            <div style={{marginBottom: '24px', textAlign: 'center'}}>
+                                <h2 style={{fontSize: '20px', fontWeight: '900', letterSpacing: '0.1em', color: '#60a5fa'}}>YÖNETİCİ GİRİŞİ</h2>
+                                <p style={{fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '4px'}}>Öğretmen PIN kodunu girin</p>
                             </div>
 
                             <div className="login-input-group" style={{animationDelay: '0.1s'}}>
                                 <label className="login-label">Yönetici PIN Kodu</label>
-                                <input type="password" autoFocus className="login-input" style={{textAlign: 'center', fontSize: '24px', letterSpacing: '0.5em', padding: '20px'}} placeholder="••••" value={pinInput} onChange={e => setPinInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && verifyPin()} />
+                                <input type="password" autoFocus className="login-input" style={{textAlign: 'center', fontSize: '24px', letterSpacing: '0.5em', padding: '16px'}} placeholder="••••" value={pinInput} onChange={e => setPinInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && verifyPin()} />
                             </div>
                             
-                            <button onClick={verifyPin} className="lbtn lbtn-a" style={{marginTop: '20px', justifyContent: 'center', background: 'rgba(255,255,255,0.1)'}}>
-                                <div className="lts">SİSTEME GİR</div>
+                            <button onClick={verifyPin} className="lbtn lbtn-a" style={{marginTop: '24px', justifyContent: 'center', background: 'rgba(96,165,250,0.15)', border: '1px solid rgba(96,165,250,0.3)'}}>
+                                <div className="lts" style={{color: '#60a5fa', fontSize: '16px'}}>SİSTEME GİR</div>
                             </button>
                         </div>
                     )}
@@ -620,17 +622,17 @@ const App = () => {
                             </div>
                         </div>
                         <div>
-                            <div className="flex justify-between items-center glass-panel bg-[#130f25] p-5 rounded-2xl shadow-vip-card border border-vipGoldAccent/30 mb-6">
-                                <h2 className="text-lg md:text-xl font-black vip-text-gradient flex items-center gap-2"><Crown className="text-vipGold"/> Özel Ders Yönetimi</h2>
-                                <button onClick={() => { setModalType('vip'); setModalInputVal(''); }} className="hover-lift bg-gradient-to-r from-vipGold to-vipGoldAccent hover:brightness-110 text-vipBg px-5 py-2.5 rounded-xl text-sm font-black shadow-vip-glow flex items-center gap-2"><Plus size={18}/> Yeni VIP Ders</button>
+                            <div className="flex justify-between items-center bg-gradient-to-r from-yellow-50 to-amber-50 p-5 rounded-2xl shadow-sm border border-yellow-200 mb-6">
+                                <h2 className="text-lg md:text-xl font-black text-amber-900 flex items-center gap-2"><Crown className="text-amber-500"/> Özel Ders Yönetimi</h2>
+                                <button onClick={() => { setModalType('vip'); setModalInputVal(''); }} className="hover-lift bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-white px-5 py-2.5 rounded-xl text-sm font-black shadow-lg shadow-amber-200 flex items-center gap-2"><Plus size={18}/> Yeni Özel Ders</button>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {vipClasses.map((cls) => ( 
-                                    <div key={cls.id} onClick={() => { setSelectedClass(cls); setView('class-detail'); }} className="hover-lift cursor-pointer group glass-panel rounded-3xl p-8 shadow-vip-card border border-vipGoldAccent/20 flex flex-col items-center justify-center text-center relative overflow-hidden">
-                                        <div className="absolute inset-0 bg-gradient-to-b from-vipGold/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-                                        <div className="w-16 h-16 bg-vipGold/10 text-vipGold rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 group-hover:bg-vipGold group-hover:text-vipBg transition-all duration-300 relative z-10 shadow-vip-glow"><Crown size={32}/></div>
-                                        <h2 className="text-2xl font-black vip-text-gradient tracking-tight relative z-10">{cls.className}</h2>
-                                        <p className="text-xs text-vipGold mt-3 font-bold uppercase tracking-widest bg-vipGold/10 px-4 py-1.5 rounded-full border border-vipGold/20 relative z-10">VIP Girişi</p>
+                                    <div key={cls.id} onClick={() => { setSelectedClass(cls); setView('class-detail'); }} className="hover-lift cursor-pointer group bg-white rounded-3xl p-8 shadow-float border border-yellow-200 flex flex-col items-center justify-center text-center relative overflow-hidden">
+                                        <div className="absolute inset-0 bg-gradient-to-b from-yellow-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+                                        <div className="w-16 h-16 bg-yellow-50 text-amber-500 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-white transition-all duration-300 relative z-10 shadow-sm"><Crown size={32}/></div>
+                                        <h2 className="text-2xl font-black text-amber-800 tracking-tight relative z-10">{cls.className}</h2>
+                                        <p className="text-xs text-amber-600 mt-3 font-bold uppercase tracking-widest bg-yellow-50 px-4 py-1.5 rounded-full border border-yellow-100 relative z-10">Özel Ders Paneli</p>
                                     </div> 
                                 ))}
                             </div>
