@@ -439,10 +439,10 @@ if (!currentUserRole) {
     }
 
     return (
-        <div className={`min-h-screen pb-32 relative ${currentUserRole === 'vip-student' ? 'bg-[#0f172a]' : 'bg-slate-50'}`}>
+        <div className={`min-h-screen pb-32 relative transition-colors duration-700 ${currentUserRole === 'vip-student' ? 'bg-vipBg' : 'bg-lightBg'}`}>
             {currentUserRole === 'vip-student' && <div className="fixed inset-0 vip-stardust-bg pointer-events-none"></div>}
 
-            <header className={`no-print relative z-20 ${currentUserRole === 'vip-student' ? 'bg-slate-900 border-b border-slate-800' : 'bg-white border-b border-slate-200'}`}>
+            <header className={`no-print relative z-20 transition-all duration-500 ${currentUserRole === 'vip-student' ? 'glass-panel border-b border-vipGold/20' : 'bg-white border-b border-slate-200 shadow-sm'}`}>
                  <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col items-center gap-2">
                     <div className="flex items-center gap-3 w-full justify-between">
                         {currentUserRole !== 'student' && currentUserRole !== 'vip-student' && view !== 'home' ? (
@@ -450,8 +450,8 @@ if (!currentUserRole) {
                         ) : <div className="w-10"></div>}
                         <div className="text-center">
                             <h1 className={`text-xl md:text-3xl font-black tracking-tight flex items-center justify-center gap-2 ${currentUserRole === 'vip-student' ? 'text-white' : 'text-slate-800'}`}>
-                                <div className={`p-1.5 rounded-lg ${currentUserRole === 'vip-student' ? 'bg-amber-500' : 'bg-indigo-600'}`}><GraduationCap className="text-white" size={24} /></div> 
-                                BERKANT HOCA
+                                <div className={`p-1.5 rounded-lg shadow-md transition-transform hover:scale-105 ${currentUserRole === 'vip-student' ? 'bg-gradient-to-tr from-vipGoldAccent to-vipGold shadow-vip-glow' : 'bg-brandPurple shadow-glow'}`}><GraduationCap className={currentUserRole === 'vip-student' ? 'text-vipBg' : 'text-white'} size={24} /></div> 
+                                <span className={currentUserRole === 'vip-student' ? 'vip-text-gradient' : ''}>BERKANT HOCA</span>
                             </h1>
                         </div>
                         <div className="flex items-center gap-2 min-w-[80px] justify-end">
@@ -633,21 +633,21 @@ if (!currentUserRole) {
                     </div> 
                 )}
 
-                {view === 'student-detail' && selectedClass && selectedStudentForView && (
-                    <div className={`${currentUserRole === 'vip-student' ? 'bg-slate-800/80 backdrop-blur-xl border-slate-700 vip-card-glow' : 'bg-white border-slate-100 shadow-2xl'} rounded-[2.5rem] p-4 md:p-10 border animate-scale-in`}>
-                        <div className={`flex flex-col md:flex-row items-center md:items-start gap-6 mb-10 pb-8 border-b ${currentUserRole === 'vip-student' ? 'border-slate-700' : 'border-slate-100'} text-center md:text-left`}>
-                            <div className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl font-black shadow-xl shrink-0 border-4 ${currentUserRole === 'vip-student' ? 'bg-gradient-to-br from-amber-400 to-orange-600 text-slate-900 border-amber-300 shadow-amber-500/30' : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-white shadow-indigo-200'}`}>{selectedStudentForView.name.charAt(0)}</div>
+              {view === 'student-detail' && selectedClass && selectedStudentForView && (
+                    <div className={`${currentUserRole === 'vip-student' ? 'glass-panel border-vipGold/20 shadow-vip-card' : 'bg-white border-slate-100 shadow-float'} rounded-[2.5rem] p-4 md:p-10 border animate-scale-in`}>
+                        <div className={`flex flex-col md:flex-row items-center md:items-start gap-6 mb-10 pb-8 border-b ${currentUserRole === 'vip-student' ? 'border-vipGold/20' : 'border-slate-100'} text-center md:text-left`}>
+                            <div className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl font-black shadow-xl shrink-0 border-4 transition-transform hover:scale-105 hover-lift ${currentUserRole === 'vip-student' ? 'bg-gradient-to-br from-vipGold to-vipGoldAccent text-vipBg border-vipGold/50 shadow-vip-glow' : 'bg-gradient-to-br from-brandPurple to-blue-500 text-white border-white shadow-glow'}`}>{selectedStudentForView.name.charAt(0)}</div>
                             <div>
                                 <h2 className={`text-3xl md:text-5xl font-black mb-2 tracking-tight flex items-center justify-center md:justify-start gap-3 ${currentUserRole === 'vip-student' ? 'text-white' : 'text-slate-800'}`}>{selectedStudentForView.name}{currentUserRole === 'vip-student' && <Sparkle className="text-amber-400 animate-pulse"/>}</h2>
                                 <div className="flex items-center justify-center md:justify-start gap-3"><span className={`font-bold px-3 py-1 rounded-lg ${currentUserRole === 'vip-student' ? 'bg-slate-700 text-amber-400' : 'bg-slate-100 text-slate-500'}`}>{selectedClass.className}</span><span className={`font-black px-3 py-1 rounded-lg border ${currentUserRole === 'vip-student' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>%{calculateStats([selectedStudentForView], selectedClass.topics).percentage} Genel Başarı</span></div>
                             </div>
                         </div>
 
-                        <div className={`flex gap-6 mb-6 border-b ${currentUserRole === 'vip-student' ? 'border-slate-700' : 'border-slate-200'}`}>
-                            <button onClick={() => setActiveTab('homework')} className={`pb-3 font-bold text-sm border-b-[3px] transition-colors flex items-center gap-2 ${activeTab === 'homework' ? (currentUserRole === 'vip-student' ? 'border-amber-400 text-amber-400' : 'border-indigo-600 text-indigo-700') : 'border-transparent text-slate-500 hover:text-slate-400'}`}>
+                    <div className={`flex gap-6 mb-6 border-b ${currentUserRole === 'vip-student' ? 'border-vipGold/20' : 'border-slate-200'}`}>
+                            <button onClick={() => setActiveTab('homework')} className={`pb-3 font-bold text-sm border-b-[3px] transition-colors flex items-center gap-2 hover-lift ${activeTab === 'homework' ? (currentUserRole === 'vip-student' ? 'border-vipGold text-vipGold shadow-vip-glow bg-vipGold/5 rounded-t-lg' : 'border-brandPurple text-brandPurple bg-brandPurple/5 rounded-t-lg') : 'border-transparent text-slate-500 hover:text-slate-400'}`}>
                                 <Layout size={18}/> Ödevlerim
                             </button>
-                            <button onClick={() => setActiveTab('curriculum')} className={`pb-3 font-bold text-sm border-b-[3px] transition-colors flex items-center gap-2 ${activeTab === 'curriculum' ? (currentUserRole === 'vip-student' ? 'border-amber-400 text-amber-400' : 'border-indigo-600 text-indigo-700') : 'border-transparent text-slate-500 hover:text-slate-400'}`}>
+                            <button onClick={() => setActiveTab('curriculum')} className={`pb-3 font-bold text-sm border-b-[3px] transition-colors flex items-center gap-2 hover-lift ${activeTab === 'curriculum' ? (currentUserRole === 'vip-student' ? 'border-vipGold text-vipGold shadow-vip-glow bg-vipGold/5 rounded-t-lg' : 'border-brandPurple text-brandPurple bg-brandPurple/5 rounded-t-lg') : 'border-transparent text-slate-500 hover:text-slate-400'}`}>
                                 <BookOpenCheck size={18}/> Konu İlerlemem
                             </button>
                         </div>
