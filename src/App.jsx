@@ -7,7 +7,7 @@ import {
     MoreVertical, ArrowDownToLine, UserPlus, KeyRound, Megaphone, Edit3, Save, X, 
     Layout, AlertTriangle, GraduationCap, RefreshCw, Library,
     FileSpreadsheet, AlertOctagon, StickyNote, Calendar, Info, Pencil, User, LogOut, Printer, Settings,
-    Mic, MicOff, Sparkles, Sparkle, Zap, Users, Crown, Briefcase, BookOpenCheck, ListTodo, BookOpen 
+    Mic, MicOff, Sparkles, Sparkle, Zap, Users, Crown, Briefcase, BookOpenCheck, ListTodo, BookOpen, Link 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
