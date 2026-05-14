@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body { 
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; 
+        background-color: #f1f5f9; 
+        color: #0f172a; 
+        overflow-x: hidden; 
+        -webkit-tap-highlight-color: transparent; 
+    }
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+.table-container { overflow-x: auto; overflow-y: visible; position: relative; border: 1px solid #e2e8f0; border-radius: 16px; background-color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); padding-bottom: 20px; }
+th, td { white-space: nowrap; padding: 12px 16px; vertical-align: top; }
+.sticky-corner { position: sticky; left: 0; top: 0; z-index: 50 !important; background-color: white; border-right: 2px solid #f1f5f9; border-bottom: 2px solid #f1f5f9; }
+.sticky-header-top { position: sticky; top: 0; z-index: 40; border-bottom: 1px solid rgba(0,0,0,0.08); height: 60px; }
+.sticky-header-sub { position: sticky; top: 60px; z-index: 40; border-bottom: 2px solid rgba(0,0,0,0.08); height: 50px; } 
+.sticky-col-left { position: sticky; left: 0; z-index: 30; background-color: white; border-right: 2px solid #f1f5f9; box-shadow: 4px 0 6px -2px rgba(0,0,0,0.02); }
+tbody tr { transition: all 0.2s ease; border-bottom: 1px solid #f1f5f9; }
+tbody tr:hover { background-color: #f8fafc; box-shadow: 0 2px 4px rgba(0,0,0,0.02); z-index: 20; position: relative; }
+
+.glass-panel { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+.vip-stardust-bg { background-image: radial-gradient(circle at 15% 50%, rgba(251, 191, 36, 0.15) 1px, transparent 1px), radial-gradient(circle at 85% 30%, rgba(251, 191, 36, 0.2) 2px, transparent 2px), radial-gradient(circle at 50% 80%, rgba(251, 191, 36, 0.1) 1px, transparent 1px); background-size: 100px 100px; animation: stardustDrift 20s linear infinite; }
+.vip-card-glow { box-shadow: 0 0 20px rgba(251, 191, 36, 0.3); border: 1px solid rgba(251, 191, 36, 0.5); }
+.vip-text-gradient { background: linear-gradient(to right, #fbbf24, #f59e0b, #d97706); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+.neon-card-wrapper { position: relative; z-index: 1; border-radius: 1.5rem; margin-bottom: 20px; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer; min-height: 180px; display: flex; }
+.neon-card-wrapper:hover { transform: scale(1.03) translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+.modal-anim { animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.z-menu { z-index: 9999 !important; }
+
+.wave-bar { width: 6px; border-radius: 3px; background: linear-gradient(to top, #4f46e5, #ec4899); margin: 0 3px; }
+.wave-1 { animation: soundWave 0.8s ease-in-out infinite alternate; height: 16px; }
+.wave-2 { animation: soundWave 1.2s ease-in-out infinite alternate; height: 32px; }
+.wave-3 { animation: soundWave 0.6s ease-in-out infinite alternate; height: 24px; }
+.wave-4 { animation: soundWave 1.0s ease-in-out infinite alternate; height: 40px; }
+.wave-5 { animation: soundWave 0.9s ease-in-out infinite alternate; height: 20px; }
+
+.fab-button { position: fixed; bottom: 30px; right: 30px; z-index: 90; width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(79, 70, 229, 0.5); transition: all 0.3s ease; cursor: pointer; }
+.fab-button:hover { transform: scale(1.1) rotate(5deg); }
+.fab-pulse { position: absolute; width: 100%; height: 100%; border-radius: 50%; background-color: rgba(79, 70, 229, 0.4); z-index: -1; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+
+@media print { body { background-color: white !important; margin: 0; padding: 0; } .no-print { display: none !important; } .print-only { display: block !important; } @page { margin: 1cm; } }
+.print-only { display: none; }
+@media (max-width: 768px) { .hide-on-mobile { display: none !important; } .fab-button { bottom: 20px; right: 20px; width: 60px; height: 60px; } }
