@@ -9,6 +9,7 @@ import {
     FileSpreadsheet, AlertOctagon, StickyNote, Calendar, Info, Pencil, User, LogOut, Printer, Settings,
     Mic, MicOff, Sparkles, Sparkle, Zap, Users, Crown, Briefcase, BookOpenCheck, ListTodo, BookOpen 
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import { auth, db } from './config/firebase';
 import { CLASSES_COLLECTION, LIBRARY_COLLECTION, SETTINGS_COLLECTION, SETTINGS_DOC, DEFAULT_PIN, LIBRARY_TYPES, MOTIVATIONAL_QUOTES, TOPIC_THEMES, STATUS_OPTIONS } from './utils/constants';
@@ -434,7 +435,26 @@ const App = () => {
     // ---------------------------------------------------------
     // 💎 AŞAMA 2: V3 ULTRA-PREMIUM GİRİŞ (LOGIN) EKRANI 
     // ---------------------------------------------------------
- if (!currentUserRole) {
+if (!currentUserRole) {
+        // Framer Motion Fizik ve Stagger (Sıralı) Animasyon Ayarları
+        const containerVariants = {
+            hidden: { opacity: 0 },
+            show: {
+                opacity: 1,
+                transition: { staggerChildren: 0.1, delayChildren: 0.1 }
+            }
+        };
+
+        const itemVariants = {
+            hidden: { opacity: 0, y: 20, scale: 0.95 },
+            show: { 
+                opacity: 1, 
+                y: 0, 
+                scale: 1, 
+                transition: { type: "spring", stiffness: 300, damping: 24 } 
+            }
+        };
+
         return (
             <div className="login-scene">
                 {/* Orijinal HTML Canvas ve Işık Küreleri */}
@@ -443,100 +463,149 @@ const App = () => {
                 <div className="login-orb login-o2"></div>
                 <div className="login-orb login-o3"></div>
 
-                <div className="login-card">
-                    
+                {/* Ana Kartın Yaylanarak (Spring) Girmesi */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 40, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ type: "spring", bounce: 0.4, duration: 0.8 }}
+                    className="login-card"
+                >
                     <div className="logo-area">
-                        <div className="logo-box">
+                        <motion.div 
+                            animate={{ y: [0, -8, 0] }} 
+                            transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                            className="logo-box"
+                        >
                             <GraduationCap size={30} color="white" strokeWidth={2}/>
-                        </div>
+                        </motion.div>
                         <div className="logo-brand">BERKANT HOCA</div>
                         <div className="logo-sub">EĞİTİM PLATFORMU</div>
                     </div>
                     
-                    {authView === 'selection' && (
-                        <div className="login-btns">
-                            <button onClick={() => setAuthView('student-login')} className="lbtn lbtn-s">
-                                <div className="liw liw-s"><User color="#a78bfa" size={18}/></div>
-                                <div className="lbl"><div className="lts">Öğrenci Girişi</div><div class="lss">Sınıf öğrencileri için</div></div>
-                                <ChevronRight className="lch" size={16}/>
-                            </button>
+                    <AnimatePresence mode="wait">
+                        {authView === 'selection' && (
+                            <motion.div 
+                                key="selection"
+                                variants={containerVariants}
+                                initial="hidden"
+                                animate="show"
+                                exit={{ opacity: 0, x: -50, transition: { duration: 0.2 } }}
+                                className="login-btns"
+                            >
+                                <motion.button variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.97 }} onClick={() => setAuthView('student-login')} className="lbtn lbtn-s">
+                                    <div className="liw liw-s"><User color="#a78bfa" size={18}/></div>
+                                    <div className="lbl"><div className="lts">Öğrenci Girişi</div><div className="lss">Sınıf öğrencileri için</div></div>
+                                    <ChevronRight className="lch" size={16}/>
+                                </motion.button>
 
-                            <button onClick={() => setAuthView('vip-login')} className="lbtn lbtn-v">
-                                <VipParticles />
-                                <div className="liw liw-v"><Crown color="#ffd700" size={18}/></div>
-                                <div className="lbl"><div className="ltv">Özel Ders</div><div class="lsv">Özel ders öğrenci girişi</div></div>
-                                <ChevronRight className="lch lch-v" size={16}/>
-                            </button>
+                                <motion.button variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.97 }} onClick={() => setAuthView('vip-login')} className="lbtn lbtn-v">
+                                    <VipParticles />
+                                    <div className="liw liw-v"><Crown color="#ffd700" size={18}/></div>
+                                    <div className="lbl"><div className="ltv">Özel Ders</div><div className="lsv">Özel ders öğrenci girişi</div></div>
+                                    <ChevronRight className="lch lch-v" size={16}/>
+                                </motion.button>
 
-                            <div className="ldivline"><div className="ldl"></div><div className="ldt">YÖNETİM</div><div className="ldl"></div></div>
+                                <motion.div variants={itemVariants} className="ldivline"><div className="ldl"></div><div className="ldt">YÖNETİM</div><div className="ldl"></div></motion.div>
 
-                            <button onClick={() => setAuthView('teacher-login')} className="lbtn lbtn-a">
-                                <div className="liw liw-a"><Briefcase color="#60a5fa" size={18}/></div>
-                                <div className="lbl"><div className="lts">Yönetici Girişi</div><div class="lss">Öğretmen paneli</div></div>
-                                <ChevronRight className="lch" size={16}/>
-                            </button>
-                            
-                            <div className="lquote"><span className="lqm">"</span> Eğitim, dünyayı değiştirmek için en güçlü silahtır. <span className="lqm">"</span></div>
-                        </div>
-                    )}
-                    
-                    {(authView === 'student-login' || authView === 'vip-login') && (
-                        <div className="login-btns" style={{animation: 'bi 0.55s both cubic-bezier(0.16,1,0.3,1)'}}>
-                            <button onClick={() => setAuthView('selection')} className="lbtn lbtn-a" style={{padding: '10px 17px', animation:'none', marginBottom: '16px', width: 'fit-content'}}>
-                                <ChevronLeft className="lch" size={18}/>
-                                <div className="lbl"><div className="lts" style={{fontSize:'12px'}}>Geri Dön</div></div>
-                            </button>
+                                <motion.button variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.97 }} onClick={() => setAuthView('teacher-login')} className="lbtn lbtn-a">
+                                    <div className="liw liw-a"><Briefcase color="#60a5fa" size={18}/></div>
+                                    <div className="lbl"><div className="lts">Yönetici Girişi</div><div className="lss">Öğretmen paneli</div></div>
+                                    <ChevronRight className="lch" size={16}/>
+                                </motion.button>
+                                
+                                <motion.div variants={itemVariants} className="lquote"><span className="lqm">"</span> Eğitim, dünyayı değiştirmek için en güçlü silahtır. <span className="lqm">"</span></motion.div>
+                            </motion.div>
+                        )}
+                        
+                        {(authView === 'student-login' || authView === 'vip-login') && (
+                            <motion.div 
+                                key="student-form"
+                                variants={containerVariants}
+                                initial="hidden"
+                                animate="show"
+                                exit={{ opacity: 0, x: 50, transition: { duration: 0.2 } }}
+                                className="login-btns"
+                            >
+                                <motion.button variants={itemVariants} whileHover={{ x: -4 }} whileTap={{ scale: 0.95 }} onClick={() => setAuthView('selection')} className="lbtn lbtn-a" style={{padding: '10px 17px', background: 'transparent', border: 'none', boxShadow: 'none', width: 'fit-content'}}>
+                                    <ChevronLeft className="lch" size={18}/>
+                                    <div className="lbl"><div className="lts" style={{fontSize:'12px'}}>Geri Dön</div></div>
+                                </motion.button>
 
-                            <div style={{marginBottom: '24px', textAlign: 'center'}}>
-                                <h2 className={authView === 'vip-login' ? 'ltv' : ''} style={{fontSize: '20px', fontWeight: '900', letterSpacing: '0.1em', color: authView === 'vip-login' ? 'transparent' : '#fff', textTransform: 'uppercase'}}>
-                                    {authView === 'vip-login' ? 'Özel Ders Öğrencisi' : 'Öğrenci Girişi'}
-                                </h2>
-                                <p style={{fontSize: '11px', color: authView === 'vip-login' ? 'rgba(255,215,0,0.5)' : 'rgba(255,255,255,0.4)', marginTop: '4px', letterSpacing: '0.05em'}}>Lütfen bilgilerinizi girin</p>
-                            </div>
-                            
-                            <div className="login-input-group" style={{animationDelay: '0.1s'}}>
-                                <label className="login-label" style={{color: authView === 'vip-login' ? 'rgba(255,215,0,0.7)' : 'rgba(255,255,255,0.6)'}}>Kullanıcı Adı</label>
-                                <input type="text" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} placeholder="örn: ahmet.yilmaz.123" value={studentUsernameInput} onChange={e => setStudentUsernameInput(e.target.value)} />
-                            </div>
-                            
-                            <div className="login-input-group" style={{animationDelay: '0.2s', marginTop: '12px'}}>
-                                <label className="login-label" style={{color: authView === 'vip-login' ? 'rgba(255,215,0,0.7)' : 'rgba(255,255,255,0.6)'}}>Şifre</label>
-                                <input type="password" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} style={{letterSpacing: '0.3em', fontSize: '18px'}} placeholder="••••••" value={studentPasswordInput} onChange={e => setStudentPasswordInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleStudentLogin(authView === 'vip-login')} />
-                            </div>
-                            
-                            <button onClick={() => handleStudentLogin(authView === 'vip-login')} className={`lbtn ${authView === 'vip-login' ? 'lbtn-v' : 'lbtn-s'}`} style={{marginTop: '24px', justifyContent: 'center', padding: '16px'}}>
-                                <div className="lts" style={{color: authView === 'vip-login' ? '#ffd700' : '#fff', fontSize: '16px', letterSpacing: '0.05em'}}>GİRİŞ YAP</div>
-                            </button>
-                        </div>
-                    )}
-                    
-                    {authView === 'teacher-login' && (
-                        <div className="login-btns" style={{animation: 'bi 0.55s both cubic-bezier(0.16,1,0.3,1)'}}>
-                            <button onClick={() => setAuthView('selection')} className="lbtn lbtn-a" style={{padding: '10px 17px', animation:'none', marginBottom: '16px', width: 'fit-content'}}>
-                                <ChevronLeft className="lch" size={18}/>
-                                <div className="lbl"><div className="lts" style={{fontSize:'12px'}}>Geri Dön</div></div>
-                            </button>
+                                <motion.div variants={itemVariants} className={`p-6 rounded-3xl ${authView === 'vip-login' ? 'bg-[#1a1721] real-gold-border shadow-vip-card' : 'bg-slate-800/50 border border-slate-700'}`}>
+                                    <div style={{marginBottom: '24px', textAlign: 'center'}}>
+                                        <h2 className={authView === 'vip-login' ? 'real-gold-text' : 'text-white'} style={{fontSize: '22px', fontWeight: '900', letterSpacing: '0.05em', textTransform: 'uppercase'}}>
+                                            {authView === 'vip-login' ? 'ÖZEL DERS ÖĞRENCİSİ' : 'ÖĞRENCİ GİRİŞİ'}
+                                        </h2>
+                                        <p style={{fontSize: '11px', color: authView === 'vip-login' ? 'rgba(255,215,0,0.6)' : 'rgba(255,255,255,0.4)', marginTop: '6px', letterSpacing: '0.05em'}}>
+                                            Lütfen giriş bilgilerinizi doldurun
+                                        </p>
+                                    </div>
+                                    
+                                    <div className="login-input-group">
+                                        <label className="login-label" style={{color: authView === 'vip-login' ? 'rgba(255,215,0,0.8)' : 'rgba(255,255,255,0.6)'}}>Kullanıcı Adı</label>
+                                        <input type="text" className={`login-input ${authView === 'vip-login' ? 'vip-input bg-[#0f0d14]' : ''}`} placeholder="örn: ahmet.yilmaz" value={studentUsernameInput} onChange={e => setStudentUsernameInput(e.target.value)} />
+                                    </div>
+                                    
+                                    <div className="login-input-group" style={{marginTop: '16px'}}>
+                                        <label className="login-label" style={{color: authView === 'vip-login' ? 'rgba(255,215,0,0.8)' : 'rgba(255,255,255,0.6)'}}>Şifre</label>
+                                        <input type="password" className={`login-input ${authView === 'vip-login' ? 'vip-input bg-[#0f0d14]' : ''}`} style={{letterSpacing: '0.3em', fontSize: '18px'}} placeholder="••••••" value={studentPasswordInput} onChange={e => setStudentPasswordInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleStudentLogin(authView === 'vip-login')} />
+                                    </div>
+                                    
+                                    <motion.button 
+                                        whileHover={{ scale: 1.02 }} 
+                                        whileTap={{ scale: 0.95 }} 
+                                        onClick={() => handleStudentLogin(authView === 'vip-login')} 
+                                        className={`lbtn ${authView === 'vip-login' ? 'real-gold-bg text-[#1a1721] shadow-vip-glow' : 'bg-brandPurple text-white shadow-glow'}`} 
+                                        style={{marginTop: '24px', justifyContent: 'center', padding: '16px', border: 'none'}}
+                                    >
+                                        <div className="lts" style={{color: authView === 'vip-login' ? '#1a1721' : '#fff', fontSize: '16px', fontWeight: '900', letterSpacing: '0.05em'}}>GİRİŞ YAP</div>
+                                    </motion.button>
+                                </motion.div>
+                            </motion.div>
+                        )}
+                        
+                        {authView === 'teacher-login' && (
+                            <motion.div 
+                                key="teacher-form"
+                                variants={containerVariants}
+                                initial="hidden"
+                                animate="show"
+                                exit={{ opacity: 0, y: 50, transition: { duration: 0.2 } }}
+                                className="login-btns"
+                            >
+                                <motion.button variants={itemVariants} whileHover={{ x: -4 }} whileTap={{ scale: 0.95 }} onClick={() => setAuthView('selection')} className="lbtn lbtn-a" style={{padding: '10px 17px', background: 'transparent', border: 'none', boxShadow: 'none', width: 'fit-content'}}>
+                                    <ChevronLeft className="lch" size={18}/>
+                                    <div className="lbl"><div className="lts" style={{fontSize:'12px'}}>Geri Dön</div></div>
+                                </motion.button>
 
-                            <div style={{marginBottom: '24px', textAlign: 'center'}}>
-                                <h2 style={{fontSize: '20px', fontWeight: '900', letterSpacing: '0.1em', color: '#60a5fa'}}>YÖNETİCİ GİRİŞİ</h2>
-                                <p style={{fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '4px'}}>Öğretmen PIN kodunu girin</p>
-                            </div>
+                                <motion.div variants={itemVariants} className="p-6 rounded-3xl bg-slate-800/50 border border-slate-700">
+                                    <div style={{marginBottom: '24px', textAlign: 'center'}}>
+                                        <h2 style={{fontSize: '20px', fontWeight: '900', letterSpacing: '0.1em', color: '#60a5fa'}}>YÖNETİCİ GİRİŞİ</h2>
+                                        <p style={{fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '4px'}}>Öğretmen PIN kodunu girin</p>
+                                    </div>
 
-                            <div className="login-input-group" style={{animationDelay: '0.1s'}}>
-                                <label className="login-label">Yönetici PIN Kodu</label>
-                                <input type="password" autoFocus className="login-input" style={{textAlign: 'center', fontSize: '24px', letterSpacing: '0.5em', padding: '16px'}} placeholder="••••" value={pinInput} onChange={e => setPinInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && verifyPin()} />
-                            </div>
-                            
-                            <button onClick={verifyPin} className="lbtn lbtn-a" style={{marginTop: '24px', justifyContent: 'center', background: 'rgba(96,165,250,0.15)', border: '1px solid rgba(96,165,250,0.3)'}}>
-                                <div className="lts" style={{color: '#60a5fa', fontSize: '16px'}}>SİSTEME GİR</div>
-                            </button>
-                        </div>
-                    )}
-                </div>
+                                    <div className="login-input-group">
+                                        <label className="login-label">Yönetici PIN Kodu</label>
+                                        <input type="password" autoFocus className="login-input" style={{textAlign: 'center', fontSize: '24px', letterSpacing: '0.5em', padding: '16px'}} placeholder="••••" value={pinInput} onChange={e => setPinInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && verifyPin()} />
+                                    </div>
+                                    
+                                    <motion.button 
+                                        whileHover={{ scale: 1.02 }} 
+                                        whileTap={{ scale: 0.95 }} 
+                                        onClick={verifyPin} 
+                                        className="lbtn lbtn-a" 
+                                        style={{marginTop: '24px', justifyContent: 'center', background: 'rgba(96,165,250,0.15)', border: '1px solid rgba(96,165,250,0.3)'}}
+                                    >
+                                        <div className="lts" style={{color: '#60a5fa', fontSize: '16px'}}>SİSTEME GİR</div>
+                                    </motion.button>
+                                </motion.div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </motion.div>
             </div>
         );
     }
-
     // ---------------------------------------------------------
     // 💎 AŞAMA 3 & 4: V3 ULTRA-PREMIUM UYGULAMA İÇİ PANELLER 
     // ---------------------------------------------------------
