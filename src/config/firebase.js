@@ -2,14 +2,13 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// Şifreleri doğrudan yazmak yerine Vite Environment Variables'dan çekiyoruz
 const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID
+    apiKey: "AIzaSyDNfK49NR1dfbN0TSb35FI85huw8YJfcyQ",
+    authDomain: "odevtakip-145f5.firebaseapp.com",
+    projectId: "odevtakip-145f5",
+    storageBucket: "odevtakip-145f5.firebasestorage.app",
+    messagingSenderId: "1083778395806",
+    appId: "1:1083778395806:web:c67f99e34a11e5a330958f"
 };
 
 const app = initializeApp(firebaseConfig);
