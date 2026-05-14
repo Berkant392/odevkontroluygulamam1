@@ -7,6 +7,10 @@ const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode }) => {
     const [newSubTopicTitles, setNewSubTopicTitles] = useState({});
 
     const curriculum = cls.curriculum || [];
+    
+    // YENİ: Temayı belirleyen yapay zeka mantığı
+    // Sadece "Özel Ders" sınıfındaysa ve "Öğretmen Değilse" karanlık/altın tema uygulanır.
+    const isVip = cls.type === 'vip' && !isTeacherMode;
 
     const calculateOverallProgress = () => {
         if (!curriculum.length) return 0;
@@ -92,28 +96,28 @@ const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode }) => {
     };
 
     return (
-        <div className="animate-scale-in max-w-4xl mx-auto mt-4">
+        <div className="animate-scale-in max-w-4xl mx-auto mt-4 relative z-10">
             
             {/* Sayfa Başlığı ve GENEL İLERLEME ÇUBUĞU */}
-            <div className={`p-8 rounded-3xl mb-8 ${isTeacherMode ? 'bg-white border border-slate-200 shadow-sm' : 'glass-panel border-vipGold/20 shadow-vip-card'}`}>
+            <div className={`p-8 rounded-3xl mb-8 ${isVip ? 'glass-panel border-vipGoldAccent/30 shadow-vip-card' : 'bg-white border border-slate-100 shadow-float'}`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="flex items-center gap-4">
-                        <div className={`p-4 rounded-2xl ${isTeacherMode ? 'bg-brandPurple/10 text-brandPurple' : 'bg-vipGold/10 text-vipGold'}`}>
+                        <div className={`p-4 rounded-2xl ${isVip ? 'bg-vipGold/10 text-vipGold' : 'bg-purple-50 text-brandPurple'}`}>
                             <BookOpen size={32}/>
                         </div>
                         <div>
-                            <h2 className={`text-2xl md:text-3xl font-black tracking-tight ${isTeacherMode ? 'text-slate-800' : 'text-white'}`}>Müfredat Takibi</h2>
-                            <p className={`font-medium mt-1 ${isTeacherMode ? 'text-slate-500' : 'text-vipGold/70'}`}>{cls.className} sınıfı için konu listesi</p>
+                            <h2 className={`text-2xl md:text-3xl font-black tracking-tight ${isVip ? 'vip-text-gradient' : 'text-slate-800'}`}>Müfredat Takibi</h2>
+                            <p className={`font-medium mt-1 ${isVip ? 'text-vipGold/50' : 'text-slate-500'}`}>{cls.className} sınıfı için konu listesi</p>
                         </div>
                     </div>
                     
                     <div className="w-full md:w-64">
                         <div className="flex justify-between text-sm font-black mb-2">
-                            <span className={isTeacherMode ? 'text-slate-600' : 'text-vipGold/80'}>Genel İlerleme</span>
-                            <span className={isTeacherMode ? 'text-brandPurple' : 'text-vipGold'}>%{overallProgress}</span>
+                            <span className={isVip ? 'text-vipGold/80' : 'text-slate-600'}>Genel İlerleme</span>
+                            <span className={isVip ? 'text-vipGold' : 'text-brandPurple'}>%{overallProgress}</span>
                         </div>
-                        <div className={`h-3 w-full rounded-full overflow-hidden ${isTeacherMode ? 'bg-slate-100' : 'bg-vipCard'}`}>
-                            <div className={`h-full transition-all duration-700 ${isTeacherMode ? 'bg-brandPurple' : 'bg-gradient-to-r from-vipGold to-vipGoldAccent shadow-vip-glow'}`} style={{width: `${overallProgress}%`}}></div>
+                        <div className={`h-3 w-full rounded-full overflow-hidden ${isVip ? 'bg-vipCard' : 'bg-slate-100'}`}>
+                            <div className={`h-full transition-all duration-700 ${isVip ? 'bg-gradient-to-r from-vipGold to-vipGoldAccent shadow-vip-glow' : 'bg-brandPurple shadow-glow'}`} style={{width: `${overallProgress}%`}}></div>
                         </div>
                     </div>
                 </div>
@@ -123,17 +127,17 @@ const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode }) => {
             {isTeacherMode && (
                 <div className="flex gap-3 mb-8">
                     <input type="text" placeholder="Yeni Ana Konu Başlığı (Örn: Türev)..." className="flex-1 hover-lift bg-white border-2 border-slate-200 rounded-2xl px-6 py-4 text-lg focus:border-brandPurple outline-none font-bold text-slate-800 shadow-sm transition-all" value={newTopicTitle} onChange={e => setNewTopicTitle(e.target.value)} onKeyDown={e => e.key==='Enter' && addTopic(newTopicTitle)}/>
-                    <button onClick={()=>addTopic(newTopicTitle)} className="bg-brandPurple hover:bg-purple-600 text-white hover-lift px-8 rounded-2xl font-black shadow-glow transition-all flex items-center gap-2">
+                    <button onClick={()=>addTopic(newTopicTitle)} className="bg-brandPurple hover:bg-purple-700 text-white hover-lift px-8 rounded-2xl font-black shadow-glow transition-all flex items-center gap-2">
                         <Plus size={24}/> EKLE
                     </button>
                 </div>
             )}
 
-            {/* Notion Tarzı Liste */}
-            <div className={`rounded-3xl p-6 md:p-10 ${isTeacherMode ? 'bg-white border border-slate-200 shadow-sm' : 'glass-panel border-vipGold/20 shadow-vip-card'}`}>
+            {/* Liste Bölümü */}
+            <div className={`rounded-3xl p-6 md:p-10 ${isVip ? 'glass-panel border-vipGoldAccent/30 shadow-vip-card' : 'bg-white border border-slate-100 shadow-float'}`}>
                 
                 {curriculum.length === 0 ? (
-                    <div className={`text-center py-12 font-bold ${isTeacherMode ? 'text-slate-400' : 'text-vipGold/50'}`}>
+                    <div className={`text-center py-12 font-bold ${isVip ? 'text-vipGold/50' : 'text-slate-400'}`}>
                         Henüz hiç konu eklenmemiş.
                     </div>
                 ) : (
@@ -144,16 +148,16 @@ const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode }) => {
                             return (
                                 <div key={topic.id} className="flex flex-col group/topic">
                                     <div className="flex items-start gap-4 hover-lift">
-                                        <button onClick={() => toggleTopic(topic.id)} className={`mt-1 flex-shrink-0 transition-colors ${topic.isCompleted ? (isTeacherMode ? 'text-brandPurple' : 'text-vipGold') : (isTeacherMode ? 'text-slate-400 hover:text-brandPurple' : 'text-vipGold/30 hover:text-vipGold')} ${!isTeacherMode && 'cursor-default pointer-events-none'}`}>
+                                        <button onClick={() => toggleTopic(topic.id)} className={`mt-1 flex-shrink-0 transition-colors ${topic.isCompleted ? (isVip ? 'text-vipGold' : 'text-brandPurple') : (isVip ? 'text-vipGold/30 hover:text-vipGold' : 'text-slate-400 hover:text-brandPurple')} ${!isTeacherMode && 'cursor-default pointer-events-none'}`}>
                                             {topic.isCompleted ? <CheckSquare size={28} strokeWidth={2.5} /> : <Square size={28} strokeWidth={2.5} />}
                                         </button>
                                         
                                         <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-2">
                                             <div className="flex items-center gap-3">
-                                                <h3 className={`text-2xl font-black transition-all ${topic.isCompleted ? 'text-slate-400/50 line-through decoration-2' : (isTeacherMode ? 'text-slate-800' : 'text-white')}`}>
+                                                <h3 className={`text-2xl font-black transition-all ${topic.isCompleted ? (isVip ? 'text-vipGold/40 line-through decoration-2' : 'text-slate-400/50 line-through decoration-2') : (isVip ? 'text-white' : 'text-slate-800')}`}>
                                                     {topic.title}
                                                 </h3>
-                                                <span className={`text-xs font-black px-2.5 py-1 rounded-lg border ${topic.isCompleted ? 'bg-successGreen/10 text-successGreen border-successGreen/20' : (isTeacherMode ? 'bg-slate-100 text-slate-500 border-slate-200' : 'bg-vipCard text-vipGold/70 border-vipGold/20')}`}>
+                                                <span className={`text-xs font-black px-2.5 py-1 rounded-lg border ${topic.isCompleted ? 'bg-successGreen/10 text-successGreen border-successGreen/20' : (isVip ? 'bg-vipCard text-vipGold/70 border-vipGold/20' : 'bg-slate-100 text-slate-500 border-slate-200')}`}>
                                                     %{tProgress}
                                                 </span>
                                             </div>
@@ -168,12 +172,12 @@ const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode }) => {
                                     <div className="pl-11 mt-3 space-y-3">
                                         {topic.subTopics?.map(sub => (
                                             <div key={sub.id} className="flex items-center gap-3 group/sub hover-lift">
-                                                <button onClick={() => toggleSubTopic(topic.id, sub.id)} className={`flex-shrink-0 transition-colors ${sub.isCompleted ? (isTeacherMode ? 'text-brandPurple' : 'text-vipGold') : (isTeacherMode ? 'text-slate-400 hover:text-brandPurple' : 'text-vipGold/30 hover:text-vipGold')} ${!isTeacherMode && 'cursor-default pointer-events-none'}`}>
+                                                <button onClick={() => toggleSubTopic(topic.id, sub.id)} className={`flex-shrink-0 transition-colors ${sub.isCompleted ? (isVip ? 'text-vipGold' : 'text-brandPurple') : (isVip ? 'text-vipGold/30 hover:text-vipGold' : 'text-slate-400 hover:text-brandPurple')} ${!isTeacherMode && 'cursor-default pointer-events-none'}`}>
                                                     {sub.isCompleted ? <CheckSquare size={20} strokeWidth={2.5} /> : <Square size={20} strokeWidth={2.5} />}
                                                 </button>
                                                 
                                                 <div className="flex-1 flex items-center justify-between">
-                                                    <span className={`text-lg font-bold transition-all ${sub.isCompleted ? 'text-slate-400/50 line-through' : (isTeacherMode ? 'text-slate-600' : 'text-slate-300')}`}>
+                                                    <span className={`text-lg font-bold transition-all ${sub.isCompleted ? (isVip ? 'text-vipGold/40 line-through' : 'text-slate-400/50 line-through') : (isVip ? 'text-slate-300' : 'text-slate-600')}`}>
                                                         {sub.title}
                                                     </span>
                                                     {isTeacherMode && (
