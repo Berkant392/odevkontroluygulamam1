@@ -3,52 +3,67 @@
 @tailwind utilities;
 
 @layer base {
-    body { font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; background-color: #f8f9fa; color: #0f172a; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+    body { 
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; 
+        background-color: #f8f9fa; 
+        color: #0f172a; 
+        overflow-x: hidden; 
+        -webkit-tap-highlight-color: transparent; 
+    }
 }
 
+/* Scrollbar Zarifleştirme */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.5); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.8); }
 
+
 /* =========================================================
-   👑 V3 BİREBİR HTML LOGIN TASARIMI (berkant_hoca_login_v3)
+   👑 V4 ULTRA-PREMIUM BİLEŞENLER VE ANİMASYONLAR
    ========================================================= */
-.login-scene { width: 100%; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px 16px; position: relative; overflow: hidden; background: #0a0812; }
+
+/* 1. Fiziksel Tıklama Hissi (Framer Motion öncesi elemanlar için yedek) */
+.hover-lift { 
+    transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1); 
+    will-change: transform; 
+}
+.hover-lift:hover { transform: translateY(-3px); }
+.hover-lift:active { transform: scale(0.96); }
+
+/* 2. Cam Efekti (Glassmorphism) */
+.glass-panel { 
+    background: rgba(19, 15, 37, 0.55); 
+    backdrop-filter: blur(20px); 
+    -webkit-backdrop-filter: blur(20px); 
+    border: 1px solid rgba(255, 255, 255, 0.06); 
+}
+
+/* 3. Giriş Ekranı Uzay Sahnesi */
+.login-scene { 
+    width: 100%; min-height: 100vh; display: flex; align-items: center; justify-content: center; 
+    padding: 32px 16px; position: relative; overflow: hidden; background: #0a0812; 
+}
 .login-orb { position: absolute; border-radius: 50%; pointer-events: none; z-index: 0; }
 .login-o1 { width: 380px; height: 380px; background: radial-gradient(circle, rgba(109,40,217,0.18) 0%, transparent 70%); top: -100px; left: -120px; }
 .login-o2 { width: 300px; height: 300px; background: radial-gradient(circle, rgba(180,130,0,0.12) 0%, transparent 70%); bottom: 0; right: -80px; }
 .login-o3 { width: 220px; height: 220px; background: radial-gradient(circle, rgba(79,70,229,0.14) 0%, transparent 70%); bottom: 80px; left: 20px; }
+.login-card { width: 100%; max-width: 360px; position: relative; z-index: 2; }
 
-.login-card { width: 100%; max-width: 360px; position: relative; z-index: 2; animation: cardIn 0.9s cubic-bezier(0.16,1,0.3,1) both; }
-@keyframes cardIn { from { opacity: 0; transform: translateY(28px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
-
+/* 4. Logolar ve Giriş Butonları */
 .logo-area { display: flex; flex-direction: column; align-items: center; margin-bottom: 36px; }
-.logo-box { width: 68px; height: 68px; border-radius: 20px; background: #6d28d9; display: flex; align-items: center; justify-content: center; position: relative; animation: lf 4s ease-in-out infinite; box-shadow: 0 2px 0 rgba(255,255,255,0.12) inset, 0 -2px 0 rgba(0,0,0,0.35) inset, 0 12px 32px rgba(109,40,217,0.45), 0 4px 8px rgba(0,0,0,0.4); }
-@keyframes lf { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.logo-box { width: 68px; height: 68px; border-radius: 20px; background: #6d28d9; display: flex; align-items: center; justify-content: center; position: relative; box-shadow: 0 2px 0 rgba(255,255,255,0.12) inset, 0 -2px 0 rgba(0,0,0,0.35) inset, 0 12px 32px rgba(109,40,217,0.45), 0 4px 8px rgba(0,0,0,0.4); }
 .logo-brand { font-size: 21px; font-weight: 900; letter-spacing: 0.09em; color: #fff; margin-top: 15px; }
 .logo-sub { font-size: 10px; font-weight: bold; letter-spacing: 0.22em; color: rgba(255,255,255,0.28); margin-top: 3px; }
 
-.login-btns { display: flex; flex-direction: column; gap: 11px; }
-.lbtn { width: 100%; display: flex; align-items: center; gap: 14px; padding: 15px 17px; border-radius: 16px; border: none; cursor: pointer; text-align: left; position: relative; overflow: hidden; transition: transform 0.18s cubic-bezier(0.16,1,0.3,1), box-shadow 0.18s ease; outline: none; }
+.login-btns { display: flex; flex-direction: column; gap: 11px; width: 100%; }
+.lbtn { display: flex; align-items: center; gap: 14px; padding: 15px 17px; border-radius: 16px; cursor: pointer; text-align: left; position: relative; overflow: hidden; outline: none; }
 
-.lbtn-s { background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.05) 100%); border-top: 0.5px solid rgba(255,255,255,0.18); border-left: 0.5px solid rgba(255,255,255,0.10); border-right: 0.5px solid rgba(0,0,0,0.3); border-bottom: 0.5px solid rgba(0,0,0,0.4); box-shadow: 0 4px 0 rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.10); animation: bi 0.55s 0.12s both cubic-bezier(0.16,1,0.3,1); }
-.lbtn-s:hover { transform: translateY(-3px); box-shadow: 0 7px 0 rgba(0,0,0,0.35), 0 14px 28px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.12); }
-.lbtn-s:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.35), 0 3px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.08); }
+.lbtn-s { background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.05) 100%); border-top: 0.5px solid rgba(255,255,255,0.18); border-left: 0.5px solid rgba(255,255,255,0.10); border-right: 0.5px solid rgba(0,0,0,0.3); border-bottom: 0.5px solid rgba(0,0,0,0.4); box-shadow: 0 4px 0 rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.10); }
+.lbtn-v { background: linear-gradient(180deg, #2a1800 0%, #1a0e00 100%); border-top: 0.5px solid rgba(255,215,0,0.55); border-left: 0.5px solid rgba(255,215,0,0.25); border-right: 0.5px solid rgba(100,60,0,0.6); border-bottom: 0.5px solid rgba(80,40,0,0.8); box-shadow: 0 5px 0 rgba(60,30,0,0.9), 0 10px 30px rgba(218,165,32,0.2), inset 0 1px 0 rgba(255,215,0,0.18); }
+.lbtn-a { background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%); border-top: 0.5px solid rgba(255,255,255,0.14); border-left: 0.5px solid rgba(255,255,255,0.08); border-right: 0.5px solid rgba(0,0,0,0.3); border-bottom: 0.5px solid rgba(0,0,0,0.4); box-shadow: 0 4px 0 rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08); }
 
-.lbtn-v { background: linear-gradient(180deg, #2a1800 0%, #1a0e00 100%); border-top: 0.5px solid rgba(255,215,0,0.55); border-left: 0.5px solid rgba(255,215,0,0.25); border-right: 0.5px solid rgba(100,60,0,0.6); border-bottom: 0.5px solid rgba(80,40,0,0.8); box-shadow: 0 5px 0 rgba(60,30,0,0.9), 0 10px 30px rgba(218,165,32,0.2), inset 0 1px 0 rgba(255,215,0,0.18); animation: bi 0.55s 0.22s both cubic-bezier(0.16,1,0.3,1), vb 3.5s 1.5s ease-in-out infinite; }
-.lbtn-v:hover { transform: translateY(-4px) scale(1.012); box-shadow: 0 9px 0 rgba(60,30,0,0.9), 0 18px 40px rgba(218,165,32,0.32), inset 0 1px 0 rgba(255,215,0,0.22); }
-.lbtn-v:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(60,30,0,0.9), 0 4px 12px rgba(218,165,32,0.15), inset 0 1px 0 rgba(255,215,0,0.1); }
-
-.lbtn-a { background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%); border-top: 0.5px solid rgba(255,255,255,0.14); border-left: 0.5px solid rgba(255,255,255,0.08); border-right: 0.5px solid rgba(0,0,0,0.3); border-bottom: 0.5px solid rgba(0,0,0,0.4); box-shadow: 0 4px 0 rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08); animation: bi 0.55s 0.32s both cubic-bezier(0.16,1,0.3,1); }
-.lbtn-a:hover { transform: translateY(-3px); box-shadow: 0 7px 0 rgba(0,0,0,0.35), 0 14px 28px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.10); }
-.lbtn-a:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.35), 0 3px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06); }
-
-@keyframes vb { 0%, 100% { box-shadow: 0 5px 0 rgba(60,30,0,0.9), 0 10px 30px rgba(218,165,32,0.18), inset 0 1px 0 rgba(255,215,0,0.18); } 50% { box-shadow: 0 5px 0 rgba(60,30,0,0.9), 0 14px 40px rgba(218,165,32,0.32), inset 0 1px 0 rgba(255,215,0,0.25); } }
-@keyframes bi { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: translateX(0); } }
-@keyframes vp2 { 0%, 100% { opacity: 0; transform: scale(0.3); } 50% { opacity: 1; transform: scale(1.5); } }
-
-.liw { width: 40px; height: 40px; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.liw { width: 40px; height: 40px; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px; }
 .liw-s { background: rgba(167,139,250,0.14); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 4px rgba(0,0,0,0.2); }
 .liw-a { background: rgba(96,165,250,0.11); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 4px rgba(0,0,0,0.2); }
 .liw-v { background: rgba(255,215,0,0.09); border: 0.5px solid rgba(255,215,0,0.28); box-shadow: inset 0 1px 0 rgba(255,215,0,0.14), 0 2px 4px rgba(0,0,0,0.3); }
@@ -62,15 +77,14 @@
 .lch { color: rgba(255,255,255,0.28); flex-shrink: 0; }
 .lch-v { color: rgba(255,215,0,0.55); }
 
-.ldivline { display: flex; align-items: center; gap: 10px; margin: 2px 0; animation: bi 0.55s 0.27s both cubic-bezier(0.16,1,0.3,1); }
+.ldivline { display: flex; align-items: center; gap: 10px; margin: 2px 0; }
 .ldl { flex: 1; height: 0.5px; background: rgba(255,255,255,0.07); }
 .ldt { font-size: 9px; font-weight: 800; letter-spacing: 0.14em; color: rgba(255,255,255,0.18); }
 
-.lquote { margin-top: 26px; text-align: center; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.18); line-height: 1.7; animation: fadeQ 1s 0.6s both; }
-@keyframes fadeQ { from { opacity: 0; } to { opacity: 1; } }
+.lquote { margin-top: 26px; text-align: center; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.18); line-height: 1.7; }
 .lqm { color: rgba(218,165,32,0.45); font-size: 13px; font-weight: bold; }
 
-/* Giriş Formu (Inputlar) Birebir Uyumu */
+/* 5. Giriş (Input) Elemanları */
 .login-input { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 14px 16px; color: #fff; font-size: 14px; font-weight: 600; outline: none; transition: all 0.2s ease; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
 .login-input:focus { border-color: #6d28d9; background: rgba(0,0,0,0.5); box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 0 0 2px rgba(109,40,217,0.2); }
 .login-input.vip-input:focus { border-color: #ffd700; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 0 0 2px rgba(255,215,0,0.2); }
@@ -78,16 +92,38 @@
 
 
 /* =========================================================
-   UYGULAMA İÇİ STANDART STİLLER (Bozulmaması İçin)
+   🏆 V4 GERÇEK METALİK ALTIN VE KONTRAST EFEKTLERİ
    ========================================================= */
-.hover-lift { transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1); will-change: transform; }
-.hover-lift:hover { transform: translateY(-3px); }
-.hover-lift:active { transform: scale(0.96); }
+.real-gold-text {
+    background: linear-gradient(to right, #d4af37, #fff2cd, #e6c27a, #ffd700, #c59b27);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0px 2px 15px rgba(255, 215, 0, 0.2);
+}
+.real-gold-bg {
+    background: linear-gradient(135deg, #d4af37, #ffd700, #ffeb99, #c59b27);
+    box-shadow: 0 4px 20px rgba(212, 175, 55, 0.4);
+    color: #111111 !important; /* VIP Buton yazısı okunaklılık için siyah */
+}
+.real-gold-border {
+    position: relative;
+}
+.real-gold-border::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 2px;
+    background: linear-gradient(135deg, #d4af37, #ffd700, #e6c875, #c59b27);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+}
+.vip-input {
+    color: #ffffff !important; 
+    background-color: rgba(30, 41, 59, 0.8) !important; 
+}
 
-.glass-panel { background: rgba(19, 15, 37, 0.55); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.06); }
-.vip-stardust-bg { background-color: #0a0a1f; background-image: radial-gradient(1px 1px at 15% 15%, #ffd700 100%, transparent), radial-gradient(2px 2px at 25% 45%, rgba(255, 215, 0, 0.8) 100%, transparent), radial-gradient(1.5px 1.5px at 45% 80%, #ffd700 100%, transparent), radial-gradient(2px 2px at 65% 20%, rgba(255, 215, 0, 0.5) 100%, transparent), radial-gradient(1px 1px at 85% 60%, #ffd700 100%, transparent), radial-gradient(2.5px 2.5px at 90% 90%, rgba(255, 215, 0, 0.9) 100%, transparent); background-size: 100px 100px; animation: float 20s linear infinite; }
-@keyframes float { 0% { background-position: 0px 0px; } 100% { background-position: 100px 100px; } }
-
+/* =========================================================
+   📊 TABLO, MODAL VE YARDIMCI ELEMANLAR
+   ========================================================= */
 .table-container { overflow-x: auto; overflow-y: visible; position: relative; border: 1px solid #e2e8f0; border-radius: 16px; background-color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); padding-bottom: 20px; }
 th, td { white-space: nowrap; padding: 12px 16px; vertical-align: top; }
 .sticky-corner { position: sticky; left: 0; top: 0; z-index: 50 !important; background-color: white; border-right: 2px solid #f8f9fa; border-bottom: 2px solid #f8f9fa; }
@@ -97,14 +133,18 @@ th, td { white-space: nowrap; padding: 12px 16px; vertical-align: top; }
 tbody tr { transition: background-color 0.2s ease; border-bottom: 1px solid #f8f9fa; }
 tbody tr:hover { background-color: #f1f5f9; }
 .z-menu { z-index: 9999 !important; }
+
+/* Modallar için Animasyon (Ana menüler framer ile, yedek modallar css ile) */
 .modal-anim { animation: scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 @keyframes scaleIn { 0% { opacity: 0; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
 
-/* Mikrofon Butonu (Tam ve Sorunsuz Hali) */
-.fab-button { position: fixed; bottom: 30px; right: 30px; z-index: 90; width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(109, 40, 217, 0.5); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; }
+/* Mikrofon Asistan Butonu */
+.fab-button { position: fixed; bottom: 30px; right: 30px; z-index: 90; width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(109, 40, 217, 0.5); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease; cursor: pointer; }
 .fab-button:hover { transform: scale(1.05) translateY(-5px); box-shadow: 0 15px 35px rgba(109, 40, 217, 0.6); }
 .fab-pulse { position: absolute; width: 100%; height: 100%; border-radius: 50%; background-color: rgba(109, 40, 217, 0.4); z-index: -1; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
 @keyframes ping { 75%, 100% { transform: scale(1.5); opacity: 0; } }
 
+/* Yazdırma ve Mobil */
 @media print { body { background-color: white !important; margin: 0; padding: 0; } .no-print { display: none !important; } .print-only { display: block !important; } @page { margin: 1cm; } }
 .print-only { display: none; }
+@media (max-width: 768px) { .fab-button { bottom: 20px; right: 20px; width: 60px; height: 60px; } }
