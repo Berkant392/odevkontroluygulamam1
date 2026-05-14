@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle, Circle, Plus, Trash2, BookOpen, ChevronDown, ChevronRight, ListTodo } from 'lucide-react';
+import { CheckCircle, Circle, Plus, Trash2, BookOpen, ChevronDown, ChevronRight, ListTodo, X } from 'lucide-react';
 import { generateId } from '../../utils/helpers';
 import { LIBRARY_TYPES } from '../../utils/constants';
 
@@ -8,12 +8,10 @@ const CurriculumTracker = ({ cls, updateClassInDb, libraryItems, isTeacherMode }
     const [newTopicTitle, setNewTopicTitle] = useState("");
     const [newSubTopicTitles, setNewSubTopicTitles] = useState({});
 
-    // Sınıfın müfredat verisi yoksa boş dizi başlat
     const curriculum = cls.curriculum || [];
 
     const toggleTopic = (id) => setExpandedTopics(p => ({...p, [id]: !p[id]}));
 
-    // Yüzde hesaplama motoru
     const calculateProgress = (topics) => {
         if (!topics || topics.length === 0) return 0;
         let total = 0; let completed = 0;
@@ -26,7 +24,6 @@ const CurriculumTracker = ({ cls, updateClassInDb, libraryItems, isTeacherMode }
         return total === 0 ? 0 : Math.round((completed / total) * 100);
     };
 
-    // Ana Konu Ekleme
     const addTopic = (title) => {
         if(!title.trim()) return;
         const updated = [...curriculum, { id: generateId('curr'), title, subTopics: [] }];
@@ -34,15 +31,23 @@ const CurriculumTracker = ({ cls, updateClassInDb, libraryItems, isTeacherMode }
         setNewTopicTitle("");
     };
 
-    // Kütüphaneden Konu Çekme
     const addLibraryTopic = (e) => {
         const val = e.target.value;
         if(!val) return;
-        addTopic(val);
+        
+        // Kütüphaneden seçilen hazır müfredat şablonunu (Ana başlık ve alt başlıklarıyla birlikte) sınıfa ekleme mantığı
+        const selectedItem = libraryItems.find(i => i.id === val);
+        if (selectedItem && selectedItem.type === LIBRARY_TYPES.CURRICULUM) {
+            const newTopic = {
+                id: generateId('curr'),
+                title: selectedItem.text,
+                subTopics: selectedItem.subTopics ? selectedItem.subTopics.map(st => ({ id: generateId('sub'), title: st, isCompleted: false })) : []
+            };
+            updateClassInDb({ ...cls, curriculum: [...curriculum, newTopic] });
+        }
         e.target.value = "";
     };
 
-    // Alt Başlık Ekleme
     const addSubTopic = (topicId) => {
         const title = newSubTopicTitles[topicId];
         if(!title || !title.trim()) return;
@@ -52,10 +57,9 @@ const CurriculumTracker = ({ cls, updateClassInDb, libraryItems, isTeacherMode }
         });
         updateClassInDb({ ...cls, curriculum: updated });
         setNewSubTopicTitles(p => ({...p, [topicId]: ""}));
-        setExpandedTopics(p => ({...p, [topicId]: true})); // Eklendiğinde akordeonu aç
+        setExpandedTopics(p => ({...p, [topicId]: true}));
     };
 
-    // Tik atma / Kaldırma (Sadece Öğretmen)
     const toggleSubTopic = (topicId, subTopicId) => {
         if(!isTeacherMode) return;
         const updated = curriculum.map(t => {
@@ -68,7 +72,6 @@ const CurriculumTracker = ({ cls, updateClassInDb, libraryItems, isTeacherMode }
         updateClassInDb({ ...cls, curriculum: updated });
     };
 
-    // Silme İşlemleri
     const deleteTopic = (topicId) => updateClassInDb({ ...cls, curriculum: curriculum.filter(t => t.id !== topicId) });
     const deleteSubTopic = (topicId, subTopicId) => {
         const updated = curriculum.map(t => {
@@ -82,7 +85,6 @@ const CurriculumTracker = ({ cls, updateClassInDb, libraryItems, isTeacherMode }
 
     return (
         <div className="flex flex-col gap-6 animate-scale-in">
-            {/* Üst Başlık ve Genel İlerleme Çubuğu */}
             <div className={`p-6 rounded-3xl border ${isTeacherMode ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-700'} shadow-sm`}>
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div className="flex items-center gap-3">
@@ -104,30 +106,28 @@ const CurriculumTracker = ({ cls, updateClassInDb, libraryItems, isTeacherMode }
                 </div>
             </div>
 
-            {/* Sadece Öğretmene Görünen Kategori Ekleme Paneli */}
             {isTeacherMode && (
                 <div className="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                     <div className="flex-1 flex gap-2">
-                        <input type="text" placeholder="Yeni Ana Konu Ekle..." className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:border-indigo-500 outline-none font-medium" value={newTopicTitle} onChange={e => setNewTopicTitle(e.target.value)} onKeyDown={e => e.key==='Enter' && addTopic(newTopicTitle)}/>
+                        <input type="text" placeholder="Hızlı Ana Konu Ekle..." className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:border-indigo-500 outline-none font-medium" value={newTopicTitle} onChange={e => setNewTopicTitle(e.target.value)} onKeyDown={e => e.key==='Enter' && addTopic(newTopicTitle)}/>
                         <button onClick={()=>addTopic(newTopicTitle)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 rounded-xl text-sm font-bold shadow-md transition-transform hover:-translate-y-0.5">EKLE</button>
                     </div>
                     <div className="flex-1 border-l border-slate-100 pl-4">
                         <select onChange={addLibraryTopic} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-500 outline-none text-slate-600 cursor-pointer font-medium" defaultValue="">
-                            <option value="" disabled>Kütüphaneden Hazır Konu Seç...</option>
+                            <option value="" disabled>Kütüphaneden Hazır Şablon Seç...</option>
                             {libraryItems.filter(i => i.type === LIBRARY_TYPES.CURRICULUM).map(item => (
-                                <option key={item.id} value={item.text}>{item.text}</option>
+                                <option key={item.id} value={item.id}>{item.text}</option>
                             ))}
                         </select>
                     </div>
                 </div>
             )}
 
-            {/* Konular Listesi */}
             <div className="space-y-4">
                 {curriculum.length === 0 ? (
                     <div className={`py-10 text-center font-bold rounded-2xl border border-dashed ${isTeacherMode ? 'bg-white border-slate-300 text-slate-500' : 'bg-slate-800/50 border-slate-700 text-slate-400'}`}>
                         <ListTodo size={48} className="mx-auto mb-4 opacity-30" />
-                        Henüz konu eklenmemiş.
+                        Henüz konu eklenmemiş. Kütüphaneden şablon seçebilir veya yeni ekleyebilirsiniz.
                     </div>
                 ) : (
                     curriculum.map((topic) => {
