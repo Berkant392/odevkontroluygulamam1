@@ -7,7 +7,7 @@ import {
     MoreVertical, ArrowDownToLine, UserPlus, KeyRound, Megaphone, Edit3, Save, X, 
     Layout, AlertTriangle, GraduationCap, RefreshCw, Library,
     FileSpreadsheet, AlertOctagon, StickyNote, Calendar, Info, Pencil, User, LogOut, Printer, Settings,
-    Mic, MicOff, Sparkles, Sparkle, Zap, Users, Crown, Briefcase 
+    Mic, MicOff, Sparkles, Sparkle, Zap, Users, Crown, Briefcase, BookOpenCheck, ListTodo 
 } from 'lucide-react';
 
 // Kendi oluşturduğumuz modüler dosyaları çağırıyoruz
@@ -51,8 +51,8 @@ const App = () => {
     const [isEditingAnnouncement, setIsEditingAnnouncement] = useState(false);
     
     const [view, setView] = useState('home');
+    const [activeTab, setActiveTab] = useState('homework'); // YENİ: Ödev ve Konu sekmeleri
     const [selectedClass, setSelectedClass] = useState(null);
-    const [selectedStudentForView, setSelectedStudentForView] = useState(null);
     
     const [pinInput, setPinInput] = useState("");
     const [newPin, setNewPin] = useState("");
@@ -320,7 +320,7 @@ const App = () => {
     const deleteCellNote = () => { if (!activeNoteCell) return; const { classId, studentId, colId } = activeNoteCell; const cls = classes.find(c => c.id === classId); if (cls) { const updatedStudents = cls.students.map(s => { if (s.id === studentId) { const newNotes = { ...s.assignmentNotes }; delete newNotes[colId]; return { ...s, assignmentNotes: newNotes }; } return s; }); updateClassInDb({ ...cls, students: updatedStudents }); } setShowCellNoteModal(false); setActiveNoteCell(null); setNoteInput(""); };
     const downloadReport = (cls) => { let csvContent = "data:text/csv;charset=utf-8,Öğrenci Adı,Kullanıcı Adı,Şifre," + cls.topics.flatMap(t => t.subColumns.map(c => `${t.title} - ${c.title}`)).join(",") + "\n"; cls.students.forEach(std => { const row = [std.name, std.username, std.password]; cls.topics.forEach(t => { t.subColumns.forEach(c => { const status = std.grades?.[c.id]; const label = STATUS_OPTIONS.find(o => o.id === status)?.label || "Muaf"; const note = std.assignmentNotes?.[c.id] ? ` (${std.assignmentNotes[c.id]})` : ""; row.push(label + note); }); }); csvContent += row.join(",") + "\n"; }); const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", `${cls.className}_Rapor.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); };
     
-    const goHome = () => { setView('home'); setSelectedClass(null); setSelectedStudentForView(null); };
+    const goHome = () => { setView('home'); setSelectedClass(null); setSelectedStudentForView(null); setActiveTab('homework'); };
     const openClass = (cls) => { setSelectedClass(cls); setView('class-detail'); };
     const openStudent = (std) => { setSelectedStudentForView(std); setView('student-detail'); };
     const handleOpenRisk = (cls) => { setActiveRiskClass(cls); setShowRiskModal(true); };
@@ -474,7 +474,19 @@ const App = () => {
                                 <button onClick={(e) => deleteClass(e, selectedClass.id)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"><Trash2 size={18}/></button>
                             </div>
                         </div>
+                       {/* --- YENİ: SEKME MENÜSÜ --- */}
+                        <div className="flex gap-6 px-6 pt-4 border-b border-slate-100 bg-white">
+                            <button onClick={() => setActiveTab('homework')} className={`pb-3 font-bold text-sm border-b-[3px] transition-colors flex items-center gap-2 ${activeTab === 'homework' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+                                <Layout size={18}/> Ödev Takibi
+                            </button>
+                            <button onClick={() => setActiveTab('curriculum')} className={`pb-3 font-bold text-sm border-b-[3px] transition-colors flex items-center gap-2 ${activeTab === 'curriculum' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+                                <BookOpenCheck size={18}/> Konu İlerlemesi
+                            </button>
+                        </div>
+
                         <div className={`p-4 ${selectedClass.type === 'vip' ? 'bg-amber-50/30' : 'bg-slate-50/50'}`}>
+                            {activeTab === 'homework' && (
+                                <>
                             {isMobile ? (
                                 <div className="space-y-4">
                                     <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex gap-2"><input type="text" placeholder="Yeni Öğrenci Ekle..." className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-700 w-full focus:border-indigo-500 outline-none font-medium" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(selectedClass.id); }} /><button onClick={() => addStudent(selectedClass.id)} className={`text-white px-4 rounded-xl text-sm font-bold shadow-md ${selectedClass.type === 'vip' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}>EKLE</button></div>
@@ -553,9 +565,18 @@ const App = () => {
                                             </td>
                                             {selectedClass.topics?.map((t, i) => <td key={i} colSpan={Math.max(1, t.subColumns.length + 1)} className="border-t border-slate-200 bg-slate-50/50"></td>)}
                                         </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                                   </tbody>
+                                        </table>
+                                    </div>
+                                    )}
+                                </>
+                            )}
+                            
+                            {activeTab === 'curriculum' && (
+                                <div className="py-10 text-center text-slate-500 font-bold bg-white rounded-2xl border border-slate-200 shadow-inner">
+                                    <ListTodo size={48} className="mx-auto mb-4 text-indigo-200" />
+                                    Öğretmen Konu İlerlemesi modülü (Aşama 2'de) buraya gelecek!
+                                </div>
                             )}
                         </div>
                     </div>
@@ -578,8 +599,19 @@ const App = () => {
                                 <div className="flex items-center justify-center md:justify-start gap-3"><span className={`font-bold px-3 py-1 rounded-lg ${currentUserRole === 'vip-student' ? 'bg-slate-700 text-amber-400' : 'bg-slate-100 text-slate-500'}`}>{selectedClass.className}</span><span className={`font-black px-3 py-1 rounded-lg border ${currentUserRole === 'vip-student' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>%{calculateStats([selectedStudentForView], selectedClass.topics).percentage} Genel Başarı</span></div>
                             </div>
                         </div>
-                        <div className="space-y-8">
-                            {selectedClass.topics?.map((topic, i) => {
+                       {/* --- YENİ: ÖĞRENCİ SEKME MENÜSÜ --- */}
+                                <div className={`flex gap-6 mb-6 border-b ${currentUserRole === 'vip-student' ? 'border-slate-700' : 'border-slate-200'}`}>
+                                    <button onClick={() => setActiveTab('homework')} className={`pb-3 font-bold text-sm border-b-[3px] transition-colors flex items-center gap-2 ${activeTab === 'homework' ? (currentUserRole === 'vip-student' ? 'border-amber-400 text-amber-400' : 'border-indigo-600 text-indigo-700') : 'border-transparent text-slate-500 hover:text-slate-400'}`}>
+                                        <Layout size={18}/> Ödevlerim
+                                    </button>
+                                    <button onClick={() => setActiveTab('curriculum')} className={`pb-3 font-bold text-sm border-b-[3px] transition-colors flex items-center gap-2 ${activeTab === 'curriculum' ? (currentUserRole === 'vip-student' ? 'border-amber-400 text-amber-400' : 'border-indigo-600 text-indigo-700') : 'border-transparent text-slate-500 hover:text-slate-400'}`}>
+                                        <BookOpenCheck size={18}/> Konu İlerlemem
+                                    </button>
+                                </div>
+
+                                {activeTab === 'homework' && (
+                                    <div className="space-y-8">
+                                        {selectedClass.topics?.map((topic, i) => {
                                 const theme = currentUserRole === 'vip-student' ? { tag: 'bg-amber-500', text: 'text-amber-400' } : TOPIC_THEMES[i % TOPIC_THEMES.length]; 
                                 const topicStats = calculateStats([selectedStudentForView], [{...topic, subColumns: topic.subColumns}]);
                                 const pct = topicStats.percentage || 0; const isLate = isOverdue(topic.date);
@@ -619,10 +651,18 @@ const App = () => {
                                 );
                             })}
                             {selectedClass.topics?.length === 0 && <div className="text-center text-slate-500 py-10 font-medium">Bu sınıfa henüz ödev eklenmemiş.</div>}
-                        </div>
-                    </div>
-                )}
-            </main>
+                                    </div>
+                                )}
+
+                                {activeTab === 'curriculum' && (
+                                    <div className={`py-10 text-center font-bold rounded-2xl border ${currentUserRole === 'vip-student' ? 'bg-slate-900 border-slate-700 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                                        <ListTodo size={48} className="mx-auto mb-4 opacity-50" />
+                                        Öğrenci Konu İlerleme barları buraya gelecek!
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </main>
 
             {isTeacherMode && (
                 <div className="fab-button bg-gradient-to-r from-indigo-600 to-purple-600" onClick={toggleListening} title="Akıllı Asistanı Başlat">
