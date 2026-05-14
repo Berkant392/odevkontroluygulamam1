@@ -524,41 +524,42 @@ if (!currentUserRole) {
                                 initial="hidden"
                                 animate="show"
                                 exit={{ opacity: 0, x: 50, transition: { duration: 0.2 } }}
-                                className="login-btns"
+                                className="login-btns flex flex-col items-center w-full"
                             >
-                                <motion.button variants={itemVariants} whileHover={{ x: -4 }} whileTap={{ scale: 0.95 }} onClick={() => setAuthView('selection')} className="lbtn lbtn-a" style={{padding: '10px 17px', background: 'transparent', border: 'none', boxShadow: 'none', width: 'fit-content'}}>
+                                <motion.button variants={itemVariants} whileHover={{ x: -4 }} whileTap={{ scale: 0.95 }} onClick={() => setAuthView('selection')} className="lbtn lbtn-a" style={{padding: '10px 17px', background: 'transparent', border: 'none', boxShadow: 'none', width: '100%', maxWidth: '360px', marginBottom: '10px'}}>
                                     <ChevronLeft className="lch" size={18}/>
-                                    <div className="lbl"><div className="lts" style={{fontSize:'12px'}}>Geri Dön</div></div>
+                                    <div className="lbl"><div className="lts" style={{fontSize:'12px', color: '#cbd5e1'}}>Geri Dön</div></div>
                                 </motion.button>
 
-                                <motion.div variants={itemVariants} className={`p-6 rounded-3xl ${authView === 'vip-login' ? 'bg-[#1a1721] real-gold-border shadow-vip-card' : 'bg-slate-800/50 border border-slate-700'}`}>
-                                    <div style={{marginBottom: '24px', textAlign: 'center'}}>
-                                        <h2 className={authView === 'vip-login' ? 'real-gold-text' : 'text-white'} style={{fontSize: '22px', fontWeight: '900', letterSpacing: '0.05em', textTransform: 'uppercase'}}>
+                                {/* GİRİŞ FORMU ÇERÇEVESİ */}
+                                <motion.div variants={itemVariants} className={`p-8 rounded-[2rem] w-full max-w-[360px] relative overflow-hidden ${authView === 'vip-login' ? 'bg-[#1e2128] real-gold-border shadow-[0_0_40px_rgba(255,215,0,0.15)]' : 'bg-slate-800/90 border border-slate-700 shadow-2xl'}`}>
+                                    <div style={{marginBottom: '28px', textAlign: 'center'}}>
+                                        <h2 className={authView === 'vip-login' ? 'real-gold-text' : 'text-white'} style={{fontSize: '22px', fontWeight: '900', letterSpacing: '0.05em'}}>
                                             {authView === 'vip-login' ? 'ÖZEL DERS ÖĞRENCİSİ' : 'ÖĞRENCİ GİRİŞİ'}
                                         </h2>
-                                        <p style={{fontSize: '11px', color: authView === 'vip-login' ? 'rgba(255,215,0,0.6)' : 'rgba(255,255,255,0.4)', marginTop: '6px', letterSpacing: '0.05em'}}>
+                                        <p style={{fontSize: '12px', color: authView === 'vip-login' ? '#d4af37' : '#94a3b8', marginTop: '8px', fontWeight: '600'}}>
                                             Lütfen giriş bilgilerinizi doldurun
                                         </p>
                                     </div>
                                     
                                     <div className="login-input-group">
-                                        <label className="login-label" style={{color: authView === 'vip-login' ? 'rgba(255,215,0,0.8)' : 'rgba(255,255,255,0.6)'}}>Kullanıcı Adı</label>
-                                        <input type="text" className={`login-input ${authView === 'vip-login' ? 'vip-input bg-[#0f0d14]' : ''}`} placeholder="örn: ahmet.yilmaz" value={studentUsernameInput} onChange={e => setStudentUsernameInput(e.target.value)} />
+                                        <label className="login-label" style={{color: authView === 'vip-login' ? '#e6c27a' : '#94a3b8'}}>Kullanıcı Adı</label>
+                                        <input type="text" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} placeholder="örn: ahmet.yilmaz" value={studentUsernameInput} onChange={e => setStudentUsernameInput(e.target.value)} />
                                     </div>
                                     
-                                    <div className="login-input-group" style={{marginTop: '16px'}}>
-                                        <label className="login-label" style={{color: authView === 'vip-login' ? 'rgba(255,215,0,0.8)' : 'rgba(255,255,255,0.6)'}}>Şifre</label>
-                                        <input type="password" className={`login-input ${authView === 'vip-login' ? 'vip-input bg-[#0f0d14]' : ''}`} style={{letterSpacing: '0.3em', fontSize: '18px'}} placeholder="••••••" value={studentPasswordInput} onChange={e => setStudentPasswordInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleStudentLogin(authView === 'vip-login')} />
+                                    <div className="login-input-group" style={{marginTop: '20px'}}>
+                                        <label className="login-label" style={{color: authView === 'vip-login' ? '#e6c27a' : '#94a3b8'}}>Şifre</label>
+                                        <input type="password" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} style={{letterSpacing: '0.3em', fontSize: '18px'}} placeholder="••••••" value={studentPasswordInput} onChange={e => setStudentPasswordInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleStudentLogin(authView === 'vip-login')} />
                                     </div>
                                     
                                     <motion.button 
-                                        whileHover={{ scale: 1.02 }} 
-                                        whileTap={{ scale: 0.95 }} 
+                                        whileHover={{ scale: 1.03 }} 
+                                        whileTap={{ scale: 0.96 }} 
                                         onClick={() => handleStudentLogin(authView === 'vip-login')} 
-                                        className={`lbtn ${authView === 'vip-login' ? 'real-gold-bg text-[#1a1721] shadow-vip-glow' : 'bg-brandPurple text-white shadow-glow'}`} 
-                                        style={{marginTop: '24px', justifyContent: 'center', padding: '16px', border: 'none'}}
+                                        className={`lbtn w-full flex items-center justify-center rounded-xl transition-all ${authView === 'vip-login' ? 'real-gold-bg' : 'bg-brandPurple hover:bg-purple-600 shadow-glow'}`} 
+                                        style={{marginTop: '28px', padding: '16px', border: 'none'}}
                                     >
-                                        <div className="lts" style={{color: authView === 'vip-login' ? '#1a1721' : '#fff', fontSize: '16px', fontWeight: '900', letterSpacing: '0.05em'}}>GİRİŞ YAP</div>
+                                        <span style={{color: authView === 'vip-login' ? '#111111' : '#ffffff', fontSize: '16px', fontWeight: '900', letterSpacing: '0.05em'}}>GİRİŞ YAP</span>
                                     </motion.button>
                                 </motion.div>
                             </motion.div>
@@ -606,36 +607,31 @@ if (!currentUserRole) {
             </div>
         );
     }
-    // ---------------------------------------------------------
+ // ---------------------------------------------------------
     // 💎 AŞAMA 3 & 4: V3 ULTRA-PREMIUM UYGULAMA İÇİ PANELLER 
     // ---------------------------------------------------------
     return (
-        <div className={`min-h-screen pb-32 relative transition-colors duration-1000 ${currentUserRole === 'vip-student' ? 'bg-[#05040a]' : 'bg-lightBg'}`}>
+        <div className={`min-h-screen pb-32 relative transition-colors duration-1000 ${currentUserRole === 'vip-student' ? 'bg-slate-900' : 'bg-lightBg'}`}>
             
-            {/* 🌌 V3 VIP Özel Arka Plan (Uygulama İçi) */}
+            {/* 🌌 V4 VIP Kasmayan Asil Gri Arka Plan (Canvas yok, sadece sabit degradeler) */}
             {currentUserRole === 'vip-student' && (
-                <>
-                    <div className="absolute top-[5%] right-[5%] w-[400px] h-[400px] rounded-full mix-blend-screen filter blur-[120px] opacity-20 animate-orb-float pointer-events-none" style={{background: 'radial-gradient(circle, rgba(180,130,0,0.8) 0%, transparent 70%)'}}></div>
-                    <div className="absolute bottom-[10%] left-[5%] w-[300px] h-[300px] rounded-full mix-blend-screen filter blur-[100px] opacity-15 animate-orb-float pointer-events-none" style={{background: 'radial-gradient(circle, rgba(109,40,217,0.8) 0%, transparent 70%)', animationDelay: '2s'}}></div>
-                    <div className="parallax-container pointer-events-none opacity-60">
-                        <div className="stars-layer-1"></div>
-                        <div className="stars-layer-2"></div>
-                        <div className="stars-layer-3"></div>
-                    </div>
-                </>
+                <div className="fixed inset-0 z-0 pointer-events-none bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+                    <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full mix-blend-screen opacity-10" style={{background: 'radial-gradient(circle, rgba(255,215,0,0.4) 0%, transparent 70%)'}}></div>
+                    <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] rounded-full mix-blend-screen opacity-[0.05]" style={{background: 'radial-gradient(circle, rgba(255,255,255,0.5) 0%, transparent 70%)'}}></div>
+                </div>
             )}
 
-            <header className={`no-print relative z-20 transition-all duration-500 ${currentUserRole === 'vip-student' ? 'glass-panel border-b border-vipGoldAccent/20' : 'bg-white border-b border-slate-200 shadow-sm'}`}>
+            <header className={`no-print relative z-20 transition-all duration-500 ${currentUserRole === 'vip-student' ? 'bg-slate-800/90 border-b border-slate-700 shadow-md' : 'bg-white border-b border-slate-200 shadow-sm'}`}>
                  <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col items-center gap-2">
                     <div className="flex items-center gap-3 w-full justify-between">
                         {currentUserRole !== 'student' && currentUserRole !== 'vip-student' && view !== 'home' ? (
-                            <button onClick={() => view === 'student-detail' ? setView('class-detail') : goHome()} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 text-slate-700 transition-colors hover-lift"><ChevronLeft size={24} /></button>
+                            <button onClick={() => view === 'student-detail' ? setView('class-detail') : goHome()} className={`p-2 rounded-full transition-colors hover-lift ${currentUserRole === 'vip-student' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}><ChevronLeft size={24} /></button>
                         ) : <div className="w-10"></div>}
                         
                         <div className="text-center">
-                            <h1 className={`text-xl md:text-3xl font-black tracking-tight flex items-center justify-center gap-3 ${currentUserRole === 'vip-student' ? 'vip-text-gradient' : 'text-slate-800'}`}>
-                                <div className={`p-2 rounded-xl shadow-md transition-transform hover:scale-105 hover-lift ${currentUserRole === 'vip-student' ? 'bg-gradient-to-tr from-vipGoldAccent to-vipGold shadow-vip-glow' : 'bg-gradient-to-tr from-brandPurple to-blue-600 shadow-glow'}`}>
-                                    <GraduationCap className={currentUserRole === 'vip-student' ? 'text-vipBg' : 'text-white'} size={24} strokeWidth={2.5} />
+                            <h1 className={`text-xl md:text-3xl font-black tracking-tight flex items-center justify-center gap-3 ${currentUserRole === 'vip-student' ? 'real-gold-text' : 'text-slate-800'}`}>
+                                <div className={`p-2 rounded-xl shadow-md transition-transform hover:scale-105 hover-lift ${currentUserRole === 'vip-student' ? 'real-gold-bg shadow-vip-glow' : 'bg-gradient-to-tr from-brandPurple to-blue-600 shadow-glow'}`}>
+                                    <GraduationCap className={currentUserRole === 'vip-student' ? 'text-[#111]' : 'text-white'} size={24} strokeWidth={2.5} />
                                 </div> 
                                 BERKANT HOCA
                             </h1>
@@ -643,11 +639,11 @@ if (!currentUserRole) {
 
                         <div className="flex items-center gap-2 min-w-[80px] justify-end">
                             {isTeacherMode && <button onClick={() => setShowLibraryManager(true)} className="p-2 text-slate-500 hover:text-brandPurple bg-white hover:bg-purple-50 rounded-full transition-colors shadow-sm border border-slate-200 hover-lift"><Library size={20}/></button>}
-                            {(currentUserRole === 'student' || currentUserRole === 'vip-student') && <button onClick={() => setStudentSettingsModal(true)} className={`p-2 rounded-full transition-colors hover-lift ${currentUserRole === 'vip-student' ? 'text-slate-300 hover:text-vipGold bg-vipCard border border-vipGold/20 shadow-vip-card' : 'text-slate-500 hover:text-brandPurple bg-white shadow-sm border border-slate-200'}`} title="Hesabım"><Settings size={20}/></button>}
-                            <button onClick={handleLogout} className={`p-2 rounded-full transition-colors hover-lift ${currentUserRole === 'vip-student' ? 'text-rose-400 hover:text-rose-300 bg-vipCard border border-vipGold/20 shadow-vip-card' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 shadow-sm border border-slate-200'}`} title="Çıkış Yap"><LogOut size={20}/></button>
+                            {(currentUserRole === 'student' || currentUserRole === 'vip-student') && <button onClick={() => setStudentSettingsModal(true)} className={`p-2 rounded-full transition-colors hover-lift ${currentUserRole === 'vip-student' ? 'text-slate-300 hover:text-vipGold bg-slate-700 border border-slate-600 shadow-sm' : 'text-slate-500 hover:text-brandPurple bg-white shadow-sm border border-slate-200'}`} title="Hesabım"><Settings size={20}/></button>}
+                            <button onClick={handleLogout} className={`p-2 rounded-full transition-colors hover-lift ${currentUserRole === 'vip-student' ? 'text-rose-400 hover:text-rose-300 bg-slate-700 border border-slate-600 shadow-sm' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 shadow-sm border border-slate-200'}`} title="Çıkış Yap"><LogOut size={20}/></button>
                         </div>
                     </div>
-                    <div className="text-center max-w-lg mx-auto mt-2 opacity-80 hover:opacity-100 transition-opacity"><p className={`text-xs md:text-sm italic font-medium ${currentUserRole === 'vip-student' ? 'text-vipGold/50' : 'text-slate-500'}`}>"{dailyQuote.text}"</p></div>
+                    <div className="text-center max-w-lg mx-auto mt-2 opacity-80 hover:opacity-100 transition-opacity"><p className={`text-xs md:text-sm italic font-medium ${currentUserRole === 'vip-student' ? 'text-slate-400' : 'text-slate-500'}`}>"{dailyQuote.text}"</p></div>
                 </div>
             </header>
             
