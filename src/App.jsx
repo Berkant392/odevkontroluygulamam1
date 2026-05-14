@@ -31,6 +31,90 @@ const useWindowSize = () => {
     return windowSize;
 };
 
+// -------------------------------------------------------------
+// V3 HTML KUSURSUZ CANVAS YILDIZ MOTORU
+// -------------------------------------------------------------
+const CanvasStarfield = () => {
+    const canvasRef = useRef(null);
+    useEffect(() => {
+        const cv = canvasRef.current;
+        if(!cv) return;
+        const cx = cv.getContext('2d');
+        const sc = cv.parentElement;
+        
+        const rsz = () => { cv.width = sc.offsetWidth; cv.height = sc.offsetHeight; };
+        rsz();
+        window.addEventListener('resize', rsz);
+
+        const G=['#ffd700','#ffe566','#ffc107','#fff8c0'];
+        const W=['rgba(255,255,255,0.9)','rgba(200,190,255,0.75)','rgba(255,255,255,0.65)'];
+        const pts=[];
+        for(let i=0;i<85;i++){
+            const g=Math.random()<0.2;
+            pts.push({
+                x:Math.random()*2000, y:Math.random()*1000,
+                r:g ? Math.random()*1.9+0.7 : Math.random()*1.1+0.3,
+                c:g ? G[i%G.length] : W[i%W.length],
+                ph:Math.random()*Math.PI*2, ts:Math.random()*0.016+0.005,
+                vy:-(Math.random()*0.22+0.04), vx:(Math.random()-0.5)*0.07, g
+            });
+        }
+
+        let t=0;
+        let reqId;
+        const draw = () => {
+            const W2=cv.width, H=cv.height;
+            cx.clearRect(0,0,W2,H);
+            for(const p of pts){
+                const a=0.2+0.8*Math.abs(Math.sin(t*p.ts+p.ph));
+                const sc2=0.5+0.9*Math.abs(Math.sin(t*p.ts*0.65+p.ph));
+                const r=p.r*sc2;
+                const px=((p.x%W2)+W2)%W2, py=((p.y%H)+H)%H;
+                cx.save();
+                cx.globalAlpha=a*(p.g?0.88:0.5);
+                cx.fillStyle=p.c;
+                cx.beginPath();cx.arc(px,py,r,0,Math.PI*2);cx.fill();
+                if(p.g&&r>1.3){cx.globalAlpha=a*0.15;cx.beginPath();cx.arc(px,py,r*4,0,Math.PI*2);cx.fill();}
+                cx.restore();
+                p.y+=p.vy; p.x+=p.vx;
+            }
+            t++;
+            reqId = requestAnimationFrame(draw);
+        };
+        draw();
+
+        return () => { cancelAnimationFrame(reqId); window.removeEventListener('resize', rsz); };
+    }, []);
+
+    return <canvas ref={canvasRef} style={{position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0}} />
+};
+
+// -------------------------------------------------------------
+// V3 VIP BUTON İÇİ ALTIN PARÇACIK EFEKTİ
+// -------------------------------------------------------------
+const VipParticles = () => {
+    const G = ['#ffd700','#ffe566','#ffc107','#fff8c0'];
+    const particles = Array.from({length: 16}).map((_, i) => ({
+        id: i,
+        sz: (Math.random()*2.2+0.8).toFixed(2),
+        c: G[i%G.length],
+        l: (Math.random()*100).toFixed(2),
+        t: (Math.random()*100).toFixed(2),
+        dur: (Math.random()*1.6+1.2).toFixed(2),
+        del: (Math.random()*3).toFixed(2)
+    }));
+    return (
+        <div style={{position:'absolute', inset:0, pointerEvents:'none', borderRadius:'16px', overflow:'hidden'}}>
+            {particles.map(p => (
+                <div key={p.id} style={{
+                    position:'absolute', width: `${p.sz}px`, height: `${p.sz}px`, borderRadius:'50%', background: p.c,
+                    left: `${p.l}%`, top: `${p.t}%`, animation: `vp2 ${p.dur}s ${p.del}s ease-in-out infinite`
+                }} />
+            ))}
+        </div>
+    );
+};
+
 const App = () => {
     const [user, setUser] = useState(null);
     const [currentUserRole, setCurrentUserRole] = useState(null); 
@@ -350,91 +434,99 @@ const App = () => {
     // ---------------------------------------------------------
     // 💎 AŞAMA 2: V3 ULTRA-PREMIUM GİRİŞ (LOGIN) EKRANI 
     // ---------------------------------------------------------
-    if (!currentUserRole) {
+ if (!currentUserRole) {
         return (
-            <div className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-sans transition-colors duration-1000 ${authView === 'vip-login' ? 'bg-[#05040a]' : 'bg-vipBg'}`}>
-                
-                {/* 🌌 V3 Ambient Orbs (Ortam Işıkları) */}
-                <div className="absolute top-[-10%] left-[-10%] w-[380px] h-[380px] rounded-full mix-blend-screen filter blur-[100px] opacity-30 animate-orb-float pointer-events-none" style={{background: 'radial-gradient(circle, rgba(109,40,217,0.8) 0%, transparent 70%)'}}></div>
-                <div className="absolute bottom-[-5%] right-[-5%] w-[300px] h-[300px] rounded-full mix-blend-screen filter blur-[100px] opacity-20 animate-orb-float pointer-events-none" style={{background: 'radial-gradient(circle, rgba(180,130,0,0.8) 0%, transparent 70%)', animationDelay: '2s'}}></div>
-                <div className="absolute bottom-[10%] left-[5%] w-[220px] h-[220px] rounded-full mix-blend-screen filter blur-[90px] opacity-20 animate-orb-float pointer-events-none" style={{background: 'radial-gradient(circle, rgba(79,70,229,0.8) 0%, transparent 70%)', animationDelay: '4s'}}></div>
+            <div className="login-scene">
+                {/* Orijinal HTML Canvas ve Işık Küreleri */}
+                <CanvasStarfield />
+                <div className="login-orb login-o1"></div>
+                <div className="login-orb login-o2"></div>
+                <div className="login-orb login-o3"></div>
 
-                {/* 🌌 V3 3-Katmanlı Parallaks Yıldızlar (Sadece VIP Seçilince Aktif) */}
-                <div className={`parallax-container transition-opacity duration-1000 ${authView === 'vip-login' ? 'opacity-100' : 'opacity-0'}`}>
-                    <div className="stars-layer-1"></div>
-                    <div className="stars-layer-2"></div>
-                    <div className="stars-layer-3"></div>
-                </div>
-
-                {/* 💎 V3 Glassmorphism Ana Kart */}
-                <div className="glass-panel p-8 md:p-10 rounded-[2.5rem] w-full max-w-md relative z-10 animate-card-enter shadow-vip-card">
+                <div className="login-card">
                     
-                    {/* Logo */}
-                    <div className="text-center mb-10">
-                        <div className={`w-20 h-20 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6 transition-all duration-700 hover-lift ${authView === 'vip-login' ? 'bg-gradient-to-tr from-vipGoldAccent to-vipGold shadow-vip-glow' : 'bg-gradient-to-tr from-brandPurple to-blue-600 shadow-glow'}`}>
-                            {authView === 'vip-login' ? <Crown size={40} className="text-vipBg animate-pulse" strokeWidth={2.5}/> : <GraduationCap size={40} className="text-white" strokeWidth={2.5}/>}
+                    <div className="logo-area">
+                        <div className="logo-box">
+                            <GraduationCap size={30} color="white" strokeWidth={2}/>
                         </div>
-                        <h1 className={`text-3xl md:text-4xl font-black tracking-tight mb-2 transition-colors duration-500 ${authView === 'vip-login' ? 'vip-text-gradient' : 'text-white'}`}>BERKANT HOCA</h1>
-                        <p className={`text-xs font-bold tracking-[0.4em] uppercase transition-colors duration-500 ${authView === 'vip-login' ? 'text-vipGold/60' : 'text-slate-400'}`}>Eğitim Platformu</p>
+                        <div className="logo-brand">BERKANT HOCA</div>
+                        <div className="logo-sub">EĞİTİM PLATFORMU</div>
                     </div>
                     
-                    {/* SEÇİM EKRANI */}
                     {authView === 'selection' && (
-                        <div className="space-y-4">
-                            <button onClick={() => setAuthView('student-login')} className="w-full hover-lift group relative overflow-hidden rounded-2xl p-5 bg-[#1a152e] border border-[#3b2b73] hover:border-brandPurple transition-all flex items-center gap-5">
-                                <div className="bg-brandPurple/20 p-3 rounded-xl text-brandPurple group-hover:bg-brandPurple group-hover:text-white transition-colors"><User size={24}/></div>
-                                <div className="text-left"><h3 className="text-white font-bold text-lg tracking-wide">Öğrenci Girişi</h3><p className="text-slate-400 text-xs mt-0.5">Sınıf öğrencileri için</p></div>
-                                <ChevronRight className="ml-auto text-slate-500 group-hover:text-white transition-colors" size={20}/>
+                        <div className="login-btns">
+                            <button onClick={() => setAuthView('student-login')} className="lbtn lbtn-s">
+                                <div className="liw liw-s"><User color="#a78bfa" size={18}/></div>
+                                <div className="lbl"><div className="lts">Öğrenci Girişi</div><div class="lss">Sınıf öğrencileri için</div></div>
+                                <ChevronRight className="lch" size={16}/>
+                            </button>
+
+                            <button onClick={() => setAuthView('vip-login')} className="lbtn lbtn-v">
+                                <VipParticles />
+                                <div className="liw liw-v"><Crown color="#ffd700" size={18}/></div>
+                                <div className="lbl"><div className="ltv">Özel Ders</div><div class="lsv">Özel ders öğrenci girişi</div></div>
+                                <ChevronRight className="lch lch-v" size={16}/>
+                            </button>
+
+                            <div className="ldivline"><div className="ldl"></div><div className="ldt">YÖNETİM</div><div className="ldl"></div></div>
+
+                            <button onClick={() => setAuthView('teacher-login')} className="lbtn lbtn-a">
+                                <div className="liw liw-a"><Briefcase color="#60a5fa" size={18}/></div>
+                                <div className="lbl"><div className="lts">Yönetici Girişi</div><div class="lss">Öğretmen paneli</div></div>
+                                <ChevronRight className="lch" size={16}/>
                             </button>
                             
-                            <button onClick={() => setAuthView('vip-login')} className="w-full hover-lift group relative overflow-hidden rounded-2xl p-5 bg-gradient-to-r from-vipGold/5 to-vipGoldAccent/10 border border-vipGoldAccent/50 hover:border-vipGold transition-all flex items-center gap-5 animate-glimmer">
-                                <div className="bg-vipGold/20 p-3 rounded-xl text-vipGold group-hover:bg-vipGold group-hover:text-vipBg transition-colors relative z-10"><Crown size={24}/></div>
-                                <div className="text-left relative z-10"><h3 className="text-vipGold font-bold text-lg tracking-wide flex items-center gap-2">Özel Ders <Sparkles size={14} className="text-vipGold animate-pulse"/></h3><p className="text-vipGold/50 text-xs mt-0.5">VIP Öğrenci Girişi</p></div>
-                                <ChevronRight className="ml-auto text-vipGold/50 group-hover:text-vipGold transition-colors relative z-10" size={20}/>
-                            </button>
-                            
-                            <button onClick={() => setAuthView('teacher-login')} className="w-full hover-lift group relative overflow-hidden rounded-2xl p-4 bg-transparent border border-white/10 hover:bg-white/5 transition-all flex items-center gap-4 mt-6">
-                                <div className="bg-white/10 p-2.5 rounded-xl text-slate-300 group-hover:text-white transition-colors"><Briefcase size={20}/></div>
-                                <div className="text-left"><h3 className="text-slate-300 font-bold text-base tracking-wide">Yönetici Girişi</h3></div>
-                                <ChevronRight className="ml-auto text-slate-500 group-hover:text-white transition-colors" size={20}/>
-                            </button>
+                            <div className="lquote"><span className="lqm">"</span> Eğitim, dünyayı değiştirmek için en güçlü silahtır. <span className="lqm">"</span></div>
                         </div>
                     )}
                     
-                    {/* ÖĞRENCİ VE VIP GİRİŞ FORMLARI */}
                     {(authView === 'student-login' || authView === 'vip-login') && (
-                        <div className="space-y-5 animate-card-enter">
-                            <button onClick={() => setAuthView('selection')} className={`hover-lift text-sm font-bold flex items-center gap-1 mb-2 transition-colors ${authView === 'vip-login' ? 'text-vipGold/70 hover:text-vipGold' : 'text-slate-400 hover:text-white'}`}><ChevronLeft size={18}/> Geri Dön</button>
-                            
-                            {authView === 'vip-login' && <div className="text-center mb-6"><h2 className="text-xl font-black vip-text-gradient tracking-widest">VIP GİRİŞİ</h2></div>}
-                            {authView === 'student-login' && <div className="text-center mb-6"><h2 className="text-xl font-black text-white tracking-widest">ÖĞRENCİ GİRİŞİ</h2></div>}
-                            
-                            <div>
-                                <label className={`text-[10px] font-black uppercase tracking-widest mb-1.5 block ml-1 ${authView === 'vip-login' ? 'text-vipGold/70' : 'text-slate-400'}`}>Kullanıcı Adı</label>
-                                <input type="text" className={`w-full bg-[#130f25] border rounded-2xl p-4 text-white outline-none transition-all font-medium hover-lift focus:ring-2 ${authView === 'vip-login' ? 'border-vipGoldAccent/40 focus:border-vipGold focus:ring-vipGold/20 placeholder:text-vipGold/30' : 'border-[#3b2b73] focus:border-brandPurple focus:ring-brandPurple/20 placeholder:text-slate-600'}`} placeholder="örn: ahmet.yilmaz.123" value={studentUsernameInput} onChange={e => setStudentUsernameInput(e.target.value)} />
+                        <div className="login-btns" style={{animation: 'bi 0.55s both cubic-bezier(0.16,1,0.3,1)'}}>
+                            <button onClick={() => setAuthView('selection')} className="lbtn lbtn-a" style={{padding: '10px 17px', animation:'none', marginBottom: '10px'}}>
+                                <ChevronLeft className="lch" size={18}/>
+                                <div className="lbl"><div className="lts" style={{fontSize:'12px'}}>Geri Dön</div></div>
+                            </button>
+
+                            <div style={{marginBottom: '20px', textAlign: 'center'}}>
+                                <h2 className="ltv" style={{fontSize: '18px', textAlign: 'center', background: authView === 'vip-login' ? '' : '#fff', WebkitTextFillColor: authView === 'vip-login' ? 'transparent' : '#fff'}}>
+                                    {authView === 'vip-login' ? 'VIP GİRİŞİ' : 'ÖĞRENCİ GİRİŞİ'}
+                                </h2>
                             </div>
                             
-                            <div>
-                                <label className={`text-[10px] font-black uppercase tracking-widest mb-1.5 block ml-1 ${authView === 'vip-login' ? 'text-vipGold/70' : 'text-slate-400'}`}>Şifre</label>
-                                <input type="password" className={`w-full bg-[#130f25] border rounded-2xl p-4 text-white outline-none transition-all font-medium tracking-widest hover-lift focus:ring-2 ${authView === 'vip-login' ? 'border-vipGoldAccent/40 focus:border-vipGold focus:ring-vipGold/20 placeholder:text-vipGold/30' : 'border-[#3b2b73] focus:border-brandPurple focus:ring-brandPurple/20 placeholder:text-slate-600'}`} placeholder="••••••" value={studentPasswordInput} onChange={e => setStudentPasswordInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleStudentLogin(authView === 'vip-login')} />
+                            <div className="login-input-group" style={{animationDelay: '0.1s'}}>
+                                <label className="login-label" style={{color: authView === 'vip-login' ? 'rgba(255,215,0,0.5)' : ''}}>Kullanıcı Adı</label>
+                                <input type="text" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} placeholder="örn: ahmet.yilmaz.123" value={studentUsernameInput} onChange={e => setStudentUsernameInput(e.target.value)} />
                             </div>
                             
-                            <button onClick={() => handleStudentLogin(authView === 'vip-login')} className={`w-full py-4 rounded-2xl font-black mt-6 shadow-xl transition-all text-lg tracking-wide hover-lift ${authView === 'vip-login' ? 'bg-gradient-to-r from-vipGold to-vipGoldAccent text-vipBg shadow-vip-glow hover:brightness-110' : 'bg-brandPurple hover:bg-purple-600 text-white shadow-glow'}`}>
-                                GİRİŞ YAP
+                            <div className="login-input-group" style={{animationDelay: '0.2s', marginTop: '10px'}}>
+                                <label className="login-label" style={{color: authView === 'vip-login' ? 'rgba(255,215,0,0.5)' : ''}}>Şifre</label>
+                                <input type="password" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} style={{letterSpacing: '0.3em'}} placeholder="••••••" value={studentPasswordInput} onChange={e => setStudentPasswordInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleStudentLogin(authView === 'vip-login')} />
+                            </div>
+                            
+                            <button onClick={() => handleStudentLogin(authView === 'vip-login')} className={`lbtn ${authView === 'vip-login' ? 'lbtn-v' : 'lbtn-s'}`} style={{marginTop: '20px', justifyContent: 'center'}}>
+                                <div className="lts" style={{color: authView === 'vip-login' ? '#ffd700' : '#fff'}}>GİRİŞ YAP</div>
                             </button>
                         </div>
                     )}
                     
-                    {/* YÖNETİCİ GİRİŞ FORMU */}
                     {authView === 'teacher-login' && (
-                        <div className="space-y-5 animate-card-enter">
-                            <button onClick={() => setAuthView('selection')} className="text-slate-400 hover:text-white hover-lift text-sm font-bold flex items-center gap-1 mb-6 transition-colors"><ChevronLeft size={18}/> Geri Dön</button>
-                            <div>
-                                <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2 block text-center">Yönetici PIN Kodu 🔐</label>
-                                <input type="password" autoFocus className="w-full bg-[#130f25] border border-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-400/20 rounded-2xl p-4 text-white placeholder:text-slate-600 outline-none transition-all text-center text-4xl tracking-[0.5em] font-black hover-lift" placeholder="••••" value={pinInput} onChange={e => setPinInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && verifyPin()} />
+                        <div className="login-btns" style={{animation: 'bi 0.55s both cubic-bezier(0.16,1,0.3,1)'}}>
+                            <button onClick={() => setAuthView('selection')} className="lbtn lbtn-a" style={{padding: '10px 17px', animation:'none', marginBottom: '10px'}}>
+                                <ChevronLeft className="lch" size={18}/>
+                                <div className="lbl"><div className="lts" style={{fontSize:'12px'}}>Geri Dön</div></div>
+                            </button>
+
+                            <div style={{marginBottom: '20px', textAlign: 'center'}}>
+                                <h2 className="lts" style={{fontSize: '16px', color: '#60a5fa'}}>YÖNETİCİ GİRİŞİ</h2>
                             </div>
-                            <button onClick={verifyPin} className="w-full py-4 bg-white hover:bg-slate-200 text-slate-900 rounded-2xl font-black mt-6 shadow-xl transition-all text-lg tracking-wide hover-lift">
-                                SİSTEME GİR
+
+                            <div className="login-input-group" style={{animationDelay: '0.1s'}}>
+                                <label className="login-label">Yönetici PIN Kodu</label>
+                                <input type="password" autoFocus className="login-input" style={{textAlign: 'center', fontSize: '24px', letterSpacing: '0.5em', padding: '20px'}} placeholder="••••" value={pinInput} onChange={e => setPinInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && verifyPin()} />
+                            </div>
+                            
+                            <button onClick={verifyPin} className="lbtn lbtn-a" style={{marginTop: '20px', justifyContent: 'center', background: 'rgba(255,255,255,0.1)'}}>
+                                <div className="lts">SİSTEME GİR</div>
                             </button>
                         </div>
                     )}
