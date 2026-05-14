@@ -5,7 +5,7 @@ export const LIBRARY_COLLECTION = 'berkant_hoca_library';
 export const SETTINGS_COLLECTION = 'berkant_hoca_system_config_v2';
 export const SETTINGS_DOC = 'main_config';
 export const DEFAULT_PIN = "1234"; 
-export const LIBRARY_TYPES = { EXCUSE: 'excuse', TOPIC: 'topic', SOURCE: 'source' };
+export const LIBRARY_TYPES = { EXCUSE: 'excuse', TOPIC: 'topic', SOURCE: 'source', CURRICULUM: 'curriculum' };
 
 export const MOTIVATIONAL_QUOTES = [
     { text: "Başarı, her gün tekrarlanan küçük çabaların toplamıdır.", author: "Robert Collier" },
