@@ -671,253 +671,306 @@ if (!currentUserRole) {
                 </div>
             )}
 
-            <main className="max-w-7xl mx-auto px-4 mt-8 no-print relative z-10">
-                {/* YÖNETİCİ ANA EKRANI */}
-                {isTeacherMode && view === 'home' && (
-                    <div className="flex flex-col gap-10 animate-card-enter">
-                        <div>
-                            <div className="flex justify-between items-center bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6">
-                                <h2 className="text-lg md:text-xl font-black text-slate-800 flex items-center gap-2"><Users className="text-brandPurple"/> Sınıf Yönetimi</h2>
-                                <button onClick={() => { setModalType('class'); setModalInputVal(''); }} className="hover-lift bg-brandPurple hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-glow flex items-center gap-2"><Plus size={18}/> Yeni Sınıf</button>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {regularClasses.map((cls) => ( 
-                                    <div key={cls.id} onClick={() => { setSelectedClass(cls); setView('class-detail'); }} className="hover-lift cursor-pointer group bg-white rounded-3xl p-8 shadow-float border border-slate-100 flex flex-col items-center justify-center text-center">
-                                        <div className="w-16 h-16 bg-purple-50 text-brandPurple rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 group-hover:bg-brandPurple group-hover:text-white transition-all duration-300 shadow-sm"><Users size={32}/></div>
-                                        <h2 className="text-2xl font-black text-slate-800 tracking-tight group-hover:text-brandPurple transition-colors">{cls.className}</h2>
-                                        <p className="text-xs text-slate-400 mt-3 font-bold uppercase tracking-widest bg-slate-50 px-4 py-1.5 rounded-full">Sınıfa Gir</p>
-                                    </div> 
-                                ))}
-                            </div>
-                        </div>
-                        <div>
-                            <div className="flex justify-between items-center bg-gradient-to-r from-yellow-50 to-amber-50 p-5 rounded-2xl shadow-sm border border-yellow-200 mb-6">
-                                <h2 className="text-lg md:text-xl font-black text-amber-900 flex items-center gap-2"><Crown className="text-amber-500"/> Özel Ders Yönetimi</h2>
-                                <button onClick={() => { setModalType('vip'); setModalInputVal(''); }} className="hover-lift bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-white px-5 py-2.5 rounded-xl text-sm font-black shadow-lg shadow-amber-200 flex items-center gap-2"><Plus size={18}/> Yeni Özel Ders</button>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {vipClasses.map((cls) => ( 
-                                    <div key={cls.id} onClick={() => { setSelectedClass(cls); setView('class-detail'); }} className="hover-lift cursor-pointer group bg-white rounded-3xl p-8 shadow-float border border-yellow-200 flex flex-col items-center justify-center text-center relative overflow-hidden">
-                                        <div className="absolute inset-0 bg-gradient-to-b from-yellow-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-                                        <div className="w-16 h-16 bg-yellow-50 text-amber-500 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-white transition-all duration-300 relative z-10 shadow-sm"><Crown size={32}/></div>
-                                        <h2 className="text-2xl font-black text-amber-800 tracking-tight relative z-10">{cls.className}</h2>
-                                        <p className="text-xs text-amber-600 mt-3 font-bold uppercase tracking-widest bg-yellow-50 px-4 py-1.5 rounded-full border border-yellow-100 relative z-10">Özel Ders Paneli</p>
-                                    </div> 
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
+        <main className="max-w-7xl mx-auto px-4 mt-8 no-print relative z-10">
+                <AnimatePresence mode="wait">
+                    {/* YÖNETİCİ ANA EKRANI */}
+                    {isTeacherMode && view === 'home' && (
+                        <motion.div 
+                            key="teacher-home"
+                            initial={{ opacity: 0 }} 
+                            animate={{ opacity: 1, transition: { staggerChildren: 0.1 } }} 
+                            exit={{ opacity: 0, y: -20 }}
+                            className="flex flex-col gap-10"
+                        >
+                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 24 }}>
+                                <div className="flex justify-between items-center bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6">
+                                    <h2 className="text-lg md:text-xl font-black text-slate-800 flex items-center gap-2"><Users className="text-brandPurple"/> Sınıf Yönetimi</h2>
+                                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { setModalType('class'); setModalInputVal(''); }} className="bg-brandPurple hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-glow flex items-center gap-2"><Plus size={18}/> Yeni Sınıf</motion.button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {regularClasses.map((cls) => ( 
+                                        <motion.div 
+                                            key={cls.id} 
+                                            whileHover={{ scale: 1.02, y: -4 }} 
+                                            whileTap={{ scale: 0.97 }} 
+                                            onClick={() => { setSelectedClass(cls); setView('class-detail'); }} 
+                                            className="cursor-pointer group bg-white rounded-3xl p-8 shadow-float border border-slate-100 flex flex-col items-center justify-center text-center"
+                                        >
+                                            <div className="w-16 h-16 bg-purple-50 text-brandPurple rounded-2xl flex items-center justify-center mb-5 group-hover:bg-brandPurple group-hover:text-white transition-colors duration-300 shadow-sm"><Users size={32}/></div>
+                                            <h2 className="text-2xl font-black text-slate-800 tracking-tight group-hover:text-brandPurple transition-colors">{cls.className}</h2>
+                                            <p className="text-xs text-slate-400 mt-3 font-bold uppercase tracking-widest bg-slate-50 px-4 py-1.5 rounded-full">Sınıfa Gir</p>
+                                        </motion.div> 
+                                    ))}
+                                </div>
+                            </motion.div>
 
-                {/* YÖNETİCİ SINIF DETAYI */}
-                {isTeacherMode && view === 'class-detail' && selectedClass && (
-                    <div className="bg-white rounded-[2rem] shadow-float border border-slate-200 overflow-hidden transition-all duration-300 animate-scale-in">
-                        <div className={`p-6 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${selectedClass.type === 'vip' ? 'bg-gradient-to-r from-yellow-50 to-white border-yellow-100' : 'bg-gradient-to-r from-slate-50 to-white border-slate-100'}`}>
-                            <div className="flex items-center gap-4 w-full md:w-auto">
-                                <div className={`p-3 rounded-xl shadow-inner ${selectedClass.type === 'vip' ? 'bg-vipGold/20 text-vipGoldAccent' : 'bg-purple-100 text-brandPurple'}`}><Layout size={24}/></div>
-                                <div>
-                                    <h3 className={`text-xl md:text-2xl font-black flex items-center gap-2 ${selectedClass.type === 'vip' ? 'text-vipGoldAccent' : 'text-slate-800'}`}>{selectedClass.type === 'vip' && <Crown size={20} className="text-vipGold"/>}{selectedClass.className} <button onClick={(e) => { e.stopPropagation(); setModalData({ classId: selectedClass.id, currentName: selectedClass.className }); setModalInputVal(selectedClass.className); setModalType('edit-class'); }} className={`p-1.5 rounded-lg transition-colors hover-lift ${selectedClass.type === 'vip' ? 'text-vipGoldAccent hover:text-vipGold hover:bg-yellow-100' : 'text-slate-400 hover:text-brandPurple hover:bg-purple-50'}`}><Pencil size={16} /></button></h3>
-                                    <div className="text-xs text-slate-500 font-medium mt-1">{selectedClass.students?.length || 0} Öğrenci • {selectedClass.topics?.length || 0} Görev</div>
+                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.1 }}>
+                                <div className="flex justify-between items-center bg-gradient-to-r from-yellow-50 to-amber-50 p-5 rounded-2xl shadow-sm border border-yellow-200 mb-6">
+                                    <h2 className="text-lg md:text-xl font-black text-amber-900 flex items-center gap-2"><Crown className="text-amber-500"/> Özel Ders Yönetimi</h2>
+                                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { setModalType('vip'); setModalInputVal(''); }} className="real-gold-bg text-slate-900 px-5 py-2.5 rounded-xl text-sm font-black shadow-vip-glow flex items-center gap-2"><Plus size={18}/> Yeni Özel Ders</motion.button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {vipClasses.map((cls) => ( 
+                                        <motion.div 
+                                            key={cls.id} 
+                                            whileHover={{ scale: 1.02, y: -4 }} 
+                                            whileTap={{ scale: 0.97 }} 
+                                            onClick={() => { setSelectedClass(cls); setView('class-detail'); }} 
+                                            className="cursor-pointer group bg-white rounded-3xl p-8 shadow-float border border-yellow-200 flex flex-col items-center justify-center text-center relative overflow-hidden"
+                                        >
+                                            <div className="absolute inset-0 bg-gradient-to-b from-yellow-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+                                            <div className="w-16 h-16 bg-yellow-50 text-amber-500 rounded-2xl flex items-center justify-center mb-5 group-hover:bg-amber-500 group-hover:text-white transition-colors duration-300 relative z-10 shadow-sm"><Crown size={32}/></div>
+                                            <h2 className="text-2xl font-black text-amber-800 tracking-tight relative z-10">{cls.className}</h2>
+                                            <p className="text-xs text-amber-600 mt-3 font-bold uppercase tracking-widest bg-yellow-50 px-4 py-1.5 rounded-full border border-yellow-100 relative z-10">Özel Ders Paneli</p>
+                                        </motion.div> 
+                                    ))}
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+
+                    {/* YÖNETİCİ SINIF DETAYI */}
+                    {isTeacherMode && view === 'class-detail' && selectedClass && (
+                        <motion.div 
+                            key="class-detail"
+                            initial={{ opacity: 0, y: 30, scale: 0.98 }} 
+                            animate={{ opacity: 1, y: 0, scale: 1 }} 
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                            className="bg-white rounded-[2rem] shadow-float border border-slate-200 overflow-hidden relative z-10"
+                        >
+                            <div className={`p-6 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${selectedClass.type === 'vip' ? 'bg-gradient-to-r from-yellow-50 to-white border-yellow-100' : 'bg-gradient-to-r from-slate-50 to-white border-slate-100'}`}>
+                                <div className="flex items-center gap-4 w-full md:w-auto">
+                                    <div className={`p-3 rounded-xl shadow-inner ${selectedClass.type === 'vip' ? 'bg-yellow-100 text-amber-600' : 'bg-purple-100 text-brandPurple'}`}><Layout size={24}/></div>
+                                    <div>
+                                        <h3 className={`text-xl md:text-2xl font-black flex items-center gap-2 ${selectedClass.type === 'vip' ? 'text-amber-700' : 'text-slate-800'}`}>{selectedClass.type === 'vip' && <Crown size={20} className="text-amber-500"/>}{selectedClass.className} <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => { e.stopPropagation(); setModalData({ classId: selectedClass.id, currentName: selectedClass.className }); setModalInputVal(selectedClass.className); setModalType('edit-class'); }} className={`p-1.5 rounded-lg transition-colors ${selectedClass.type === 'vip' ? 'text-amber-500 hover:text-amber-600 hover:bg-yellow-100' : 'text-slate-400 hover:text-brandPurple hover:bg-purple-50'}`}><Pencil size={16} /></motion.button></h3>
+                                        <div className="text-xs text-slate-500 font-medium mt-1">{selectedClass.students?.length || 0} Öğrenci • {selectedClass.topics?.length || 0} Görev</div>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+                                    <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm mr-2"><div className={`w-8 h-8 rounded-full border-4 ${selectedClass.type === 'vip' ? 'border-yellow-200' : 'border-purple-100'} flex items-center justify-center relative`}><svg className="w-full h-full transform -rotate-90 absolute" viewBox="0 0 36 36"><path className={selectedClass.type === 'vip' ? "text-amber-500" : "text-brandPurple"} strokeDasharray={`${calculateStats(selectedClass.students, selectedClass.topics).percentage}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" /></svg></div><div className="flex flex-col"><span className="text-xs font-black text-slate-800">%{calculateStats(selectedClass.students, selectedClass.topics).percentage}</span><span className="text-[9px] font-bold text-slate-400 uppercase">Başarı</span></div></div>
+                                    {!selectedClass.type === 'vip' && <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleOpenRisk(selectedClass)} className="text-xs bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 px-3 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1 transition-colors"><AlertOctagon size={14}/> Risk</motion.button>}
+                                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handlePrintPasswords(selectedClass)} className="text-xs bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 px-3 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1 transition-colors"><KeyRound size={14}/> Şifreler</motion.button>
+                                    
+                                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setActiveTab(activeTab === 'curriculum' ? 'homework' : 'curriculum')} className={`text-xs px-4 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1.5 transition-colors ${activeTab === 'curriculum' ? 'bg-purple-50 text-brandPurple border border-purple-200 hover:bg-purple-100' : 'bg-slate-800 text-white border border-slate-700 hover:bg-slate-700'}`}>
+                                        <BookOpen size={16}/> {activeTab === 'curriculum' ? 'Ödev Takibine Dön' : 'Müfredat Listesi'}
+                                    </motion.button>
+                                    
+                                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { setModalData({ classId: selectedClass.id }); setModalType('topic'); }} className={`text-xs text-white px-4 py-2 rounded-xl font-bold shadow-md flex items-center gap-1 ${selectedClass.type === 'vip' ? 'real-gold-bg text-slate-900 shadow-vip-glow' : 'bg-brandPurple hover:bg-purple-700 shadow-glow'}`}><Plus size={14}/> Ödev Ekle</motion.button>
+                                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => deleteClass(e, selectedClass.id)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"><Trash2 size={18}/></motion.button>
                                 </div>
                             </div>
-                            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
-                                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm mr-2"><div className={`w-8 h-8 rounded-full border-4 ${selectedClass.type === 'vip' ? 'border-yellow-200' : 'border-purple-100'} flex items-center justify-center relative`}><svg className="w-full h-full transform -rotate-90 absolute" viewBox="0 0 36 36"><path className={selectedClass.type === 'vip' ? "text-vipGoldAccent" : "text-brandPurple"} strokeDasharray={`${calculateStats(selectedClass.students, selectedClass.topics).percentage}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" /></svg></div><div className="flex flex-col"><span className="text-xs font-black text-slate-800">%{calculateStats(selectedClass.students, selectedClass.topics).percentage}</span><span className="text-[9px] font-bold text-slate-400 uppercase">Başarı</span></div></div>
-                                {!selectedClass.type === 'vip' && <button onClick={() => handleOpenRisk(selectedClass)} className="text-xs hover-lift bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 px-3 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1 transition-colors"><AlertOctagon size={14}/> Risk</button>}
-                                <button onClick={() => handlePrintPasswords(selectedClass)} className="text-xs hover-lift bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 px-3 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1 transition-colors"><KeyRound size={14}/> Şifreler</button>
-                                
-                                <button onClick={() => setActiveTab(activeTab === 'curriculum' ? 'homework' : 'curriculum')} className={`text-xs hover-lift px-4 py-2 rounded-xl font-bold shadow-sm flex items-center gap-1.5 transition-colors ${activeTab === 'curriculum' ? 'bg-purple-50 text-brandPurple border border-purple-200 hover:bg-purple-100' : 'bg-slate-800 text-white border border-slate-700 hover:bg-slate-700'}`}>
-                                    <BookOpen size={16}/> {activeTab === 'curriculum' ? 'Ödev Takibine Dön' : 'Müfredat Listesi'}
-                                </button>
-                                
-                                <button onClick={() => { setModalData({ classId: selectedClass.id }); setModalType('topic'); }} className={`text-xs hover-lift text-white px-4 py-2 rounded-xl font-bold shadow-md flex items-center gap-1 transition-transform ${selectedClass.type === 'vip' ? 'bg-gradient-to-r from-vipGoldAccent to-yellow-500 shadow-yellow-200' : 'bg-brandPurple hover:bg-purple-700 shadow-glow'}`}><Plus size={14}/> Ödev Ekle</button>
-                                <button onClick={(e) => deleteClass(e, selectedClass.id)} className="p-2 hover-lift text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"><Trash2 size={18}/></button>
-                            </div>
-                        </div>
 
-                        {activeTab === 'homework' && (
-                            <div className={`p-4 ${selectedClass.type === 'vip' ? 'bg-yellow-50/30' : 'bg-slate-50/50'}`}>
-                                {isMobile ? (
-                                    <div className="space-y-4">
-                                        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex gap-2"><input type="text" placeholder="Yeni Öğrenci Ekle..." className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-700 w-full focus:border-brandPurple outline-none font-medium" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(selectedClass.id); }} /><button onClick={() => addStudent(selectedClass.id)} className={`text-white px-4 rounded-xl text-sm font-bold shadow-md hover-lift ${selectedClass.type === 'vip' ? 'bg-vipGoldAccent hover:bg-yellow-600' : 'bg-brandPurple hover:bg-purple-700'}`}>EKLE</button></div>
-                                        {selectedClass.students?.map((std) => ( <MobileStudentCard key={std.id} student={std} cls={selectedClass} updateGrade={updateGrade} onOpenNote={openCellNoteModal} onEditStudent={(s) => { setModalData({ classId: selectedClass.id, studentId: s.id, currentName: s.name }); setModalInputVal(s.name); setModalType('edit-student'); }} onDeleteStudent={deleteStudent} onPrintReport={handlePrintStudentReport} /> ))}
-                                    </div>
-                                ) : (
-                                <div className="table-container">
-                                    <table className="w-full text-left border-collapse">
-                                        <thead>
-                                            <tr>
-                                                <th rowSpan={2} className="sticky-corner border-b border-r border-slate-200 min-w-[250px] shadow-sm p-4 text-xs font-black text-slate-500 uppercase tracking-widest bg-white">Öğrenci Listesi</th>
-                                                {selectedClass.topics?.map((topic, i) => {
-                                                    const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
-                                                    return ( 
-                                                        <th key={topic.id} colSpan={Math.max(1, (topic.subColumns?.length || 0) + 1)} className={`text-center p-3 border-b border-r border-slate-200 sticky-header-top ${theme.main} min-w-[280px]`}>
-                                                            <div className="flex flex-col justify-center items-center gap-1.5">
-                                                                {topic.date && ( <div className="text-[10px] bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full text-slate-600 font-bold flex items-center gap-1 cursor-pointer hover:bg-white shadow-sm border border-white/50 mb-1 transition-colors hover-lift" onContextMenu={(e) => { e.preventDefault(); setModalData({ classId: selectedClass.id, topicId: topic.id }); setModalDateVal(topic.date); setModalType('edit-date'); }}><Calendar size={12}/> Son Teslim: <span className={theme.text}>{formatDate(topic.date)}</span></div> )}
-                                                                <div className={`flex items-center gap-2 text-sm font-black uppercase tracking-wider mt-1`}>{topic.title}<button onClick={(e) => { e.stopPropagation(); setActiveTopicMenu({ classId: selectedClass.id, topicId: topic.id, anchorEl: e.currentTarget }); }} className="p-1 rounded-md hover:bg-black/5 transition-colors"><MoreVertical size={16}/></button></div>
-                                                            </div>
-                                                        </th> 
-                                                    );
-                                                })}
-                                            </tr>
-                                            <tr>
-                                                {selectedClass.topics?.map((topic, i) => {
-                                                    const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
-                                                    return ( 
-                                                        <React.Fragment key={topic.id}>
-                                                            <th className={`p-0 border-b border-r border-slate-200 w-16 text-center sticky-header-sub ${theme.sub}`}><button onClick={() => { setModalData({ classId: selectedClass.id, topicId: topic.id }); setModalType('source'); }} className={`w-full h-full flex items-center justify-center transition-colors ${theme.btn} bg-white/30 hover:bg-white`} title="Kaynak Ekle"><Plus size={20}/></button></th>
-                                                            {topic.subColumns?.map(col => ( 
-                                                                <th key={col.id} className={`p-3 border-b border-r border-slate-200 sticky-header-sub ${theme.sub} min-w-[150px] align-top`}>
-                                                                    <div className="flex flex-col items-center justify-between h-full min-h-[50px]">
-                                                                        <span className="font-bold text-xs text-slate-700 whitespace-normal text-center leading-tight mb-2 break-words max-w-[140px]">{col.title}</span>
-                                                                        <div className="flex items-center gap-1 shrink-0">
-                                                                            {col.pdfLink && <PdfDownloadButton link={col.pdfLink} isTeacher={true} />}
-                                                                            <button onClick={(e) => { e.stopPropagation(); setActiveColMenu({ classId: selectedClass.id, topicId: topic.id, colId: col.id, anchorEl: e.currentTarget }); }} className="text-slate-400 hover:text-brandPurple bg-white/50 p-1.5 rounded-full shadow-sm transition-colors hover-lift"><MoreVertical size={14}/></button>
-                                                                        </div>
-                                                                    </div>
-                                                                </th> 
-                                                            ))} 
-                                                        </React.Fragment> 
-                                                    );
-                                                })}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {selectedClass.students?.map((std) => (
-                                                <tr key={std.id} className="border-b border-slate-100 bg-white">
-                                                    <td className="sticky-col-left p-4 border-r border-slate-200">
-                                                        <div className="flex justify-between items-center group">
-                                                            <div className="flex flex-col gap-1 cursor-pointer" onClick={() => openStudent(std)}>
-                                                                <div className="flex items-center gap-3"><div className={`w-8 h-8 rounded-full ${selectedClass.type === 'vip' ? 'bg-yellow-100 text-vipGoldAccent' : 'bg-purple-100 text-brandPurple'} flex items-center justify-center font-black text-xs hover-lift`}>{std.name.charAt(0)}</div><span className={`text-sm font-bold text-slate-700 group-hover:${selectedClass.type === 'vip' ? 'text-vipGoldAccent' : 'text-brandPurple'} transition-colors`}>{std.name}</span><button onClick={(e) => { e.stopPropagation(); setModalData({ classId: selectedClass.id, studentId: std.id, currentName: std.name }); setModalInputVal(std.name); setModalType('edit-student'); }} className="text-slate-300 hover:text-brandPurple opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size={14}/></button></div>
-                                                                {std.username && ( <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 mt-1 ml-11" onClick={e=>e.stopPropagation()}><span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{std.username}</span><span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-1"><KeyRound size={10}/> {std.password}</span></div> )}
-                                                            </div>
-                                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={(e) => { e.stopPropagation(); handlePrintStudentReport(selectedClass, std); }} className={`p-2 rounded-lg transition-colors hover-lift ${selectedClass.type === 'vip' ? 'bg-yellow-50 text-vipGoldAccent hover:bg-yellow-100' : 'bg-purple-50 text-brandPurple hover:bg-purple-100'}`} title="Rapor Yazdır"><Printer size={16}/></button><button onClick={(e) => deleteStudent(e, selectedClass.id, std.id)} className="hover-lift bg-rose-50 text-rose-400 hover:text-rose-600 hover:bg-rose-100 p-2 rounded-lg transition-colors"><Trash2 size={16}/></button></div>
-                                                        </div>
-                                                    </td>
+                            {activeTab === 'homework' && (
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`p-4 ${selectedClass.type === 'vip' ? 'bg-yellow-50/30' : 'bg-slate-50/50'}`}>
+                                    {isMobile ? (
+                                        <div className="space-y-4">
+                                            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex gap-2"><input type="text" placeholder="Yeni Öğrenci Ekle..." className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-700 w-full focus:border-brandPurple outline-none font-medium" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(selectedClass.id); }} /><motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => addStudent(selectedClass.id)} className={`text-white px-4 rounded-xl text-sm font-bold shadow-md ${selectedClass.type === 'vip' ? 'real-gold-bg text-slate-900' : 'bg-brandPurple'}`}>EKLE</motion.button></div>
+                                            {selectedClass.students?.map((std) => ( <MobileStudentCard key={std.id} student={std} cls={selectedClass} updateGrade={updateGrade} onOpenNote={openCellNoteModal} onEditStudent={(s) => { setModalData({ classId: selectedClass.id, studentId: s.id, currentName: s.name }); setModalInputVal(s.name); setModalType('edit-student'); }} onDeleteStudent={deleteStudent} onPrintReport={handlePrintStudentReport} /> ))}
+                                        </div>
+                                    ) : (
+                                    <div className="table-container">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr>
+                                                    <th rowSpan={2} className="sticky-corner border-b border-r border-slate-200 min-w-[250px] shadow-sm p-4 text-xs font-black text-slate-500 uppercase tracking-widest bg-white">Öğrenci Listesi</th>
+                                                    {selectedClass.topics?.map((topic, i) => {
+                                                        const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
+                                                        return ( 
+                                                            <th key={topic.id} colSpan={Math.max(1, (topic.subColumns?.length || 0) + 1)} className={`text-center p-3 border-b border-r border-slate-200 sticky-header-top ${theme.main} min-w-[280px]`}>
+                                                                <div className="flex flex-col justify-center items-center gap-1.5">
+                                                                    {topic.date && ( <motion.div whileHover={{ scale: 1.05 }} className="text-[10px] bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full text-slate-600 font-bold flex items-center gap-1 cursor-pointer hover:bg-white shadow-sm border border-white/50 mb-1 transition-colors" onContextMenu={(e) => { e.preventDefault(); setModalData({ classId: selectedClass.id, topicId: topic.id }); setModalDateVal(topic.date); setModalType('edit-date'); }}><Calendar size={12}/> Son Teslim: <span className={theme.text}>{formatDate(topic.date)}</span></motion.div> )}
+                                                                    <div className={`flex items-center gap-2 text-sm font-black uppercase tracking-wider mt-1`}>{topic.title}<button onClick={(e) => { e.stopPropagation(); setActiveTopicMenu({ classId: selectedClass.id, topicId: topic.id, anchorEl: e.currentTarget }); }} className="p-1 rounded-md hover:bg-black/5 transition-colors"><MoreVertical size={16}/></button></div>
+                                                                </div>
+                                                            </th> 
+                                                        );
+                                                    })}
+                                                </tr>
+                                                <tr>
                                                     {selectedClass.topics?.map((topic, i) => {
                                                         const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
                                                         return ( 
                                                             <React.Fragment key={topic.id}>
-                                                                <td className={`border-r border-slate-100 ${theme.cell}`}></td>
+                                                                <th className={`p-0 border-b border-r border-slate-200 w-16 text-center sticky-header-sub ${theme.sub}`}><button onClick={() => { setModalData({ classId: selectedClass.id, topicId: topic.id }); setModalType('source'); }} className={`w-full h-full flex items-center justify-center transition-colors ${theme.btn} bg-white/30 hover:bg-white`} title="Kaynak Ekle"><Plus size={20}/></button></th>
                                                                 {topic.subColumns?.map(col => ( 
-                                                                    <td key={col.id} className={`p-2 border-r border-slate-100 text-center ${theme.cell}`} onContextMenu={(e) => { e.preventDefault(); openCellNoteModal(selectedClass.id, std.id, col.id, std.assignmentNotes?.[col.id]); }}>
-                                                                        <div onClick={(e) => { e.stopPropagation(); setActiveCell({ classId: selectedClass.id, studentId: std.id, colId: col.id, anchorEl: e.currentTarget }); }} className="cursor-pointer transition-transform hover:scale-105"><StatusBadge status={std.grades?.[col.id] || 'exempt'} hasNote={!!std.assignmentNotes?.[col.id]} /></div>
-                                                                    </td> 
-                                                                ))}
+                                                                    <th key={col.id} className={`p-3 border-b border-r border-slate-200 sticky-header-sub ${theme.sub} min-w-[150px] align-top`}>
+                                                                        <div className="flex flex-col items-center justify-between h-full min-h-[50px]">
+                                                                            <span className="font-bold text-xs text-slate-700 whitespace-normal text-center leading-tight mb-2 break-words max-w-[140px]">{col.title}</span>
+                                                                            <div className="flex items-center gap-1 shrink-0">
+                                                                                {col.pdfLink && <PdfDownloadButton link={col.pdfLink} isTeacher={true} />}
+                                                                                <button onClick={(e) => { e.stopPropagation(); setActiveColMenu({ classId: selectedClass.id, topicId: topic.id, colId: col.id, anchorEl: e.currentTarget }); }} className="text-slate-400 hover:text-brandPurple bg-white/50 p-1.5 rounded-full shadow-sm transition-colors"><MoreVertical size={14}/></button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </th> 
+                                                                ))} 
                                                             </React.Fragment> 
                                                         );
                                                     })}
                                                 </tr>
-                                            ))}
-                                            <tr>
-                                                <td className="sticky-col-left p-4 border-r border-slate-200 border-t border-slate-200 bg-slate-50">
-                                                    <div className="flex gap-2"><div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 shrink-0"><UserPlus size={16}/></div><input type="text" placeholder="Yeni Öğrenci Ekle..." className="bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-sm text-slate-700 w-full focus:border-brandPurple outline-none font-medium shadow-sm" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(selectedClass.id); }} /><button onClick={() => addStudent(selectedClass.id)} className={`text-white px-3 rounded-xl text-xs font-bold shadow-md transition-colors hover-lift ${selectedClass.type === 'vip' ? 'bg-vipGoldAccent hover:bg-yellow-600' : 'bg-brandPurple hover:bg-purple-700'}`}>EKLE</button></div>
-                                                </td>
-                                                {selectedClass.topics?.map((t, i) => <td key={i} colSpan={Math.max(1, t.subColumns.length + 1)} className="border-t border-slate-200 bg-slate-50/50"></td>)}
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody>
+                                                {selectedClass.students?.map((std) => (
+                                                    <tr key={std.id} className="border-b border-slate-100 bg-white">
+                                                        <td className="sticky-col-left p-4 border-r border-slate-200">
+                                                            <div className="flex justify-between items-center group">
+                                                                <div className="flex flex-col gap-1 cursor-pointer" onClick={() => openStudent(std)}>
+                                                                    <div className="flex items-center gap-3"><motion.div whileHover={{ scale: 1.1 }} className={`w-8 h-8 rounded-full ${selectedClass.type === 'vip' ? 'bg-yellow-100 text-amber-600' : 'bg-purple-100 text-brandPurple'} flex items-center justify-center font-black text-xs`}>{std.name.charAt(0)}</motion.div><span className={`text-sm font-bold text-slate-700 group-hover:${selectedClass.type === 'vip' ? 'text-amber-600' : 'text-brandPurple'} transition-colors`}>{std.name}</span><button onClick={(e) => { e.stopPropagation(); setModalData({ classId: selectedClass.id, studentId: std.id, currentName: std.name }); setModalInputVal(std.name); setModalType('edit-student'); }} className="text-slate-300 hover:text-brandPurple opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size={14}/></button></div>
+                                                                    {std.username && ( <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 mt-1 ml-11" onClick={e=>e.stopPropagation()}><span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{std.username}</span><span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-1"><KeyRound size={10}/> {std.password}</span></div> )}
+                                                                </div>
+                                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => { e.stopPropagation(); handlePrintStudentReport(selectedClass, std); }} className={`p-2 rounded-lg transition-colors ${selectedClass.type === 'vip' ? 'bg-yellow-50 text-amber-500 hover:bg-yellow-100' : 'bg-purple-50 text-brandPurple hover:bg-purple-100'}`} title="Rapor Yazdır"><Printer size={16}/></motion.button><motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => deleteStudent(e, selectedClass.id, std.id)} className="bg-rose-50 text-rose-400 hover:text-rose-600 hover:bg-rose-100 p-2 rounded-lg transition-colors"><Trash2 size={16}/></motion.button></div>
+                                                            </div>
+                                                        </td>
+                                                        {selectedClass.topics?.map((topic, i) => {
+                                                            const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
+                                                            return ( 
+                                                                <React.Fragment key={topic.id}>
+                                                                    <td className={`border-r border-slate-100 ${theme.cell}`}></td>
+                                                                    {topic.subColumns?.map(col => ( 
+                                                                        <td key={col.id} className={`p-2 border-r border-slate-100 text-center ${theme.cell}`} onContextMenu={(e) => { e.preventDefault(); openCellNoteModal(selectedClass.id, std.id, col.id, std.assignmentNotes?.[col.id]); }}>
+                                                                            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={(e) => { e.stopPropagation(); setActiveCell({ classId: selectedClass.id, studentId: std.id, colId: col.id, anchorEl: e.currentTarget }); }} className="cursor-pointer inline-block"><StatusBadge status={std.grades?.[col.id] || 'exempt'} hasNote={!!std.assignmentNotes?.[col.id]} /></motion.div>
+                                                                        </td> 
+                                                                    ))}
+                                                                </React.Fragment> 
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                ))}
+                                                <tr>
+                                                    <td className="sticky-col-left p-4 border-r border-slate-200 border-t border-slate-200 bg-slate-50">
+                                                        <div className="flex gap-2"><div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 shrink-0"><UserPlus size={16}/></div><input type="text" placeholder="Yeni Öğrenci Ekle..." className="bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-sm text-slate-700 w-full focus:border-brandPurple outline-none font-medium shadow-sm" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(selectedClass.id); }} /><motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => addStudent(selectedClass.id)} className={`text-white px-3 rounded-xl text-xs font-bold shadow-md transition-colors ${selectedClass.type === 'vip' ? 'real-gold-bg text-slate-900' : 'bg-brandPurple'}`}>EKLE</motion.button></div>
+                                                    </td>
+                                                    {selectedClass.topics?.map((t, i) => <td key={i} colSpan={Math.max(1, t.subColumns.length + 1)} className="border-t border-slate-200 bg-slate-50/50"></td>)}
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    )}
+                                </motion.div>
+                            )}
+
+                            {activeTab === 'curriculum' && (
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 bg-slate-50/50 border-t border-slate-100">
+                                    <CurriculumTracker cls={selectedClass} updateClassInDb={updateClassInDb} isTeacherMode={true} />
+                                </motion.div>
+                            )}
+                        </motion.div>
+                    )}
+
+                    {/* ÖĞRENCİ ANA EKRANI (Menü vs) */}
+                    {!isTeacherMode && view === 'home' && (
+                        <motion.div 
+                            key="student-home"
+                            initial={{ opacity: 0 }} 
+                            animate={{ opacity: 1, transition: { staggerChildren: 0.1 } }} 
+                            exit={{ opacity: 0, y: -20 }}
+                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                        >
+                            {classes.map((cls) => ( 
+                                <motion.div 
+                                    key={cls.id} 
+                                    whileHover={{ scale: 1.03, y: -5 }} 
+                                    whileTap={{ scale: 0.97 }} 
+                                    onClick={() => openClass(cls)} 
+                                    className={`cursor-pointer group rounded-3xl p-8 flex flex-col items-center justify-center text-center ${currentUserRole === 'vip-student' ? 'glass-panel border-vipGoldAccent/30 shadow-vip-card' : 'bg-white border-slate-100 shadow-float'}`}
+                                >
+                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-5 transition-all duration-300 shadow-sm ${currentUserRole === 'vip-student' ? 'bg-vipGold/10 text-vipGold group-hover:bg-vipGold group-hover:text-slate-900 shadow-vip-glow' : 'bg-purple-50 text-brandPurple group-hover:bg-brandPurple group-hover:text-white'}`}><Users size={32}/></div>
+                                    <h2 className={`text-2xl font-black tracking-tight transition-colors ${currentUserRole === 'vip-student' ? 'real-gold-text' : 'text-slate-800 group-hover:text-brandPurple'}`}>{cls.className}</h2>
+                                    <p className={`text-xs mt-3 font-bold uppercase tracking-widest px-4 py-1.5 rounded-full ${currentUserRole === 'vip-student' ? 'bg-vipGold/10 text-vipGold border border-vipGold/20' : 'bg-slate-50 text-slate-400'}`}>Sınıfa Gir</p>
+                                </motion.div> 
+                            ))}
+                        </motion.div> 
+                    )}
+
+                    {/* ÖĞRENCİ DETAY EKRANI (VIP ŞOVU BURADA) */}
+                    {view === 'student-detail' && selectedClass && selectedStudentForView && (
+                        <motion.div 
+                            key="student-detail"
+                            initial={{ opacity: 0, y: 30, scale: 0.98 }} 
+                            animate={{ opacity: 1, y: 0, scale: 1 }} 
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                            className={`${currentUserRole === 'vip-student' ? 'glass-panel border-vipGoldAccent/30 shadow-vip-card' : 'bg-white border-slate-100 shadow-float'} rounded-[2.5rem] p-4 md:p-10 border relative z-10`}
+                        >
+                            <div className={`flex flex-col md:flex-row items-center md:items-start gap-6 mb-10 pb-8 border-b ${currentUserRole === 'vip-student' ? 'border-vipGold/20' : 'border-slate-100'} text-center md:text-left`}>
+                                <motion.div whileHover={{ scale: 1.1, rotate: 5 }} className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl font-black shadow-xl shrink-0 border-4 ${currentUserRole === 'vip-student' ? 'real-gold-bg text-slate-900 border-vipGold/50 shadow-vip-glow' : 'bg-gradient-to-br from-brandPurple to-blue-500 text-white border-white shadow-glow'}`}>{selectedStudentForView.name.charAt(0)}</motion.div>
+                                <div>
+                                    <h2 className={`text-3xl md:text-5xl font-black mb-2 tracking-tight flex items-center justify-center md:justify-start gap-3 ${currentUserRole === 'vip-student' ? 'text-white' : 'text-slate-800'}`}>
+                                        {selectedStudentForView.name}
+                                        {currentUserRole === 'vip-student' && <Sparkle className="text-vipGold animate-pulse"/>}
+                                    </h2>
+                                    <div className="flex items-center justify-center md:justify-start gap-3">
+                                        <span className={`font-bold px-3 py-1 rounded-lg ${currentUserRole === 'vip-student' ? 'bg-[#0f0d14] border border-vipGold/20 text-vipGold' : 'bg-slate-100 text-slate-500'}`}>{selectedClass.className}</span>
+                                        <span className={`font-black px-3 py-1 rounded-lg border ${currentUserRole === 'vip-student' ? 'bg-vipGold/10 text-vipGold border-vipGold/30 shadow-vip-glow' : 'bg-successGreen/10 text-successGreen border-successGreen/20'}`}>%{calculateStats([selectedStudentForView], selectedClass.topics).percentage} Genel Başarı</span>
+                                    </div>
                                 </div>
-                                )}
                             </div>
-                        )}
 
-                        {activeTab === 'curriculum' && (
-                            <div className="p-4 bg-slate-50/50 border-t border-slate-100">
-                                <CurriculumTracker cls={selectedClass} updateClassInDb={updateClassInDb} isTeacherMode={true} />
+                            <div className={`flex gap-6 mb-6 border-b ${currentUserRole === 'vip-student' ? 'border-vipGold/20' : 'border-slate-200'}`}>
+                                <motion.button whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} onClick={() => setActiveTab('homework')} className={`pb-3 font-bold text-sm border-b-[3px] transition-colors flex items-center gap-2 ${activeTab === 'homework' ? (currentUserRole === 'vip-student' ? 'border-vipGold text-vipGold shadow-vip-glow bg-vipGold/5 rounded-t-lg' : 'border-brandPurple text-brandPurple bg-brandPurple/5 rounded-t-lg') : 'border-transparent text-slate-500 hover:text-slate-400'}`}>
+                                    <Layout size={18}/> Ödevlerim
+                                </motion.button>
+                                <motion.button whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} onClick={() => setActiveTab('curriculum')} className={`pb-3 font-bold text-sm border-b-[3px] transition-colors flex items-center gap-2 ${activeTab === 'curriculum' ? (currentUserRole === 'vip-student' ? 'border-vipGold text-vipGold shadow-vip-glow bg-vipGold/5 rounded-t-lg' : 'border-brandPurple text-brandPurple bg-brandPurple/5 rounded-t-lg') : 'border-transparent text-slate-500 hover:text-slate-400'}`}>
+                                    <BookOpenCheck size={18}/> Konu İlerlemem
+                                </motion.button>
                             </div>
-                        )}
-                    </div>
-                )}
 
-                {/* ÖĞRENCİ ANA EKRANI (Menü vs) */}
-                {!isTeacherMode && view === 'home' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">
-                        {classes.map((cls) => ( 
-                            <div key={cls.id} onClick={() => openClass(cls)} className={`hover-lift cursor-pointer group rounded-3xl p-8 flex flex-col items-center justify-center text-center ${currentUserRole === 'vip-student' ? 'glass-panel border-vipGoldAccent/30 shadow-vip-card' : 'bg-white border-slate-100 shadow-float'}`}>
-                                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-all duration-300 shadow-sm ${currentUserRole === 'vip-student' ? 'bg-vipGold/10 text-vipGold group-hover:bg-vipGold group-hover:text-vipBg shadow-vip-glow' : 'bg-purple-50 text-brandPurple group-hover:bg-brandPurple group-hover:text-white'}`}><Users size={32}/></div>
-                                <h2 className={`text-2xl font-black tracking-tight transition-colors ${currentUserRole === 'vip-student' ? 'vip-text-gradient' : 'text-slate-800 group-hover:text-brandPurple'}`}>{cls.className}</h2>
-                                <p className={`text-xs mt-3 font-bold uppercase tracking-widest px-4 py-1.5 rounded-full ${currentUserRole === 'vip-student' ? 'bg-vipGold/10 text-vipGold border border-vipGold/20' : 'bg-slate-50 text-slate-400'}`}>Sınıfa Gir</p>
-                            </div> 
-                        ))}
-                    </div> 
-                )}
-
-                {/* ÖĞRENCİ DETAY EKRANI (VIP ŞOVU BURADA) */}
-                {view === 'student-detail' && selectedClass && selectedStudentForView && (
-                    <div className={`${currentUserRole === 'vip-student' ? 'glass-panel border-vipGoldAccent/30 shadow-vip-card' : 'bg-white border-slate-100 shadow-float'} rounded-[2.5rem] p-4 md:p-10 border animate-scale-in relative z-10`}>
-                        <div className={`flex flex-col md:flex-row items-center md:items-start gap-6 mb-10 pb-8 border-b ${currentUserRole === 'vip-student' ? 'border-vipGold/20' : 'border-slate-100'} text-center md:text-left`}>
-                            <div className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl font-black shadow-xl shrink-0 border-4 transition-transform hover:scale-105 hover-lift ${currentUserRole === 'vip-student' ? 'bg-gradient-to-br from-vipGold to-vipGoldAccent text-vipBg border-vipGold/50 shadow-vip-glow' : 'bg-gradient-to-br from-brandPurple to-blue-500 text-white border-white shadow-glow'}`}>{selectedStudentForView.name.charAt(0)}</div>
-                            <div>
-                                <h2 className={`text-3xl md:text-5xl font-black mb-2 tracking-tight flex items-center justify-center md:justify-start gap-3 ${currentUserRole === 'vip-student' ? 'text-white' : 'text-slate-800'}`}>
-                                    {selectedStudentForView.name}
-                                    {currentUserRole === 'vip-student' && <Sparkle className="text-vipGold animate-pulse"/>}
-                                </h2>
-                                <div className="flex items-center justify-center md:justify-start gap-3">
-                                    <span className={`font-bold px-3 py-1 rounded-lg ${currentUserRole === 'vip-student' ? 'bg-vipCard border border-vipGold/20 text-vipGold' : 'bg-slate-100 text-slate-500'}`}>{selectedClass.className}</span>
-                                    <span className={`font-black px-3 py-1 rounded-lg border ${currentUserRole === 'vip-student' ? 'bg-vipGold/10 text-vipGold border-vipGold/30 shadow-vip-glow' : 'bg-successGreen/10 text-successGreen border-successGreen/20'}`}>%{calculateStats([selectedStudentForView], selectedClass.topics).percentage} Genel Başarı</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className={`flex gap-6 mb-6 border-b ${currentUserRole === 'vip-student' ? 'border-vipGold/20' : 'border-slate-200'}`}>
-                            <button onClick={() => setActiveTab('homework')} className={`pb-3 font-bold text-sm border-b-[3px] transition-colors flex items-center gap-2 hover-lift ${activeTab === 'homework' ? (currentUserRole === 'vip-student' ? 'border-vipGold text-vipGold shadow-vip-glow bg-vipGold/5 rounded-t-lg' : 'border-brandPurple text-brandPurple bg-brandPurple/5 rounded-t-lg') : 'border-transparent text-slate-500 hover:text-slate-400'}`}>
-                                <Layout size={18}/> Ödevlerim
-                            </button>
-                            <button onClick={() => setActiveTab('curriculum')} className={`pb-3 font-bold text-sm border-b-[3px] transition-colors flex items-center gap-2 hover-lift ${activeTab === 'curriculum' ? (currentUserRole === 'vip-student' ? 'border-vipGold text-vipGold shadow-vip-glow bg-vipGold/5 rounded-t-lg' : 'border-brandPurple text-brandPurple bg-brandPurple/5 rounded-t-lg') : 'border-transparent text-slate-500 hover:text-slate-400'}`}>
-                                <BookOpenCheck size={18}/> Konu İlerlemem
-                            </button>
-                        </div>
-
-                        {activeTab === 'homework' && (
-                            <div className="space-y-8 animate-fade-in-up">
-                                {selectedClass.topics?.map((topic, i) => {
-                                    const theme = currentUserRole === 'vip-student' ? { tag: 'bg-vipGold', text: 'text-vipGold' } : TOPIC_THEMES[i % TOPIC_THEMES.length]; 
-                                    const topicStats = calculateStats([selectedStudentForView], [{...topic, subColumns: topic.subColumns}]);
-                                    const pct = topicStats.percentage || 0; const isLate = isOverdue(topic.date);
-                                    return (
-                                        <div key={topic.id} className={`${currentUserRole === 'vip-student' ? 'glass-panel border-vipGoldAccent/20' : 'bg-white border-slate-200 shadow-float'} rounded-3xl p-4 md:p-6 border hover-lift`}>
-                                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                                                <div className="flex items-center gap-3"><div className={`w-2 h-8 rounded-full ${theme.tag}`}></div><h3 className={`text-xl font-black uppercase tracking-wide ${currentUserRole === 'vip-student' ? 'text-white' : 'text-slate-800'}`}>{topic.title}</h3></div>
-                                                <div className="flex flex-wrap items-center gap-3">
-                                                    {topic.date && ( <div className={`text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm border ${isLate && pct < 100 ? 'bg-errorRed/20 text-errorRed border-errorRed/30 animate-pulse' : (currentUserRole === 'vip-student' ? 'bg-vipCard text-vipGold/70 border-vipGold/20' : 'bg-slate-50 text-slate-500 border-slate-200')}`}><Calendar size={14}/> Son Teslim: {formatDate(topic.date)}</div> )}
-                                                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border shadow-sm ${currentUserRole === 'vip-student' ? 'bg-vipCard border-vipGold/20' : 'bg-slate-50 border-slate-200'}`}><div className={`w-16 h-2 rounded-full overflow-hidden ${currentUserRole === 'vip-student' ? 'bg-vipBg' : 'bg-slate-200'}`}><div className={`h-full ${theme.tag} ${currentUserRole === 'vip-student' && 'shadow-vip-glow'}`} style={{ width: `${pct}%` }}></div></div><span className={`text-xs font-black ${currentUserRole === 'vip-student' ? 'text-white' : 'text-slate-700'}`}>%{pct}</span></div>
+                            {activeTab === 'homework' && (
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { staggerChildren: 0.1 } }} className="space-y-8">
+                                    {selectedClass.topics?.map((topic, i) => {
+                                        const theme = currentUserRole === 'vip-student' ? { tag: 'bg-vipGold', text: 'text-vipGold' } : TOPIC_THEMES[i % TOPIC_THEMES.length]; 
+                                        const topicStats = calculateStats([selectedStudentForView], [{...topic, subColumns: topic.subColumns}]);
+                                        const pct = topicStats.percentage || 0; const isLate = isOverdue(topic.date);
+                                        return (
+                                            <motion.div 
+                                                key={topic.id} 
+                                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                                                className={`${currentUserRole === 'vip-student' ? 'bg-[#0f0d14]/80 border-vipGoldAccent/20' : 'bg-white border-slate-200 shadow-float'} rounded-3xl p-4 md:p-6 border`}
+                                            >
+                                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                                                    <div className="flex items-center gap-3"><div className={`w-2 h-8 rounded-full ${theme.tag}`}></div><h3 className={`text-xl font-black uppercase tracking-wide ${currentUserRole === 'vip-student' ? 'text-white' : 'text-slate-800'}`}>{topic.title}</h3></div>
+                                                    <div className="flex flex-wrap items-center gap-3">
+                                                        {topic.date && ( <div className={`text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm border ${isLate && pct < 100 ? 'bg-errorRed/20 text-errorRed border-errorRed/30 animate-pulse' : (currentUserRole === 'vip-student' ? 'bg-[#1a1721] text-vipGold/70 border-vipGold/20' : 'bg-slate-50 text-slate-500 border-slate-200')}`}><Calendar size={14}/> Son Teslim: {formatDate(topic.date)}</div> )}
+                                                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border shadow-sm ${currentUserRole === 'vip-student' ? 'bg-[#1a1721] border-vipGold/20' : 'bg-slate-50 border-slate-200'}`}><div className={`w-16 h-2 rounded-full overflow-hidden ${currentUserRole === 'vip-student' ? 'bg-slate-900' : 'bg-slate-200'}`}><div className={`h-full ${theme.tag} ${currentUserRole === 'vip-student' && 'shadow-vip-glow'}`} style={{ width: `${pct}%` }}></div></div><span className={`text-xs font-black ${currentUserRole === 'vip-student' ? 'text-white' : 'text-slate-700'}`}>%{pct}</span></div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                {topic.subColumns?.map(col => {
-                                                    const status = selectedStudentForView.grades?.[col.id] || 'exempt'; const statusData = STATUS_OPTIONS.find(o => o.id === status) || STATUS_OPTIONS[3]; const StatusIcon = statusData.icon; const note = selectedStudentForView.assignmentNotes?.[col.id]; const isMissed = isLate && status !== 'done' && status !== 'exempt';
-                                                    const cardStyle = currentUserRole === 'vip-student' ? `bg-vipCard border-vipGoldAccent/20 ${isMissed ? 'border-errorRed shadow-[0_0_15px_rgba(239,68,68,0.3)]' : ''}` : `bg-white border-slate-100 ${isMissed ? 'border-errorRed/50 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : ''}`;
-                                                    const titleStyle = currentUserRole === 'vip-student' ? 'text-slate-200' : 'text-slate-800';
-                                                    return (
-                                                        <div key={col.id} className={`border rounded-2xl p-5 flex flex-col justify-between gap-4 hover:shadow-lg transition-all duration-300 group hover-lift ${cardStyle}`}>
-                                                            <div className="flex justify-between items-start">
-                                                                <div><span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 mb-2 ${currentUserRole === 'vip-student' ? 'text-vipGold/50' : 'text-slate-400'}`}><div className={`w-2 h-2 rounded-full ${theme.tag}`}></div> KAYNAK</span><span className={`text-lg font-bold leading-tight ${titleStyle}`}>{col.title}</span></div>
-                                                                {isTeacherMode && <button onClick={() => openCellNoteModal(selectedClass.id, selectedStudentForView.id, col.id, selectedStudentForView.assignmentNotes?.[col.id] || "")} className={`p-1.5 rounded-md transition-colors hover-lift ${note ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400 hover:text-brandPurple'}`} title="Öğretmen Notu"><StickyNote size={14} /></button>}
-                                                            </div>
-                                                            <div className="flex flex-col gap-3">
-                                                                {isTeacherMode ? (
-                                                                    <div className="grid grid-cols-4 gap-1 bg-slate-50 p-1.5 rounded-xl border border-slate-100">{STATUS_OPTIONS.map(opt => ( <button key={opt.id} onClick={() => updateGrade(selectedClass.id, selectedStudentForView.id, col.id, opt.id)} className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all hover-lift ${status === opt.id ? `${opt.bg} ${opt.color} shadow-sm border ${opt.border} scale-105` : 'text-slate-400 hover:bg-white'}`}><opt.icon size={16} className="mb-1" strokeWidth={2.5}/><span className="text-[9px] font-bold">{opt.label}</span></button> ))}</div>
-                                                                ) : ( <div className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border ${currentUserRole === 'vip-student' ? 'bg-vipBg border-vipGoldAccent/20 text-vipGold' : `${statusData.bg} ${statusData.border} ${statusData.color}`}`}><StatusIcon size={20} strokeWidth={2.5} /><span className="text-sm font-black uppercase tracking-widest">{statusData.label}</span></div> )}
-                                                                {note && ( <div className="bg-yellow-50/80 p-3 rounded-xl border border-yellow-200 flex gap-2 items-start text-xs text-yellow-900 shadow-inner"><Info size={16} className="mt-0.5 shrink-0 text-yellow-500"/> <span className="font-medium leading-relaxed">{note}</span></div> )}
-                                                                {col.pdfLink && <PdfDownloadButton link={col.pdfLink} isVip={currentUserRole === 'vip-student'} isTeacher={false} />}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                                {topic.subColumns?.length === 0 && <div className="text-xs text-slate-400 text-center p-2">Bu konuya ait kaynak yok.</div>}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                                {selectedClass.topics?.length === 0 && <div className="text-center text-slate-500 py-10 font-medium">Bu sınıfa henüz ödev eklenmemiş.</div>}
-                            </div>
-                        )}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    {topic.subColumns?.map(col => {
+                                                        const status = selectedStudentForView.grades?.[col.id] || 'exempt'; const statusData = STATUS_OPTIONS.find(o => o.id === status) || STATUS_OPTIONS[3]; const StatusIcon = statusData.icon; const note = selectedStudentForView.assignmentNotes?.[col.id]; const isMissed = isLate && status !== 'done' && status !== 'exempt';
+                                                        const cardStyle = currentUserRole === 'vip-student' ? `bg-[#1a1721] border-vipGoldAccent/20 ${isMissed ? 'border-errorRed shadow-[0_0_15px_rgba(239,68,68,0.3)]' : ''}` : `bg-white border-slate-100 ${isMissed ? 'border-errorRed/50 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : ''}`;
+                                                        const titleStyle = currentUserRole === 'vip-student' ? 'text-slate-200' : 'text-slate-800';
+                                                        return (
+                                                            <motion.div key={col.id} whileHover={{ scale: 1.02, y: -3 }} className={`border rounded-2xl p-5 flex flex-col justify-between gap-4 shadow-sm group ${cardStyle}`}>
+                                                                <div className="flex justify-between items-start">
+                                                                    <div><span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 mb-2 ${currentUserRole === 'vip-student' ? 'text-vipGold/50' : 'text-slate-400'}`}><div className={`w-2 h-2 rounded-full ${theme.tag}`}></div> KAYNAK</span><span className={`text-lg font-bold leading-tight ${titleStyle}`}>{col.title}</span></div>
+                                                                    {isTeacherMode && <button onClick={() => openCellNoteModal(selectedClass.id, selectedStudentForView.id, col.id, selectedStudentForView.assignmentNotes?.[col.id] || "")} className={`p-1.5 rounded-md transition-colors ${note ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400 hover:text-brandPurple'}`} title="Öğretmen Notu"><StickyNote size={14} /></button>}
+                                                                </div>
+                                                                <div className="flex flex-col gap-3">
+                                                                    {isTeacherMode ? (
+                                                                        <div className="grid grid-cols-4 gap-1 bg-slate-50 p-1.5 rounded-xl border border-slate-100">{STATUS_OPTIONS.map(opt => ( <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} key={opt.id} onClick={() => updateGrade(selectedClass.id, selectedStudentForView.id, col.id, opt.id)} className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all ${status === opt.id ? `${opt.bg} ${opt.color} shadow-sm border ${opt.border} scale-105` : 'text-slate-400 hover:bg-white'}`}><opt.icon size={16} className="mb-1" strokeWidth={2.5}/><span className="text-[9px] font-bold">{opt.label}</span></motion.button> ))}</div>
+                                                                    ) : ( <div className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border ${currentUserRole === 'vip-student' ? 'bg-[#0f0d14] border-vipGoldAccent/20 text-vipGold' : `${statusData.bg} ${statusData.border} ${statusData.color}`}`}><StatusIcon size={20} strokeWidth={2.5} /><span className="text-sm font-black uppercase tracking-widest">{statusData.label}</span></div> )}
+                                                                    {note && ( <div className="bg-yellow-50/80 p-3 rounded-xl border border-yellow-200 flex gap-2 items-start text-xs text-yellow-900 shadow-inner"><Info size={16} className="mt-0.5 shrink-0 text-yellow-500"/> <span className="font-medium leading-relaxed">{note}</span></div> )}
+                                                                    {col.pdfLink && <PdfDownloadButton link={col.pdfLink} isVip={currentUserRole === 'vip-student'} isTeacher={false} />}
+                                                                </div>
+                                                            </motion.div>
+                                                        );
+                                                    })}
+                                                    {topic.subColumns?.length === 0 && <div className="text-xs text-slate-400 text-center p-2">Bu konuya ait kaynak yok.</div>}
+                                                </div>
+                                            </motion.div>
+                                        );
+                                    })}
+                                    {selectedClass.topics?.length === 0 && <div className="text-center text-slate-500 py-10 font-medium">Bu sınıfa henüz ödev eklenmemiş.</div>}
+                                </motion.div>
+                            )}
 
-                        {activeTab === 'curriculum' && (
-                            <CurriculumTracker cls={selectedClass} updateClassInDb={updateClassInDb} isTeacherMode={false} />
-                        )}
-                    </div>
-                )}
+                            {activeTab === 'curriculum' && (
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                                    <CurriculumTracker cls={selectedClass} updateClassInDb={updateClassInDb} isTeacherMode={false} />
+                                </motion.div>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </main>
 
             {isTeacherMode && (
