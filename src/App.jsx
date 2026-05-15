@@ -883,11 +883,24 @@ if (!currentUserRole) {
 
                             {activeTab === 'curriculum' && (
                                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 bg-slate-50/50 border-t border-slate-100">
-                                    <CurriculumTracker cls={selectedClass} updateClassInDb={updateClassInDb} isTeacherMode={true} />
+                                    <CurriculumTracker 
+                                        cls={selectedClass} 
+                                        updateClassInDb={updateClassInDb} 
+                                        isTeacherMode={true} 
+                                        libraryItems={libraryItems.filter(i => i.type === LIBRARY_TYPES.CURRICULUM)}
+                                        saveToLibrary={async (topic) => {
+                                            if(!topic.title) return;
+                                            try {
+                                                await addDoc(collection(db, LIBRARY_COLLECTION), {
+                                                    text: topic.title,
+                                                    type: LIBRARY_TYPES.CURRICULUM,
+                                                    subTopics: topic.subTopics ? topic.subTopics.map(st => ({ title: st.title })) : []
+                                                });
+                                            } catch (e) { console.error("Kütüphane kayıt hatası:", e); }
+                                        }}
+                                    />
                                 </motion.div>
                             )}
-                        </motion.div>
-                    )}
 
                   {/* ÖĞRENCİ ANA EKRANI (Menü vs) */}
                     {!isTeacherMode && view === 'home' && (
