@@ -55,7 +55,7 @@ const App = () => {
     const [modalType, setModalType] = useState(null); 
     const [modalData, setModalData] = useState(null);
     const [modalInputVal, setModalInputVal] = useState("");
-    const [modalTitleVal, setModalTitleVal] = useState(""); // Duyuru başlığı için
+    const [modalTitleVal, setModalTitleVal] = useState(""); 
     const [modalDateVal, setModalDateVal] = useState("");
     const [modalPdfVal, setModalPdfVal] = useState("");
     
@@ -199,9 +199,11 @@ const App = () => {
         deleteDoc(doc(db, CLASSES_COLLECTION, classId)); goHome();
     };
 
-    // --- YAZDIRMA VE ANALİZ FONKSİYONLARI ---
+    // --- YAZDIRMA VE ANALİZ FONKSİYONLARI (DÜZELTİLDİ) ---
     const handlePrintPasswords = (cls) => {
         const printWindow = window.open('', '_blank');
+        if (!printWindow) { alert("⚠️ Lütfen tarayıcınızın Pop-up (Açılır Pencere) engelleyicisini bu site için kapatın!"); return; }
+        
         let html = `<html><head><title>${cls.className} - Şifre Listesi</title><style>body{font-family:sans-serif;padding:20px;}table{width:100%;border-collapse:collapse;margin-top:20px;}th,td{border:1px solid #ddd;padding:12px;text-align:left;}th{background-color:#f4f4f4;} h2{color:#4f46e5;}</style></head><body>`;
         html += `<h2>${cls.className} Sınıfı - Öğrenci Giriş Bilgileri</h2>`;
         html += `<table><tr><th>Öğrenci Adı</th><th>Kullanıcı Adı</th><th>Şifre</th></tr>`;
@@ -212,6 +214,8 @@ const App = () => {
 
     const handlePrintStudentReport = (cls, student) => {
         const printWindow = window.open('', '_blank');
+        if (!printWindow) { alert("⚠️ Lütfen tarayıcınızın Pop-up (Açılır Pencere) engelleyicisini bu site için kapatın!"); return; }
+        
         let html = `<html><head><title>${student.name} - İlerleme Raporu</title><style>body{font-family:sans-serif;padding:20px;}table{width:100%;border-collapse:collapse;margin-top:20px;}th,td{border:1px solid #ddd;padding:12px;text-align:left;}th{background-color:#f4f4f4;} h2{color:#4f46e5;}</style></head><body>`;
         html += `<h2>${student.name} - Ödev ve İlerleme Raporu</h2>`;
         html += `<h3>Sınıf: ${cls.className} | Genel Başarı: %${calculateStats([student], cls.topics).percentage}</h3>`;
@@ -361,7 +365,7 @@ const App = () => {
                                 <button onClick={() => {
                                     setModalType('system-settings');
                                     setModalInputVal(systemAnnouncement);
-                                    setModalTitleVal(announcementTitle); // YENİ: Başlık da düzenlenecek
+                                    setModalTitleVal(announcementTitle); // Başlık da düzenlenecek
                                     setModalPdfVal(countdownConfig.label);
                                     setModalDateVal(countdownConfig.targetDate.split('T')[0]); 
                                 }} className={`absolute top-4 right-4 p-2 rounded-xl transition-all shadow-sm ${currentUserRole === 'vip-student' ? 'bg-slate-700 text-slate-300 hover:text-vipGold' : 'bg-white text-slate-400 hover:text-brandPurple hover:bg-purple-100'}`} title="Duyuru ve Takvimi Düzenle">
@@ -420,7 +424,6 @@ const App = () => {
                 </AnimatePresence>
             </main>
 
-            {/* HARİCİ BÜYÜK MODALLAR (AYRILAN DOSYALAR) */}
             {showLibraryManager && (
                 <LibraryModal 
                     libraryCategory={libraryCategory} setLibraryCategory={setLibraryCategory} 
