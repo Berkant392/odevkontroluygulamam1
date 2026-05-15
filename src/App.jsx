@@ -761,8 +761,7 @@ if (!currentUserRole) {
                                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`p-4 ${selectedClass.type === 'vip' ? 'bg-yellow-50/30' : 'bg-slate-50/50'}`}>
                                     {isMobile ? (
                                         <div className="space-y-4">
-                                            
-                                            {/* 📱 YENİ: MOBİL ÖDEV VE KAYNAK YÖNETİMİ (SADECE ÖĞRETMEN) */}
+                                            {/* MOBİL ÖDEV YÖNETİMİ EKLENDİ */}
                                             {isTeacherMode && (
                                                 <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-float mb-6">
                                                     <h4 className="font-black text-slate-800 mb-4 text-sm flex items-center gap-2 uppercase tracking-widest"><BookOpen size={18} className="text-brandPurple"/> Mobil Ödev Yönetimi</h4>
@@ -901,8 +900,10 @@ if (!currentUserRole) {
                                     />
                                 </motion.div>
                             )}
+                        </motion.div>
+                    )}
 
-                  {/* ÖĞRENCİ ANA EKRANI (Menü vs) */}
+                    {/* ÖĞRENCİ ANA EKRANI */}
                     {!isTeacherMode && view === 'home' && (
                         <motion.div 
                             key="student-home"
@@ -927,7 +928,7 @@ if (!currentUserRole) {
                         </motion.div> 
                     )}
 
-                    {/* ÖĞRENCİ DETAY EKRANI (VIP ŞOVU BURADA) */}
+                    {/* ÖĞRENCİ DETAY EKRANI */}
                     {view === 'student-detail' && selectedClass && selectedStudentForView && (
                         <motion.div 
                             key="student-detail"
