@@ -761,7 +761,44 @@ if (!currentUserRole) {
                                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`p-4 ${selectedClass.type === 'vip' ? 'bg-yellow-50/30' : 'bg-slate-50/50'}`}>
                                     {isMobile ? (
                                         <div className="space-y-4">
-                                            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex gap-2"><input type="text" placeholder="Yeni Öğrenci Ekle..." className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-700 w-full focus:border-brandPurple outline-none font-medium" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(selectedClass.id); }} /><motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => addStudent(selectedClass.id)} className={`text-white px-4 rounded-xl text-sm font-bold shadow-md ${selectedClass.type === 'vip' ? 'real-gold-bg text-slate-900' : 'bg-brandPurple'}`}>EKLE</motion.button></div>
+                                            
+                                            {/* 📱 YENİ: MOBİL ÖDEV VE KAYNAK YÖNETİMİ (SADECE ÖĞRETMEN) */}
+                                            {isTeacherMode && (
+                                                <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-float mb-6">
+                                                    <h4 className="font-black text-slate-800 mb-4 text-sm flex items-center gap-2 uppercase tracking-widest"><BookOpen size={18} className="text-brandPurple"/> Mobil Ödev Yönetimi</h4>
+                                                    <div className="space-y-4">
+                                                        {selectedClass.topics?.map(topic => (
+                                                            <div key={topic.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                                                <div className="flex justify-between items-center mb-3 pb-3 border-b border-slate-200">
+                                                                    <span className="font-black text-slate-700 text-sm uppercase tracking-wide truncate pr-2">{topic.title}</span>
+                                                                    <div className="flex gap-1.5 shrink-0">
+                                                                        <button onClick={() => { setModalData({ classId: selectedClass.id, topicId: topic.id, currentTitle: topic.title }); setModalInputVal(topic.title); setModalDateVal(topic.date || ''); setModalType('edit-topic'); }} className="p-2 bg-white border border-slate-200 text-slate-500 hover:text-brandPurple rounded-xl shadow-sm transition-colors hover-lift"><Pencil size={16}/></button>
+                                                                        <button onClick={() => { setModalData({ classId: selectedClass.id, topicId: topic.id }); setModalType('source'); }} className="px-3 py-2 bg-brandPurple text-white rounded-xl shadow-glow flex items-center gap-1.5 text-xs font-black tracking-wider transition-colors hover-lift"><Plus size={14}/> KAYNAK</button>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex flex-col gap-2">
+                                                                    {topic.subColumns?.map(col => (
+                                                                        <div key={col.id} className="flex justify-between items-center text-xs text-slate-600 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                                                                            <span className="font-bold truncate pr-2">{col.title}</span>
+                                                                            <div className="flex gap-1 shrink-0">
+                                                                                <button onClick={() => { setModalData({ classId: selectedClass.id, topicId: topic.id, colId: col.id, currentTitle: col.title }); setModalInputVal(col.title); setModalPdfVal(col.pdfLink || ""); setModalType('edit-source'); }} className="p-2 bg-slate-50 text-slate-500 hover:text-brandPurple rounded-lg transition-colors"><Pencil size={14}/></button>
+                                                                                <button onClick={() => deleteColumn(selectedClass.id, topic.id, col.id)} className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-100 rounded-lg transition-colors"><Trash2 size={14}/></button>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                    {(!topic.subColumns || topic.subColumns.length === 0) && <span className="text-[11px] text-slate-400 font-bold bg-white p-2 rounded-lg border border-slate-100 text-center">Bu ödeve henüz kaynak eklenmemiş.</span>}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        {(!selectedClass.topics || selectedClass.topics.length === 0) && <div className="text-sm font-bold text-slate-400 text-center py-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">Sınıfa ait ödev bulunmuyor.</div>}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex gap-2">
+                                                <input type="text" placeholder="Yeni Öğrenci Ekle..." className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-700 w-full focus:border-brandPurple outline-none font-medium" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(selectedClass.id); }} />
+                                                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => addStudent(selectedClass.id)} className={`text-white px-4 rounded-xl text-sm font-bold shadow-md ${selectedClass.type === 'vip' ? 'real-gold-bg text-slate-900' : 'bg-brandPurple'}`}>EKLE</motion.button>
+                                            </div>
                                             {selectedClass.students?.map((std) => ( <MobileStudentCard key={std.id} student={std} cls={selectedClass} updateGrade={updateGrade} onOpenNote={openCellNoteModal} onEditStudent={(s) => { setModalData({ classId: selectedClass.id, studentId: s.id, currentName: s.name }); setModalInputVal(s.name); setModalType('edit-student'); }} onDeleteStudent={deleteStudent} onPrintReport={handlePrintStudentReport} /> ))}
                                         </div>
                                     ) : (
