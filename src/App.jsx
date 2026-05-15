@@ -17,7 +17,7 @@ import StudentDashboard from './components/dashboard/StudentDashboard';
 import ClassDetail from './components/views/ClassDetail';
 import StudentDetail from './components/views/StudentDetail';
 import LibraryModal from './components/modals/LibraryModal';
-import AssistantModal from './components/modals/AssistantModal';
+import JarvisModal from './components/assistant/JarvisModal';
 import CountdownTimer from './components/ui/Countdown';
 
 const App = () => {
@@ -74,14 +74,6 @@ const App = () => {
 
     // Asistan State'leri
     const [showAssistant, setShowAssistant] = useState(false);
-    const [isListening, setIsListening] = useState(false);
-    const [speechTranscript, setSpeechTranscript] = useState("");
-    const [assistantFoundStudents, setAssistantFoundStudents] = useState([]);
-    const [assistantFoundTopics, setAssistantFoundTopics] = useState([]);
-    const [assistantSelectedStudent, setAssistantSelectedStudent] = useState(null);
-    const [assistantDraftGrades, setAssistantDraftGrades] = useState({});
-    const [assistantDraftNotes, setAssistantDraftNotes] = useState({});
-
     const regularClasses = classes.filter(c => c.type !== 'vip');
     const vipClasses = classes.filter(c => c.type === 'vip');
 
@@ -246,46 +238,6 @@ const App = () => {
     // -------------------------------------------------------------
     // 🌟 WEB SPEECH API - AKILLI SESLİ ASİSTAN
     // -------------------------------------------------------------
-    const toggleListening = () => {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            alert("⚠️ Tarayıcınız ses tanıma özelliğini desteklemiyor. Lütfen güncel bir Chrome veya Edge tarayıcı kullanın.");
-            return;
-        }
-
-        if (isListening) {
-            setIsListening(false);
-            return;
-        }
-
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'tr-TR';
-        recognition.continuous = false;
-        
-        recognition.onstart = () => {
-            setIsListening(true);
-            setSpeechTranscript("");
-        };
-
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            setSpeechTranscript(transcript);
-            processAssistantCommand(transcript);
-        };
-
-        recognition.onerror = (event) => {
-            console.error("Ses tanıma hatası: ", event.error);
-            setIsListening(false);
-            setSpeechTranscript("Ses anlaşılamadı, lütfen tekrar deneyin.");
-        };
-
-        recognition.onend = () => {
-            setIsListening(false);
-        };
-
-        recognition.start();
-    };
-
     const processAssistantCommand = (transcript) => {
         const lowerText = transcript.toLowerCase();
         let matchedStudents = [];
@@ -317,10 +269,6 @@ const App = () => {
             setAssistantFoundTopics([]);
         }
     };
-
-    const handleDraftGradeChange = () => {}; // İleride asistanla otomatik not girmek için
-    const handleDraftNoteChange = () => {};
-    const applyAssistantDrafts = () => { setShowAssistant(false); };
 
     // --- MODAL KAYDETME MANTIĞI ---
     const handleModalSubmit = async () => {
@@ -500,14 +448,7 @@ const App = () => {
             )}
 
             {showAssistant && (
-                <AssistantModal 
-                    isListening={isListening} speechTranscript={speechTranscript} toggleListening={toggleListening}
-                    assistantFoundStudents={assistantFoundStudents} assistantFoundTopics={assistantFoundTopics}
-                    assistantSelectedStudent={assistantSelectedStudent} setAssistantSelectedStudent={setAssistantSelectedStudent}
-                    assistantDraftGrades={assistantDraftGrades} assistantDraftNotes={assistantDraftNotes}
-                    handleDraftGradeChange={handleDraftGradeChange} handleDraftNoteChange={handleDraftNoteChange}
-                    applyAssistantDrafts={applyAssistantDrafts} onClose={() => setShowAssistant(false)} classes={classes}
-                />
+                <JarvisModal classes={classes} updateClassInDb={updateClassInDb} onClose={() => setShowAssistant(false)} />
             )}
 
             {modalType && (
