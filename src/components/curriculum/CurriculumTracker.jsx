@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, BookOpen, CheckSquare, Square, CornerDownRight, Pencil, Check } from 'lucide-react';
+import { Plus, Trash2, BookOpen, CheckSquare, Square, CornerDownRight, Pencil, Check, Library, Save, X } from 'lucide-react';
 import { generateId } from '../../utils/helpers';
 
-const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode }) => {
+const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode, libraryItems = [], saveToLibrary }) => {
     const [newTopicTitle, setNewTopicTitle] = useState("");
     const [newSubTopicTitles, setNewSubTopicTitles] = useState({});
     
@@ -10,6 +10,9 @@ const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode }) => {
     const [editingTopicId, setEditingTopicId] = useState(null);
     const [editingSubTopicId, setEditingSubTopicId] = useState(null);
     const [editVal, setEditVal] = useState("");
+
+    // Kütüphane Modal State'i
+    const [showLibModal, setShowLibModal] = useState(false);
 
     const curriculum = cls.curriculum || [];
     const isVip = cls.type === 'vip' && !isTeacherMode;
@@ -79,11 +82,16 @@ const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode }) => {
             </div>
 
             {isTeacherMode && (
-                <div className="flex gap-3 mb-8">
+                <div className="flex flex-col md:flex-row gap-3 mb-8">
                     <input type="text" placeholder="Yeni Ana Konu Başlığı (Örn: Türev)..." className="flex-1 hover-lift bg-white border-2 border-slate-200 rounded-2xl px-6 py-4 text-lg focus:border-brandPurple outline-none font-bold text-slate-800 shadow-sm transition-all" value={newTopicTitle} onChange={e => setNewTopicTitle(e.target.value)} onKeyDown={e => e.key==='Enter' && addTopic(newTopicTitle)}/>
-                    <button onClick={()=>addTopic(newTopicTitle)} className="bg-brandPurple hover:bg-purple-700 text-white hover-lift px-8 rounded-2xl font-black shadow-glow transition-all flex items-center gap-2">
-                        <Plus size={24}/> EKLE
-                    </button>
+                    <div className="flex gap-2">
+                        <button onClick={()=>setShowLibModal(true)} className="bg-purple-50 hover:bg-purple-100 text-brandPurple hover-lift px-6 py-4 md:py-0 rounded-2xl font-black shadow-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+                            <Library size={20}/> KÜTÜPHANE
+                        </button>
+                        <button onClick={()=>addTopic(newTopicTitle)} className="bg-brandPurple hover:bg-purple-700 text-white hover-lift px-8 py-4 md:py-0 rounded-2xl font-black shadow-glow transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+                            <Plus size={24}/> EKLE
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -125,8 +133,9 @@ const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode }) => {
                                             </div>
                                             {isTeacherMode && !isEditingThisTopic && (
                                                 <div className="opacity-0 group-hover/topic:opacity-100 flex items-center gap-1 transition-all">
-                                                    <button onClick={() => startEditTopic(topic.id, topic.title)} className="p-2 text-slate-400 hover:text-brandPurple transition-colors"><Pencil size={20}/></button>
-                                                    <button onClick={() => deleteTopic(topic.id)} className="p-2 text-slate-400 hover:text-errorRed transition-colors"><Trash2 size={20}/></button>
+                                                    <button onClick={() => { if(saveToLibrary) { saveToLibrary(topic); alert("Tüm blok başarıyla kütüphaneye kaydedildi!"); } }} className="p-2 text-slate-400 hover:text-blue-500 transition-colors" title="Blok Olarak Kütüphaneye Kaydet"><Save size={20}/></button>
+                                                    <button onClick={() => startEditTopic(topic.id, topic.title)} className="p-2 text-slate-400 hover:text-brandPurple transition-colors" title="Başlığı Düzenle"><Pencil size={20}/></button>
+                                                    <button onClick={() => deleteTopic(topic.id)} className="p-2 text-slate-400 hover:text-errorRed transition-colors" title="Konuyu Sil"><Trash2 size={20}/></button>
                                                 </div>
                                             )}
                                         </div>
@@ -176,7 +185,51 @@ const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode }) => {
                     </div>
                 )}
             </div>
+
+            {/* 📚 KÜTÜPHANEDEN BLOK EKLEME MODALI */}
+            {showLibModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2rem] w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[80vh] border border-slate-200 animate-scale-in">
+                        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="font-black text-lg text-slate-800 flex items-center gap-2"><Library className="text-brandPurple"/> Kütüphaneden Konu Bloğu Seç</h3>
+                            <button onClick={() => setShowLibModal(false)} className="text-slate-400 hover:text-rose-600 bg-white p-1.5 rounded-full shadow-sm transition-colors"><X size={20}/></button>
+                        </div>
+                        <div className="p-4 overflow-y-auto bg-slate-50 flex-1 space-y-3">
+                            {libraryItems.length === 0 ? (
+                                <div className="text-center text-slate-400 py-8 font-medium text-sm">
+                                    Müfredat kütüphanesi boş.<br/>Lütfen önce mevcut konulardan birini "Kayıt" ikonuna basarak kütüphaneye ekleyin.
+                                </div>
+                            ) : (
+                                libraryItems.map(item => (
+                                    <div key={item.id} className="bg-white border border-slate-200 p-4 rounded-2xl flex justify-between items-center hover:border-brandPurple transition-colors group">
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 text-base">{item.text}</h4>
+                                            <p className="text-xs text-slate-400 mt-1">{item.subTopics?.length || 0} Alt Başlık İçeriyor</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                const newTopic = {
+                                                    id: generateId('curr'),
+                                                    title: item.text,
+                                                    isCompleted: false,
+                                                    subTopics: (item.subTopics || []).map(st => ({ id: generateId('sub'), title: st.title || st, isCompleted: false }))
+                                                };
+                                                updateClassInDb({ ...cls, curriculum: [...curriculum, newTopic] });
+                                                setShowLibModal(false);
+                                            }}
+                                            className="px-4 py-2 bg-purple-50 text-brandPurple font-bold text-sm rounded-xl md:opacity-0 group-hover:opacity-100 transition-all hover:bg-brandPurple hover:text-white"
+                                        >
+                                            Seç ve Ekle
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
+
 export default CurriculumTracker;
