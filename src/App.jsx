@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, GraduationCap, Library, Settings, LogOut, Mic, X } from 'lucide-react';
 
 // FİREBASE
-import { db } from './firebase'; 
+import { db } from './config/firebase';
 import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 
 // YARDIMCILAR VE SABİTLER
