@@ -3,14 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, GraduationCap, Library, Settings, LogOut, Mic, X } from 'lucide-react';
 
 // FİREBASE
-import { db } from './config/firebase';
+import { db } from './config/firebase'; 
 import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 
-// YARDIMCILAR VE SABİTLER
-import { LIBRARY_TYPES, STATUS_OPTIONS } from './utils/constants';
+// YARDIMCILAR VE SABİTLER (Veritabanı Yolları Buradan Geliyor!)
+import { LIBRARY_TYPES, STATUS_OPTIONS, CLASSES_COLLECTION, LIBRARY_COLLECTION, DEFAULT_PIN } from './utils/constants';
 import { generateId } from './utils/helpers';
 
-// 🧩 YENİ PARÇALANMIŞ BİLEŞENLERİMİZ
+// 🧩 PARÇALANMIŞ BİLEŞENLERİMİZ
 import LoginScreen from './components/auth/LoginScreen';
 import TeacherDashboard from './components/dashboard/TeacherDashboard';
 import StudentDashboard from './components/dashboard/StudentDashboard';
@@ -21,21 +21,21 @@ import AssistantModal from './components/modals/AssistantModal';
 
 const App = () => {
     // -------------------------------------------------------------
-    // 1. STATE YÖNETİMİ (SADECE ORKESTRA ŞEFİ STATELERİ)
+    // 1. STATE YÖNETİMİ
     // -------------------------------------------------------------
     const [classes, setClasses] = useState([]);
     const [libraryItems, setLibraryItems] = useState([]);
     const [dailyQuote, setDailyQuote] = useState({ text: "Eğitim, dünyayı değiştirmek için en güçlü silahtır." });
     
     // Auth & Roller
-    const [currentUserRole, setCurrentUserRole] = useState(null); // 'teacher', 'student', 'vip-student'
+    const [currentUserRole, setCurrentUserRole] = useState(null);
     const [isTeacherMode, setIsTeacherMode] = useState(false);
     const [loggedInStudent, setLoggedInStudent] = useState(null);
-    const [dbTeacherPin, setDbTeacherPin] = useState("1234"); // Firebase'den veya .env'den gelmeli
+    const [dbTeacherPin, setDbTeacherPin] = useState(DEFAULT_PIN); // Sabit 1234 veya constants'dan ne gelirse
     
     // Görünüm & Seçimler
-    const [view, setView] = useState('home'); // 'home', 'class-detail', 'student-detail'
-    const [activeTab, setActiveTab] = useState('homework'); // 'homework', 'curriculum'
+    const [view, setView] = useState('home'); 
+    const [activeTab, setActiveTab] = useState('homework'); 
     const [selectedClass, setSelectedClass] = useState(null);
     const [selectedStudentForView, setSelectedStudentForView] = useState(null);
     
@@ -49,13 +49,13 @@ const App = () => {
 
     // Formlar & Küçük Modallar
     const [newStudentName, setNewStudentName] = useState("");
-    const [modalType, setModalType] = useState(null); // 'class', 'vip', 'topic', 'source', 'edit-student', vb.
+    const [modalType, setModalType] = useState(null); 
     const [modalData, setModalData] = useState(null);
     const [modalInputVal, setModalInputVal] = useState("");
     const [modalDateVal, setModalDateVal] = useState("");
     const [modalPdfVal, setModalPdfVal] = useState("");
     
-    // Menüler (Açılır Baloncuklar)
+    // Menüler
     const [activeTopicMenu, setActiveTopicMenu] = useState(null);
     const [activeColMenu, setActiveColMenu] = useState(null);
     const [activeCell, setActiveCell] = useState(null);
@@ -78,18 +78,17 @@ const App = () => {
     const [assistantDraftGrades, setAssistantDraftGrades] = useState({});
     const [assistantDraftNotes, setAssistantDraftNotes] = useState({});
 
-    // Sınıfları Ayırma
     const regularClasses = classes.filter(c => c.type !== 'vip');
     const vipClasses = classes.filter(c => c.type === 'vip');
 
     // -------------------------------------------------------------
-    // 2. FİREBASE VERİ ÇEKME
+    // 2. FİREBASE VERİ ÇEKME (DOĞRU KOLEKSİYONLARDAN)
     // -------------------------------------------------------------
     useEffect(() => {
-        const unsubClasses = onSnapshot(collection(db, 'classes'), (snap) => {
+        const unsubClasses = onSnapshot(collection(db, CLASSES_COLLECTION), (snap) => {
             setClasses(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         });
-        const unsubLibrary = onSnapshot(collection(db, 'library'), (snap) => {
+        const unsubLibrary = onSnapshot(collection(db, LIBRARY_COLLECTION), (snap) => {
             setLibraryItems(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         });
         return () => { unsubClasses(); unsubLibrary(); };
@@ -116,7 +115,6 @@ const App = () => {
             setLoggedInStudent(foundStudent); setSelectedClass(foundClass);
             setSelectedStudentForView(foundStudent); setView('student-detail'); setActiveTab('homework');
             
-            // Son giriş tarihini güncelle
             const updatedStudents = foundClass.students.map(s => s.id === foundStudent.id ? { ...s, lastLogin: new Date().toISOString() } : s);
             updateClassInDb({ ...foundClass, students: updatedStudents });
         } else { alert('Kullanıcı adı veya şifre hatalı!'); }
@@ -131,7 +129,7 @@ const App = () => {
     // 4. VERİTABANI VE YÖNLENDİRME FONKSİYONLARI
     // -------------------------------------------------------------
     const updateClassInDb = async (updatedClass) => {
-        try { await updateDoc(doc(db, 'classes', updatedClass.id), updatedClass);
+        try { await updateDoc(doc(db, CLASSES_COLLECTION, updatedClass.id), updatedClass);
         if (selectedClass?.id === updatedClass.id) setSelectedClass(updatedClass); } 
         catch (e) { console.error("Sınıf güncellenemedi:", e); }
     };
@@ -144,17 +142,15 @@ const App = () => {
         if(!text || typeof text !== 'string' || !text.trim()) return; 
         let subTopics = []; let mainText = text.trim();
         
-        // Akıllı Virgül Sistemi
         if (libraryCategory === LIBRARY_TYPES.CURRICULUM && text.includes(',')) {
             const parts = text.split(','); mainText = parts[0].trim();
             subTopics = parts.slice(1).map(p => ({ title: p.trim() })).filter(p => p.title);
         }
-        await addDoc(collection(db, 'library'), { text: mainText, type: libraryCategory, date: libraryCategory === LIBRARY_TYPES.TOPIC ? libraryDate : null, subTopics: subTopics }); 
+        await addDoc(collection(db, LIBRARY_COLLECTION), { text: mainText, type: libraryCategory, date: libraryCategory === LIBRARY_TYPES.TOPIC ? libraryDate : null, subTopics: subTopics }); 
     };
 
-    const deleteLibraryItem = async (id) => { await deleteDoc(doc(db, 'library', id)); };
+    const deleteLibraryItem = async (id) => { await deleteDoc(doc(db, LIBRARY_COLLECTION, id)); };
 
-    // Placeholder: Öğrenci ve Ödev Ekleme İşlemleri (Modallarda kullanılacak)
     const addStudent = (classId) => {
         if(!newStudentName.trim()) return;
         const cls = classes.find(c => c.id === classId);
@@ -187,45 +183,41 @@ const App = () => {
 
     const deleteClass = (e, classId) => {
         e.stopPropagation(); if(!window.confirm('Tüm sınıf silinecek. Emin misiniz?')) return;
-        deleteDoc(doc(db, 'classes', classId)); goHome();
+        deleteDoc(doc(db, CLASSES_COLLECTION, classId)); goHome();
     };
 
     const openCellNoteModal = (classId, studentId, colId, currentNote) => { setCellNoteModal({ classId, studentId, colId, note: currentNote || "" }); };
 
-    // Placeholder Asistan Fonksiyonları (İçeriği AsistanModal'dan çağrılır)
-    const toggleListening = () => { alert("Asistan mikrofonu etkinleştirilecek. (Tarayıcı API eklenebilir)"); };
+    const toggleListening = () => { alert("Asistan mikrofonu etkinleştirilecek."); };
     const handleDraftGradeChange = () => {}; 
     const handleDraftNoteChange = () => {};
     const applyAssistantDrafts = () => { setShowAssistant(false); };
 
-    // Generic Modal Kaydetme (Yeni Sınıf, Yeni Konu vb.)
     const handleModalSubmit = async () => {
         if (!modalInputVal.trim()) return;
         if (modalType === 'class' || modalType === 'vip') {
-            await addDoc(collection(db, 'classes'), { className: modalInputVal, type: modalType === 'vip' ? 'vip' : 'regular', students: [], topics: [], curriculum: [] });
+            await addDoc(collection(db, CLASSES_COLLECTION), { className: modalInputVal, type: modalType === 'vip' ? 'vip' : 'regular', students: [], topics: [], curriculum: [] });
         } else if (modalType === 'topic') {
             const cls = classes.find(c => c.id === modalData.classId);
             const newTopic = { id: generateId('top'), title: modalInputVal, date: modalDateVal, subColumns: [] };
             updateClassInDb({ ...cls, topics: [...(cls.topics||[]), newTopic] });
         }
-        // ... diğer modal işlemleri
         setModalType(null); setModalInputVal(""); setModalDateVal("");
     };
 
     // -------------------------------------------------------------
-    // 5. GİRİŞ EKRANI KONTROLÜ (ROUTER MANTIĞI)
+    // 5. GİRİŞ EKRANI KONTROLÜ
     // -------------------------------------------------------------
     if (!currentUserRole) {
         return <LoginScreen onStudentLogin={handleStudentLogin} onTeacherLogin={verifyPin} />;
     }
 
     // -------------------------------------------------------------
-    // 6. ANA UYGULAMA (APP SHELL & RENDER)
+    // 6. ANA UYGULAMA (APP SHELL)
     // -------------------------------------------------------------
     return (
         <div className={`min-h-screen pb-32 relative transition-colors duration-1000 ${currentUserRole === 'vip-student' ? 'bg-slate-900' : 'bg-lightBg'}`}>
             
-            {/* 🌌 V4 VIP Kasmayan Asil Gri Arka Plan */}
             {currentUserRole === 'vip-student' && (
                 <div className="fixed inset-0 z-0 pointer-events-none bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
                     <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full mix-blend-screen opacity-10" style={{background: 'radial-gradient(circle, rgba(255,215,0,0.4) 0%, transparent 70%)'}}></div>
@@ -261,7 +253,6 @@ const App = () => {
 
             <main className="max-w-7xl mx-auto px-4 mt-8 no-print relative z-10">
                 <AnimatePresence mode="wait">
-                    {/* YÖNETİCİ ANA EKRANI */}
                     {isTeacherMode && view === 'home' && (
                         <TeacherDashboard 
                             regularClasses={regularClasses} vipClasses={vipClasses} 
@@ -271,7 +262,6 @@ const App = () => {
                         />
                     )}
 
-                    {/* YÖNETİCİ SINIF DETAYI */}
                     {isTeacherMode && view === 'class-detail' && selectedClass && (
                         <ClassDetail 
                             selectedClass={selectedClass} activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile}
@@ -285,18 +275,16 @@ const App = () => {
                             libraryItems={libraryItems.filter(i => i.type === LIBRARY_TYPES.CURRICULUM)}
                             saveToLibrary={async (topic) => {
                                 if(!topic.title) return;
-                                try { await addDoc(collection(db, 'library'), { text: topic.title, type: LIBRARY_TYPES.CURRICULUM, subTopics: topic.subTopics ? topic.subTopics.map(st => ({ title: st.title })) : [] }); } 
+                                try { await addDoc(collection(db, LIBRARY_COLLECTION), { text: topic.title, type: LIBRARY_TYPES.CURRICULUM, subTopics: topic.subTopics ? topic.subTopics.map(st => ({ title: st.title })) : [] }); } 
                                 catch (e) { console.error("Kütüphane kayıt hatası:", e); }
                             }}
                         />
                     )}
 
-                    {/* ÖĞRENCİ ANA EKRANI */}
                     {!isTeacherMode && view === 'home' && (
                         <StudentDashboard classes={classes} currentUserRole={currentUserRole} onOpenClass={openClass} />
                     )}
 
-                    {/* ÖĞRENCİ DETAY EKRANI */}
                     {view === 'student-detail' && selectedClass && selectedStudentForView && (
                         <StudentDetail 
                             selectedStudentForView={selectedStudentForView} selectedClass={selectedClass} 
@@ -308,7 +296,6 @@ const App = () => {
                 </AnimatePresence>
             </main>
 
-            {/* HARİCİ BÜYÜK MODALLAR (AYRILAN DOSYALAR) */}
             {showLibraryManager && (
                 <LibraryModal 
                     libraryCategory={libraryCategory} setLibraryCategory={setLibraryCategory} 
@@ -330,7 +317,6 @@ const App = () => {
                 />
             )}
 
-            {/* YÜZEYDEKİ BASİT MODALLAR (ÖRN: SINIF/KONU EKLEME) */}
             {modalType && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
@@ -346,7 +332,6 @@ const App = () => {
                 </div>
             )}
 
-            {/* FAB BUTONU (SESLİ ASİSTAN İÇİN) */}
             {isTeacherMode && (
                 <button onClick={() => setShowAssistant(true)} className="fab-button bg-brandPurple text-white" title="Akıllı Asistan">
                     <div className="fab-pulse"></div><Mic size={28} />
