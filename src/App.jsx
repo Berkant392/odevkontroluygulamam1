@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, GraduationCap, Library, Settings, LogOut, Mic, X } from 'lucide-react';
+import { ChevronLeft, GraduationCap, Library, Settings, LogOut, Mic, X, Megaphone, Edit3 } from 'lucide-react';
 
 // FİREBASE
 import { db } from './config/firebase'; 
@@ -33,6 +33,7 @@ const App = () => {
     const [loggedInStudent, setLoggedInStudent] = useState(null);
     const [dbTeacherPin, setDbTeacherPin] = useState(DEFAULT_PIN); 
     const [systemAnnouncement, setSystemAnnouncement] = useState("Eğitim, dünyayı değiştirmek için en güçlü silahtır.");
+    const [countdownConfig, setCountdownConfig] = useState({ targetDate: '2026-06-20T00:00:00', startDate: '2025-06-20T00:00:00', label: '20 Haziran 2026' });
     
     // Görünüm & Seçimler
     const [view, setView] = useState('home'); 
@@ -93,12 +94,12 @@ const App = () => {
             setLibraryItems(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         });
         
-        // YENİ: Firebase'den PIN ve Duyuru Çekme
         const unsubConfig = onSnapshot(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC), (docSnap) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 if (data.pin) setDbTeacherPin(data.pin);
                 if (data.announcement) setSystemAnnouncement(data.announcement);
+                if (data.countdown) setCountdownConfig(data.countdown);
             }
         });
 
@@ -205,6 +206,19 @@ const App = () => {
     const applyAssistantDrafts = () => { setShowAssistant(false); };
 
     const handleModalSubmit = async () => {
+        if (modalType === 'system-settings') {
+            await updateDoc(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC), {
+                announcement: modalInputVal,
+                countdown: {
+                    targetDate: modalDateVal ? `${modalDateVal}T00:00:00` : countdownConfig.targetDate,
+                    startDate: countdownConfig.startDate, 
+                    label: modalPdfVal || ""
+                }
+            });
+            setModalType(null); setModalInputVal(""); setModalDateVal(""); setModalPdfVal("");
+            return;
+        }
+
         if (!modalInputVal.trim()) return;
         if (modalType === 'class' || modalType === 'vip') {
             await addDoc(collection(db, CLASSES_COLLECTION), { className: modalInputVal, type: modalType === 'vip' ? 'vip' : 'regular', students: [], topics: [], curriculum: [] });
@@ -258,16 +272,35 @@ const App = () => {
                             <button onClick={handleLogout} className={`p-2 rounded-full transition-colors hover-lift ${currentUserRole === 'vip-student' ? 'text-rose-400 hover:text-rose-300 bg-slate-700 border border-slate-600 shadow-sm' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 shadow-sm border border-slate-200'}`} title="Çıkış Yap"><LogOut size={20}/></button>
                         </div>
                     </div>
-                    {/* YENİ: FİREBASE'DEN GELEN DUYURU BURAYA YANSIR */}
-                    <div className="text-center max-w-2xl mx-auto mt-2 opacity-80 hover:opacity-100 transition-opacity">
-                        <p className={`text-xs md:text-sm italic font-medium leading-relaxed ${currentUserRole === 'vip-student' ? 'text-slate-400' : 'text-slate-500'}`}>{systemAnnouncement}</p>
-                    </div>
                 </div>
             </header>
 
-            {/* YENİ: YKS GERİ SAYIM / TAKVİM MODÜLÜ SADECE ANA EKRANDA (HOME) GÖRÜNÜR */}
+            {/* ANA EKRAN DUYURU VE TAKVİM (HOME) */}
             {view === 'home' && (
-                <CountdownTimer />
+                <>
+                    <div className="max-w-7xl mx-auto px-4 mt-6 animate-fade-in-up relative z-10">
+                        <div className={`p-5 md:p-6 rounded-[2rem] shadow-sm border flex flex-col md:flex-row gap-4 items-start md:items-center relative overflow-hidden ${currentUserRole === 'vip-student' ? 'bg-slate-800 border-slate-700' : 'bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-100'}`}>
+                            <div className={`p-3 rounded-2xl shrink-0 ${currentUserRole === 'vip-student' ? 'bg-slate-700 text-vipGold shadow-vip-glow' : 'bg-white text-brandPurple shadow-sm'}`}>
+                                <Megaphone size={28} />
+                            </div>
+                            <div className="flex-1 z-10 pr-8">
+                                <h4 className={`text-xs font-black uppercase tracking-widest mb-1 ${currentUserRole === 'vip-student' ? 'text-slate-400' : 'text-brandPurple'}`}>Sistem Duyurusu</h4>
+                                <p className={`text-sm md:text-base font-medium leading-relaxed ${currentUserRole === 'vip-student' ? 'text-slate-200' : 'text-slate-700'}`}>{systemAnnouncement}</p>
+                            </div>
+                            {isTeacherMode && (
+                                <button onClick={() => {
+                                    setModalType('system-settings');
+                                    setModalInputVal(systemAnnouncement);
+                                    setModalPdfVal(countdownConfig.label);
+                                    setModalDateVal(countdownConfig.targetDate.split('T')[0]); 
+                                }} className={`absolute top-4 right-4 p-2 rounded-xl transition-all shadow-sm ${currentUserRole === 'vip-student' ? 'bg-slate-700 text-slate-300 hover:text-vipGold' : 'bg-white text-slate-400 hover:text-brandPurple hover:bg-purple-100'}`} title="Duyuru ve Takvimi Düzenle">
+                                    <Edit3 size={18} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    <CountdownTimer targetDateStr={countdownConfig.targetDate} startDateStr={countdownConfig.startDate} targetLabel={countdownConfig.label} />
+                </>
             )}
 
             <main className="max-w-7xl mx-auto px-4 mt-8 no-print relative z-10">
@@ -336,13 +369,32 @@ const App = () => {
                 />
             )}
 
+            {/* YÜZEYDEKİ BASİT MODALLAR (ÖRN: SINIF/KONU EKLEME VE SİSTEM AYARLARI) */}
             {modalType && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
-                        <h3 className="font-bold text-lg mb-4 text-slate-800">
-                            {modalType === 'class' ? 'Yeni Sınıf Oluştur' : modalType === 'vip' ? 'Yeni Özel Ders Oluştur' : modalType === 'topic' ? 'Yeni Ödev Ekle' : 'Düzenle'}
-                        </h3>
-                        <input type="text" autoFocus className="w-full border-2 border-slate-200 rounded-xl p-3 mb-4 font-bold outline-none focus:border-brandPurple" placeholder="Başlık girin..." value={modalInputVal} onChange={e => setModalInputVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleModalSubmit()} />
+                        
+                        {modalType === 'system-settings' ? (
+                            <>
+                                <h3 className="font-bold text-lg mb-4 text-slate-800 flex items-center gap-2"><Settings size={20} className="text-brandPurple"/> Sistem Ayarları</h3>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Duyuru Metni</label>
+                                <textarea rows="3" className="w-full border-2 border-slate-200 rounded-xl p-3 mb-4 font-bold text-sm outline-none focus:border-brandPurple" value={modalInputVal} onChange={e => setModalInputVal(e.target.value)}></textarea>
+                                
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Sayaç Başlığı (Örn: 20 Haziran 2026)</label>
+                                <input type="text" className="w-full border-2 border-slate-200 rounded-xl p-3 mb-4 font-bold text-sm outline-none focus:border-brandPurple" value={modalPdfVal} onChange={e => setModalPdfVal(e.target.value)} />
+                                
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Sayaç Hedef Tarihi</label>
+                                <input type="date" className="w-full border-2 border-slate-200 rounded-xl p-3 mb-4 font-bold text-sm outline-none focus:border-brandPurple" value={modalDateVal} onChange={e => setModalDateVal(e.target.value)} />
+                            </>
+                        ) : (
+                            <>
+                                <h3 className="font-bold text-lg mb-4 text-slate-800">
+                                    {modalType === 'class' ? 'Yeni Sınıf Oluştur' : modalType === 'vip' ? 'Yeni Özel Ders Oluştur' : modalType === 'topic' ? 'Yeni Ödev Ekle' : 'Düzenle'}
+                                </h3>
+                                <input type="text" autoFocus className="w-full border-2 border-slate-200 rounded-xl p-3 mb-4 font-bold outline-none focus:border-brandPurple" placeholder="Başlık girin..." value={modalInputVal} onChange={e => setModalInputVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleModalSubmit()} />
+                            </>
+                        )}
+                        
                         <div className="flex gap-2 justify-end mt-2">
                             <button onClick={() => setModalType(null)} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-xl">İptal</button>
                             <button onClick={handleModalSubmit} className="px-4 py-2 bg-brandPurple text-white font-bold rounded-xl hover:bg-purple-700 shadow-md">Kaydet</button>
@@ -351,6 +403,7 @@ const App = () => {
                 </div>
             )}
 
+            {/* FAB BUTONU (SESLİ ASİSTAN İÇİN) */}
             {isTeacherMode && (
                 <button onClick={() => setShowAssistant(true)} className="fab-button bg-brandPurple text-white" title="Akıllı Asistan">
                     <div className="fab-pulse"></div><Mic size={28} />
