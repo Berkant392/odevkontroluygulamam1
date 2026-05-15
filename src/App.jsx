@@ -189,6 +189,7 @@ const App = () => {
     };
 
     const deleteColumn = (classId, topicId, colId) => {
+        if(!window.confirm('Kaynağı silmek istediğinize emin misiniz?')) return;
         const cls = classes.find(c => c.id === classId);
         const updatedTopics = cls.topics.map(t => t.id === topicId ? { ...t, subColumns: t.subColumns.filter(c => c.id !== colId) } : t);
         updateClassInDb({ ...cls, topics: updatedTopics });
@@ -199,7 +200,7 @@ const App = () => {
         deleteDoc(doc(db, CLASSES_COLLECTION, classId)); goHome();
     };
 
-    // --- YAZDIRMA VE ANALİZ FONKSİYONLARI (DÜZELTİLDİ) ---
+    // --- YAZDIRMA VE ANALİZ FONKSİYONLARI ---
     const handlePrintPasswords = (cls) => {
         const printWindow = window.open('', '_blank');
         if (!printWindow) { alert("⚠️ Lütfen tarayıcınızın Pop-up (Açılır Pencere) engelleyicisini bu site için kapatın!"); return; }
@@ -250,11 +251,10 @@ const App = () => {
 
     // --- MODAL KAYDETME MANTIĞI ---
     const handleModalSubmit = async () => {
-        // Sistem Ayarları
         if (modalType === 'system-settings') {
             await updateDoc(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC), {
                 announcement: modalInputVal,
-                announcementTitle: modalTitleVal, // YENİ: Başlık eklendi
+                announcementTitle: modalTitleVal,
                 countdown: {
                     targetDate: modalDateVal ? `${modalDateVal}T00:00:00` : countdownConfig.targetDate,
                     startDate: countdownConfig.startDate, 
@@ -265,7 +265,6 @@ const App = () => {
             return;
         }
 
-        // Boş giriş kontrolü (tarih düzenlemeleri hariç)
         if (!modalInputVal.trim() && modalType !== 'edit-date') return;
 
         if (modalType === 'class' || modalType === 'vip') {
@@ -365,7 +364,7 @@ const App = () => {
                                 <button onClick={() => {
                                     setModalType('system-settings');
                                     setModalInputVal(systemAnnouncement);
-                                    setModalTitleVal(announcementTitle); // Başlık da düzenlenecek
+                                    setModalTitleVal(announcementTitle);
                                     setModalPdfVal(countdownConfig.label);
                                     setModalDateVal(countdownConfig.targetDate.split('T')[0]); 
                                 }} className={`absolute top-4 right-4 p-2 rounded-xl transition-all shadow-sm ${currentUserRole === 'vip-student' ? 'bg-slate-700 text-slate-300 hover:text-vipGold' : 'bg-white text-slate-400 hover:text-brandPurple hover:bg-purple-100'}`} title="Duyuru ve Takvimi Düzenle">
