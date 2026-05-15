@@ -6,8 +6,8 @@ import { ChevronLeft, GraduationCap, Library, Settings, LogOut, Mic, X } from 'l
 import { db } from './config/firebase'; 
 import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 
-// YARDIMCILAR VE SABİTLER (Veritabanı Yolları Buradan Geliyor!)
-import { LIBRARY_TYPES, STATUS_OPTIONS, CLASSES_COLLECTION, LIBRARY_COLLECTION, DEFAULT_PIN } from './utils/constants';
+// YARDIMCILAR VE SABİTLER
+import { LIBRARY_TYPES, CLASSES_COLLECTION, LIBRARY_COLLECTION, SETTINGS_COLLECTION, SETTINGS_DOC, DEFAULT_PIN } from './utils/constants';
 import { generateId } from './utils/helpers';
 
 // 🧩 PARÇALANMIŞ BİLEŞENLERİMİZ
@@ -18,6 +18,7 @@ import ClassDetail from './components/views/ClassDetail';
 import StudentDetail from './components/views/StudentDetail';
 import LibraryModal from './components/modals/LibraryModal';
 import AssistantModal from './components/modals/AssistantModal';
+import CountdownTimer from './components/ui/Countdown';
 
 const App = () => {
     // -------------------------------------------------------------
@@ -25,13 +26,13 @@ const App = () => {
     // -------------------------------------------------------------
     const [classes, setClasses] = useState([]);
     const [libraryItems, setLibraryItems] = useState([]);
-    const [dailyQuote, setDailyQuote] = useState({ text: "Eğitim, dünyayı değiştirmek için en güçlü silahtır." });
     
-    // Auth & Roller
+    // Auth & Roller & Config
     const [currentUserRole, setCurrentUserRole] = useState(null);
     const [isTeacherMode, setIsTeacherMode] = useState(false);
     const [loggedInStudent, setLoggedInStudent] = useState(null);
-    const [dbTeacherPin, setDbTeacherPin] = useState(DEFAULT_PIN); // Sabit 1234 veya constants'dan ne gelirse
+    const [dbTeacherPin, setDbTeacherPin] = useState(DEFAULT_PIN); 
+    const [systemAnnouncement, setSystemAnnouncement] = useState("Eğitim, dünyayı değiştirmek için en güçlü silahtır.");
     
     // Görünüm & Seçimler
     const [view, setView] = useState('home'); 
@@ -82,7 +83,7 @@ const App = () => {
     const vipClasses = classes.filter(c => c.type === 'vip');
 
     // -------------------------------------------------------------
-    // 2. FİREBASE VERİ ÇEKME (DOĞRU KOLEKSİYONLARDAN)
+    // 2. FİREBASE VERİ ÇEKME (CONFIG DAHİL)
     // -------------------------------------------------------------
     useEffect(() => {
         const unsubClasses = onSnapshot(collection(db, CLASSES_COLLECTION), (snap) => {
@@ -91,7 +92,17 @@ const App = () => {
         const unsubLibrary = onSnapshot(collection(db, LIBRARY_COLLECTION), (snap) => {
             setLibraryItems(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         });
-        return () => { unsubClasses(); unsubLibrary(); };
+        
+        // YENİ: Firebase'den PIN ve Duyuru Çekme
+        const unsubConfig = onSnapshot(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.pin) setDbTeacherPin(data.pin);
+                if (data.announcement) setSystemAnnouncement(data.announcement);
+            }
+        });
+
+        return () => { unsubClasses(); unsubLibrary(); unsubConfig(); };
     }, []);
 
     // -------------------------------------------------------------
@@ -247,9 +258,17 @@ const App = () => {
                             <button onClick={handleLogout} className={`p-2 rounded-full transition-colors hover-lift ${currentUserRole === 'vip-student' ? 'text-rose-400 hover:text-rose-300 bg-slate-700 border border-slate-600 shadow-sm' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 shadow-sm border border-slate-200'}`} title="Çıkış Yap"><LogOut size={20}/></button>
                         </div>
                     </div>
-                    <div className="text-center max-w-lg mx-auto mt-2 opacity-80 hover:opacity-100 transition-opacity"><p className={`text-xs md:text-sm italic font-medium ${currentUserRole === 'vip-student' ? 'text-slate-400' : 'text-slate-500'}`}>"{dailyQuote.text}"</p></div>
+                    {/* YENİ: FİREBASE'DEN GELEN DUYURU BURAYA YANSIR */}
+                    <div className="text-center max-w-2xl mx-auto mt-2 opacity-80 hover:opacity-100 transition-opacity">
+                        <p className={`text-xs md:text-sm italic font-medium leading-relaxed ${currentUserRole === 'vip-student' ? 'text-slate-400' : 'text-slate-500'}`}>{systemAnnouncement}</p>
+                    </div>
                 </div>
             </header>
+
+            {/* YENİ: YKS GERİ SAYIM / TAKVİM MODÜLÜ SADECE ANA EKRANDA (HOME) GÖRÜNÜR */}
+            {view === 'home' && (
+                <CountdownTimer />
+            )}
 
             <main className="max-w-7xl mx-auto px-4 mt-8 no-print relative z-10">
                 <AnimatePresence mode="wait">
