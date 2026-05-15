@@ -200,7 +200,6 @@ const App = () => {
         deleteDoc(doc(db, CLASSES_COLLECTION, classId)); goHome();
     };
 
-    // --- YAZDIRMA VE ANALİZ FONKSİYONLARI (KUSURSUZ ÇÖZÜM) ---
     const handlePrintPasswords = (cls) => {
         const printWindow = window.open('', '_blank');
         if (!printWindow) { alert("⚠️ Lütfen tarayıcınızın Pop-up (Açılır Pencere) engelleyicisini bu site için kapatın!"); return; }
@@ -209,17 +208,8 @@ const App = () => {
         html += `<h2>${cls.className} Sınıfı - Öğrenci Giriş Bilgileri</h2>`;
         html += `<table><tr><th>Öğrenci Adı</th><th>Kullanıcı Adı</th><th>Şifre</th></tr>`;
         cls.students.forEach(s => { html += `<tr><td><strong>${s.name}</strong></td><td>${s.username}</td><td style="letter-spacing: 2px;"><b>${s.password}</b></td></tr>`; });
-        
-        // DÜZELTME: Tarayıcının çok hızlı kapanmasını engelleyen akıllı script
-        html += `</table><script>
-            window.onload = function() {
-                setTimeout(function() { window.print(); }, 300);
-            };
-            window.onafterprint = function() { window.close(); };
-        </script></body></html>`;
-        
-        printWindow.document.write(html); 
-        printWindow.document.close();
+        html += `</table><script>window.onload = function() { setTimeout(function() { window.print(); }, 300); }; window.onafterprint = function() { window.close(); };</script></body></html>`;
+        printWindow.document.write(html); printWindow.document.close();
     };
 
     const handlePrintStudentReport = (cls, student) => {
@@ -238,17 +228,8 @@ const App = () => {
                 html += `<tr><td><b>${topic.title}</b><br/>${col.title}</td><td>${statusText}</td><td>${note}</td></tr>`;
             });
         });
-        
-        // DÜZELTME: Tarayıcının çok hızlı kapanmasını engelleyen akıllı script
-        html += `</table><script>
-            window.onload = function() {
-                setTimeout(function() { window.print(); }, 300);
-            };
-            window.onafterprint = function() { window.close(); };
-        </script></body></html>`;
-        
-        printWindow.document.write(html); 
-        printWindow.document.close();
+        html += `</table><script>window.onload = function() { setTimeout(function() { window.print(); }, 300); }; window.onafterprint = function() { window.close(); };</script></body></html>`;
+        printWindow.document.write(html); printWindow.document.close();
     };
 
     const handleOpenRisk = (cls) => {
@@ -262,8 +243,82 @@ const App = () => {
 
     const openCellNoteModal = (classId, studentId, colId, currentNote) => { setCellNoteModal({ classId, studentId, colId, note: currentNote || "" }); };
 
-    const toggleListening = () => { alert("Asistan mikrofonu geliştirme aşamasındadır."); };
-    const handleDraftGradeChange = () => {}; 
+    // -------------------------------------------------------------
+    // 🌟 WEB SPEECH API - AKILLI SESLİ ASİSTAN
+    // -------------------------------------------------------------
+    const toggleListening = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("⚠️ Tarayıcınız ses tanıma özelliğini desteklemiyor. Lütfen güncel bir Chrome veya Edge tarayıcı kullanın.");
+            return;
+        }
+
+        if (isListening) {
+            setIsListening(false);
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'tr-TR';
+        recognition.continuous = false;
+        
+        recognition.onstart = () => {
+            setIsListening(true);
+            setSpeechTranscript("");
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            setSpeechTranscript(transcript);
+            processAssistantCommand(transcript);
+        };
+
+        recognition.onerror = (event) => {
+            console.error("Ses tanıma hatası: ", event.error);
+            setIsListening(false);
+            setSpeechTranscript("Ses anlaşılamadı, lütfen tekrar deneyin.");
+        };
+
+        recognition.onend = () => {
+            setIsListening(false);
+        };
+
+        recognition.start();
+    };
+
+    const processAssistantCommand = (transcript) => {
+        const lowerText = transcript.toLowerCase();
+        let matchedStudents = [];
+        
+        // Asistan: Tüm sınıflarda söylenen ismi ara
+        classes.forEach(cls => {
+            cls.students?.forEach(std => {
+                if (lowerText.includes(std.name.toLowerCase()) || std.name.toLowerCase().includes(lowerText)) {
+                    matchedStudents.push({
+                        ...std,
+                        classId: cls.id,
+                        className: cls.className,
+                        isVip: cls.type === 'vip',
+                        matchScore: 100
+                    });
+                }
+            });
+        });
+
+        setAssistantFoundStudents(matchedStudents);
+        
+        if (matchedStudents.length > 0) {
+            const firstMatch = matchedStudents[0];
+            setAssistantSelectedStudent(firstMatch);
+            const targetClass = classes.find(c => c.id === firstMatch.classId);
+            setAssistantFoundTopics(targetClass?.topics || []);
+        } else {
+            setAssistantSelectedStudent(null);
+            setAssistantFoundTopics([]);
+        }
+    };
+
+    const handleDraftGradeChange = () => {}; // İleride asistanla otomatik not girmek için
     const handleDraftNoteChange = () => {};
     const applyAssistantDrafts = () => { setShowAssistant(false); };
 
@@ -321,16 +376,10 @@ const App = () => {
         setModalType(null); setModalInputVal(""); setModalTitleVal(""); setModalDateVal(""); setModalPdfVal("");
     };
 
-    // -------------------------------------------------------------
-    // 5. GİRİŞ EKRANI KONTROLÜ
-    // -------------------------------------------------------------
     if (!currentUserRole) {
         return <LoginScreen onStudentLogin={handleStudentLogin} onTeacherLogin={verifyPin} />;
     }
 
-    // -------------------------------------------------------------
-    // 6. ANA UYGULAMA (APP SHELL)
-    // -------------------------------------------------------------
     return (
         <div className={`min-h-screen pb-32 relative transition-colors duration-1000 ${currentUserRole === 'vip-student' ? 'bg-slate-900' : 'bg-lightBg'}`}>
             
@@ -461,8 +510,6 @@ const App = () => {
                 />
             )}
 
-            {/* YÜZEYDEKİ BASİT MODALLAR VE POPOVER'LAR */}
-            
             {modalType && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
