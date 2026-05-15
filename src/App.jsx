@@ -86,7 +86,7 @@ const App = () => {
     const vipClasses = classes.filter(c => c.type === 'vip');
 
     // -------------------------------------------------------------
-    // 2. FİREBASE VERİ ÇEKME (CONFIG DAHİL)
+    // 2. FİREBASE VERİ ÇEKME
     // -------------------------------------------------------------
     useEffect(() => {
         const unsubClasses = onSnapshot(collection(db, CLASSES_COLLECTION), (snap) => {
@@ -200,7 +200,7 @@ const App = () => {
         deleteDoc(doc(db, CLASSES_COLLECTION, classId)); goHome();
     };
 
-    // --- YAZDIRMA VE ANALİZ FONKSİYONLARI ---
+    // --- YAZDIRMA VE ANALİZ FONKSİYONLARI (KUSURSUZ ÇÖZÜM) ---
     const handlePrintPasswords = (cls) => {
         const printWindow = window.open('', '_blank');
         if (!printWindow) { alert("⚠️ Lütfen tarayıcınızın Pop-up (Açılır Pencere) engelleyicisini bu site için kapatın!"); return; }
@@ -209,8 +209,17 @@ const App = () => {
         html += `<h2>${cls.className} Sınıfı - Öğrenci Giriş Bilgileri</h2>`;
         html += `<table><tr><th>Öğrenci Adı</th><th>Kullanıcı Adı</th><th>Şifre</th></tr>`;
         cls.students.forEach(s => { html += `<tr><td><strong>${s.name}</strong></td><td>${s.username}</td><td style="letter-spacing: 2px;"><b>${s.password}</b></td></tr>`; });
-        html += `</table><script>window.onload = function() { window.print(); window.close(); }</script></body></html>`;
-        printWindow.document.write(html); printWindow.document.close();
+        
+        // DÜZELTME: Tarayıcının çok hızlı kapanmasını engelleyen akıllı script
+        html += `</table><script>
+            window.onload = function() {
+                setTimeout(function() { window.print(); }, 300);
+            };
+            window.onafterprint = function() { window.close(); };
+        </script></body></html>`;
+        
+        printWindow.document.write(html); 
+        printWindow.document.close();
     };
 
     const handlePrintStudentReport = (cls, student) => {
@@ -229,8 +238,17 @@ const App = () => {
                 html += `<tr><td><b>${topic.title}</b><br/>${col.title}</td><td>${statusText}</td><td>${note}</td></tr>`;
             });
         });
-        html += `</table><script>window.onload = function() { window.print(); window.close(); }</script></body></html>`;
-        printWindow.document.write(html); printWindow.document.close();
+        
+        // DÜZELTME: Tarayıcının çok hızlı kapanmasını engelleyen akıllı script
+        html += `</table><script>
+            window.onload = function() {
+                setTimeout(function() { window.print(); }, 300);
+            };
+            window.onafterprint = function() { window.close(); };
+        </script></body></html>`;
+        
+        printWindow.document.write(html); 
+        printWindow.document.close();
     };
 
     const handleOpenRisk = (cls) => {
@@ -254,7 +272,7 @@ const App = () => {
         if (modalType === 'system-settings') {
             await updateDoc(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC), {
                 announcement: modalInputVal,
-                announcementTitle: modalTitleVal,
+                announcementTitle: modalTitleVal, 
                 countdown: {
                     targetDate: modalDateVal ? `${modalDateVal}T00:00:00` : countdownConfig.targetDate,
                     startDate: countdownConfig.startDate, 
@@ -348,7 +366,6 @@ const App = () => {
                 </div>
             </header>
 
-            {/* ANA EKRAN DUYURU VE TAKVİM (HOME) */}
             {view === 'home' && (
                 <>
                     <div className="max-w-7xl mx-auto px-4 mt-6 animate-fade-in-up relative z-10">
@@ -444,9 +461,8 @@ const App = () => {
                 />
             )}
 
-            {/* YÜZEYDEKİ BASİT MODALLAR VE POPOVER'LAR (EKSİKSİZ EKLENDİ) */}
+            {/* YÜZEYDEKİ BASİT MODALLAR VE POPOVER'LAR */}
             
-            {/* 1. Sistem ve Ekleme Modalları */}
             {modalType && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
@@ -492,7 +508,6 @@ const App = () => {
                 </div>
             )}
 
-            {/* 2. Tablo Hücresindeki Durum Değiştirme (Yapıldı/Eksik vb) Popover'ı */}
             {activeCell && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setActiveCell(null)}>
                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-4 rounded-2xl shadow-xl flex gap-2" onClick={e => e.stopPropagation()}>
@@ -506,7 +521,6 @@ const App = () => {
                 </div>
             )}
 
-            {/* 3. Tablodaki 3 Nokta Menüleri (Kaynak Düzenle / Sil) */}
             {activeColMenu && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setActiveColMenu(null)}>
                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-2 rounded-2xl shadow-xl flex flex-col gap-1 w-52" onClick={e => e.stopPropagation()}>
@@ -526,7 +540,6 @@ const App = () => {
                 </div>
             )}
 
-            {/* 4. Tablodaki Konu 3 Nokta Menüsü (Başlık/Tarih Düzenle) */}
             {activeTopicMenu && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setActiveTopicMenu(null)}>
                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-2 rounded-2xl shadow-xl flex flex-col gap-1 w-56" onClick={e => e.stopPropagation()}>
@@ -543,7 +556,6 @@ const App = () => {
                 </div>
             )}
 
-            {/* 5. Öğretmen Notu Modalı */}
             {cellNoteModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
@@ -562,7 +574,6 @@ const App = () => {
                 </div>
             )}
 
-            {/* FAB BUTONU (SESLİ ASİSTAN İÇİN) */}
             {isTeacherMode && (
                 <button onClick={() => setShowAssistant(true)} className="fab-button bg-brandPurple text-white" title="Akıllı Asistan">
                     <div className="fab-pulse"></div><Mic size={28} />
