@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, BookOpen, CheckSquare, Square, CornerDownRight } from 'lucide-react';
+import { Plus, Trash2, BookOpen, CheckSquare, Square, CornerDownRight, Pencil, Check } from 'lucide-react';
 import { generateId } from '../../utils/helpers';
 
 const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode }) => {
     const [newTopicTitle, setNewTopicTitle] = useState("");
     const [newSubTopicTitles, setNewSubTopicTitles] = useState({});
+    
+    // Düzenleme (Edit) State'leri
+    const [editingTopicId, setEditingTopicId] = useState(null);
+    const [editingSubTopicId, setEditingSubTopicId] = useState(null);
+    const [editVal, setEditVal] = useState("");
 
     const curriculum = cls.curriculum || [];
     const isVip = cls.type === 'vip' && !isTeacherMode;
@@ -29,6 +34,23 @@ const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode }) => {
     const toggleSubTopic = (topicId, subTopicId) => { if(!isTeacherMode) return; const updated = curriculum.map(t => { if(t.id === topicId) { const newSubs = (t.subTopics || []).map(st => st.id === subTopicId ? { ...st, isCompleted: !st.isCompleted } : st); const allDone = newSubs.length > 0 && newSubs.every(st => st.isCompleted); return { ...t, isCompleted: allDone, subTopics: newSubs }; } return t; }); updateClassInDb({ ...cls, curriculum: updated }); };
     const deleteTopic = (topicId) => updateClassInDb({ ...cls, curriculum: curriculum.filter(t => t.id !== topicId) });
     const deleteSubTopic = (topicId, subTopicId) => { const updated = curriculum.map(t => { if(t.id === topicId) return { ...t, subTopics: (t.subTopics || []).filter(st => st.id !== subTopicId) }; return t; }); updateClassInDb({ ...cls, curriculum: updated }); };
+
+    // Düzenleme Fonksiyonları
+    const startEditTopic = (id, title) => { setEditingTopicId(id); setEditVal(title); setEditingSubTopicId(null); };
+    const saveEditTopic = (id) => {
+        if(!editVal.trim()) { setEditingTopicId(null); return; }
+        const updated = curriculum.map(t => t.id === id ? { ...t, title: editVal } : t);
+        updateClassInDb({ ...cls, curriculum: updated });
+        setEditingTopicId(null);
+    };
+
+    const startEditSub = (id, title) => { setEditingSubTopicId(id); setEditVal(title); setEditingTopicId(null); };
+    const saveEditSub = (topicId, subId) => {
+        if(!editVal.trim()) { setEditingSubTopicId(null); return; }
+        const updated = curriculum.map(t => { if(t.id === topicId) { return { ...t, subTopics: t.subTopics.map(st => st.id === subId ? { ...st, title: editVal } : st) }; } return t; });
+        updateClassInDb({ ...cls, curriculum: updated });
+        setEditingSubTopicId(null);
+    };
 
     return (
         <div className="animate-scale-in max-w-4xl mx-auto mt-4 relative z-10">
@@ -74,41 +96,73 @@ const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode }) => {
                     <div className="space-y-8">
                         {curriculum.map((topic) => {
                             const tProgress = getTopicProgress(topic);
+                            const isEditingThisTopic = editingTopicId === topic.id;
+                            
                             return (
                                 <div key={topic.id} className="flex flex-col group/topic">
-                                    <div className="flex items-start gap-4 hover-lift">
+                                    <div className="flex items-start gap-4">
                                         <button onClick={() => toggleTopic(topic.id)} className={`mt-1 flex-shrink-0 transition-colors ${topic.isCompleted ? (isVip ? 'text-vipGold' : 'text-brandPurple') : (isVip ? 'text-slate-400 hover:text-vipGold' : 'text-slate-400 hover:text-brandPurple')} ${!isTeacherMode && 'cursor-default pointer-events-none'}`}>
                                             {topic.isCompleted ? <CheckSquare size={28} strokeWidth={2.5} /> : <Square size={28} strokeWidth={2.5} />}
                                         </button>
                                         
                                         <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-2">
-                                            <div className="flex items-center gap-3">
-                                                <h3 className={`text-2xl font-black transition-all ${topic.isCompleted ? (isVip ? 'text-slate-500 line-through decoration-2' : 'text-slate-400/50 line-through decoration-2') : (isVip ? 'text-white' : 'text-slate-800')}`}>
-                                                    {topic.title}
-                                                </h3>
-                                                <span className={`text-xs font-black px-2.5 py-1 rounded-lg border ${topic.isCompleted ? 'bg-successGreen/10 text-successGreen border-successGreen/20' : (isVip ? 'bg-slate-800 text-vipGold border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-200')}`}>
-                                                    %{tProgress}
-                                                </span>
+                                            <div className="flex items-center gap-3 w-full md:w-auto flex-1">
+                                                {isEditingThisTopic ? (
+                                                    <div className="flex items-center gap-2 w-full max-w-md">
+                                                        <input type="text" autoFocus className="flex-1 bg-white border-2 border-brandPurple rounded-xl px-4 py-2 text-lg font-black text-slate-800 outline-none shadow-sm" value={editVal} onChange={e => setEditVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveEditTopic(topic.id)} />
+                                                        <button onClick={() => saveEditTopic(topic.id)} className="p-2.5 bg-successGreen text-white rounded-xl hover:bg-green-600 shadow-sm transition-colors"><Check size={18}/></button>
+                                                    </div>
+                                                ) : (
+                                                    <h3 className={`text-2xl font-black transition-all ${topic.isCompleted ? (isVip ? 'text-slate-500 line-through decoration-2' : 'text-slate-400/50 line-through decoration-2') : (isVip ? 'text-white' : 'text-slate-800')}`}>
+                                                        {topic.title}
+                                                    </h3>
+                                                )}
+                                                {!isEditingThisTopic && (
+                                                    <span className={`text-xs font-black px-2.5 py-1 rounded-lg border ${topic.isCompleted ? 'bg-successGreen/10 text-successGreen border-successGreen/20' : (isVip ? 'bg-slate-800 text-vipGold border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-200')}`}>
+                                                        %{tProgress}
+                                                    </span>
+                                                )}
                                             </div>
-                                            {isTeacherMode && <button onClick={() => deleteTopic(topic.id)} className="opacity-0 group-hover/topic:opacity-100 p-2 text-slate-300 hover:text-errorRed transition-all"><Trash2 size={20}/></button>}
+                                            {isTeacherMode && !isEditingThisTopic && (
+                                                <div className="opacity-0 group-hover/topic:opacity-100 flex items-center gap-1 transition-all">
+                                                    <button onClick={() => startEditTopic(topic.id, topic.title)} className="p-2 text-slate-400 hover:text-brandPurple transition-colors"><Pencil size={20}/></button>
+                                                    <button onClick={() => deleteTopic(topic.id)} className="p-2 text-slate-400 hover:text-errorRed transition-colors"><Trash2 size={20}/></button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
                                     <div className="pl-11 mt-3 space-y-3">
-                                        {topic.subTopics?.map(sub => (
-                                            <div key={sub.id} className="flex items-center gap-3 group/sub hover-lift">
-                                                <button onClick={() => toggleSubTopic(topic.id, sub.id)} className={`flex-shrink-0 transition-colors ${sub.isCompleted ? (isVip ? 'text-vipGold' : 'text-brandPurple') : (isVip ? 'text-slate-400 hover:text-vipGold' : 'text-slate-400 hover:text-brandPurple')} ${!isTeacherMode && 'cursor-default pointer-events-none'}`}>
-                                                    {sub.isCompleted ? <CheckSquare size={20} strokeWidth={2.5} /> : <Square size={20} strokeWidth={2.5} />}
-                                                </button>
-                                                
-                                                <div className="flex-1 flex items-center justify-between">
-                                                    <span className={`text-lg font-bold transition-all ${sub.isCompleted ? (isVip ? 'text-slate-500 line-through' : 'text-slate-400/50 line-through') : (isVip ? 'text-slate-300' : 'text-slate-600')}`}>
-                                                        {sub.title}
-                                                    </span>
-                                                    {isTeacherMode && <button onClick={() => deleteSubTopic(topic.id, sub.id)} className="opacity-0 group-hover/sub:opacity-100 p-1.5 text-slate-300 hover:text-errorRed transition-all"><Trash2 size={16}/></button>}
+                                        {topic.subTopics?.map(sub => {
+                                            const isEditingThisSub = editingSubTopicId === sub.id;
+                                            return (
+                                                <div key={sub.id} className="flex items-center gap-3 group/sub hover-lift">
+                                                    <button onClick={() => toggleSubTopic(topic.id, sub.id)} className={`flex-shrink-0 transition-colors ${sub.isCompleted ? (isVip ? 'text-vipGold' : 'text-brandPurple') : (isVip ? 'text-slate-400 hover:text-vipGold' : 'text-slate-400 hover:text-brandPurple')} ${!isTeacherMode && 'cursor-default pointer-events-none'}`}>
+                                                        {sub.isCompleted ? <CheckSquare size={20} strokeWidth={2.5} /> : <Square size={20} strokeWidth={2.5} />}
+                                                    </button>
+                                                    
+                                                    <div className="flex-1 flex items-center justify-between">
+                                                        {isEditingThisSub ? (
+                                                            <div className="flex items-center gap-2 w-full max-w-sm">
+                                                                <input type="text" autoFocus className="flex-1 bg-white border border-brandPurple rounded-lg px-3 py-1.5 text-base font-bold text-slate-800 outline-none shadow-sm" value={editVal} onChange={e => setEditVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveEditSub(topic.id, sub.id)} />
+                                                                <button onClick={() => saveEditSub(topic.id, sub.id)} className="p-1.5 bg-successGreen text-white rounded-lg hover:bg-green-600 transition-colors"><Check size={16}/></button>
+                                                            </div>
+                                                        ) : (
+                                                            <span className={`text-lg font-bold transition-all ${sub.isCompleted ? (isVip ? 'text-slate-500 line-through' : 'text-slate-400/50 line-through') : (isVip ? 'text-slate-300' : 'text-slate-600')}`}>
+                                                                {sub.title}
+                                                            </span>
+                                                        )}
+                                                        
+                                                        {isTeacherMode && !isEditingThisSub && (
+                                                            <div className="opacity-0 group-hover/sub:opacity-100 flex items-center gap-1 transition-all">
+                                                                <button onClick={() => startEditSub(sub.id, sub.title)} className="p-1.5 text-slate-300 hover:text-brandPurple transition-colors"><Pencil size={16}/></button>
+                                                                <button onClick={() => deleteSubTopic(topic.id, sub.id)} className="p-1.5 text-slate-300 hover:text-errorRed transition-colors"><Trash2 size={16}/></button>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                         {isTeacherMode && (
                                             <div className="flex items-center gap-3 mt-2 opacity-50 focus-within:opacity-100 transition-opacity">
                                                 <CornerDownRight size={20} className="text-slate-400" />
