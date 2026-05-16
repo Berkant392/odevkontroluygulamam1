@@ -5,81 +5,132 @@ import { STATUS_OPTIONS } from '../../utils/constants';
 import { formatDate } from '../../utils/helpers';
 import Fuse from 'fuse.js';
 
-const AssistantModal = ({ classes, updateClassInDb, onClose }) => {
+const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
     const [isListening, setIsListening] = useState(false);
     const [speechTranscript, setSpeechTranscript] = useState("");
-    const [jarvisFeedback, setJarvisFeedback] = useState("Sistem devrede. Emirlerinizi bekliyorum...");
+    const [jarvisFeedback, setJarvisFeedback] = useState("Sistem devrede. Sesli komutlarınızı bekliyorum...");
     const [foundStudents, setFoundStudents] = useState([]);
     const [foundTopics, setFoundTopics] = useState([]);
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [draftGrades, setDraftGrades] = useState({});
     const [draftNotes, setDraftNotes] = useState({});
 
-    // EKRANA YENİLERİ ÜSTTE ÇİZMEK İÇİN TERSİNE ÇEVİRİYORUZ
     const reversedFoundTopics = [...foundTopics].reverse();
 
+    // ------------------------------------------------------------------------
+    // 🧠 J.A.R.V.I.S ÜSTÜN ZEKALI NLP MOTORU (KELİME-BAZLI ANALİZ)
+    // ------------------------------------------------------------------------
     const analyzeCommand = (transcript) => {
-        const text = transcript.toLocaleLowerCase('tr-TR');
+        let text = transcript.toLocaleLowerCase('tr-TR');
+        
+        // 1. ÖZEL SÖZLÜK (ALIAS / TELAFFUZ DÜZELTMELERİ)
+        // Telaffuz edilen kelimeleri veritabanındaki teknik adlara çeviriyoruz
+        if (text.includes('vdd') || text.includes('vedede')) text += " video ders defteri";
+        if (text.match(/\bsb\b/) || text.includes('sebe')) text += " soru bankası";
+        if (text.includes('meb') || text.match(/\bm e b\b/)) text += " milli eğitim bakanlığı";
+        
+        text = text.replace(/birinci/g, '1')
+                   .replace(/ikinci/g, '2')
+                   .replace(/üçüncü/g, '3')
+                   .replace(/dördüncü/g, '4')
+                   .replace(/beşinci/g, '5')
+                   .replace(/['".,\/#!$%\^&\*;:{}=\-_`~()]/g, ""); // Noktalama işaretlerini sil
+
+        // 2. NİYET (INTENT) TESPİTİ
         let status = null;
-        if (text.match(/çözmemiş|yapmamış|yapmadı|eksik|boş|yok/)) status = 'missing';
-        else if (text.match(/çözdü|yaptı|tamamladı|bitirdi|full|bitti|çözmüş|yapmış/)) status = 'done';
+        if (text.match(/çözmemiş|yapmamış|yapmadı|eksik|boş|yok|çözmüyor/)) status = 'missing';
+        else if (text.match(/çözdü|yaptı|tamamladı|bitirdi|full|bitti|çözmüş|yapmış|çözüyor/)) status = 'done';
         else if (text.match(/verdim|verildi|atadım|ödev ver|çözecek/)) status = 'assigned';
         else if (text.match(/muaf|gerek yok|çözmesin/)) status = 'exempt';
 
+        // 3. BULANIK ARAMA MOTORUNU CÜMLE ÜZERİNE KUR (TYPO TOLERANSI)
+        const words = text.split(/\s+/).filter(w => w.length > 0);
+        // Fuse'u tüm cümle kelimeleri üzerinde çalıştırıyoruz. Threshold 0.35 ufak harf hatalarını affeder.
+        const wordFuse = new Fuse(words.map(w => ({ word: w })), { keys: ['word'], threshold: 0.35 });
+
+        // Ortak Puanlama Fonksiyonu (Hedefin kaç kelimesi cümlede geçiyor?)
+        const getMatchScore = (targetName) => {
+            const targetWords = targetName.toLocaleLowerCase('tr-TR').replace(/[.,]/g,"").split(/\s+/).filter(w => w.length > 0);
+            if (targetWords.length === 0) return 0;
+            let matches = 0;
+            targetWords.forEach(tw => {
+                if (!isNaN(tw)) {
+                    // Eğer hedef kelime bir rakamsa (1, 2) tam olarak eşleşmesini bekle (1 ile 2 karışmasın)
+                    if (words.includes(tw)) matches++;
+                } else {
+                    // Metinse bulanık arama ile bul (Örn: "denklemler" ile "denklemleri" eşleşir)
+                    if (wordFuse.search(tw).length > 0) matches++;
+                }
+            });
+            return matches / targetWords.length; // Eşleşme yüzdesi (Örn: 2 kelimeden 1'i uyarsa %50)
+        };
+
+        // --- ADIM A: ÖĞRENCİ TESPİTİ ---
         const allStudents = classes.flatMap(cls => (cls.students || []).map(std => ({ ...std, classId: cls.id, className: cls.className, isVip: cls.type === 'vip' })));
-
+        
         let bestStudentMatch = null;
-        bestStudentMatch = allStudents.find(std => text.includes(std.name.toLocaleLowerCase('tr-TR')));
+        let highestStudentScore = 0;
+        
+        allStudents.forEach(std => {
+            const score = getMatchScore(std.name);
+            // Öğrencinin adının veya soyadının en azından biri uyuşmalı (Score >= 0.5)
+            if (score > highestStudentScore && score >= 0.49) {
+                highestStudentScore = score;
+                bestStudentMatch = std;
+            }
+        });
+
         if (!bestStudentMatch) {
-            const studentFuse = new Fuse(allStudents, { keys: ['name'], threshold: 0.3 });
-            const words = text.split(' ');
-            for (let i = 0; i < words.length; i++) {
-                const wordPair = words.slice(i, i + 2).join(' '); const res = studentFuse.search(wordPair);
-                if (res.length > 0) { bestStudentMatch = res[0].item; break; }
-            }
+            setFoundStudents([]); setSelectedStudent(null); setFoundTopics([]);
+            setJarvisFeedback("Cümlenizde kayıtlı bir öğrenci ismi tespit edemedim efendim."); 
+            return; 
         }
-        if (!bestStudentMatch) { setFoundStudents([]); setSelectedStudent(null); setFoundTopics([]); setJarvisFeedback("Cümlenizde kayıtlı bir öğrenci ismi bulamadım efendim."); return; }
 
-        setFoundStudents([bestStudentMatch]); setSelectedStudent(bestStudentMatch);
-        const targetClass = classes.find(c => c.id === bestStudentMatch.classId); const topics = targetClass?.topics || []; setFoundTopics(topics);
+        setFoundStudents([bestStudentMatch]); 
+        setSelectedStudent(bestStudentMatch);
+        const targetClass = classes.find(c => c.id === bestStudentMatch.classId); 
+        const topics = targetClass?.topics || []; 
+        setFoundTopics(topics);
 
+        // --- ADIM B: KONU TESPİTİ ---
         let bestTopic = null;
-        bestTopic = topics.find(t => text.includes(t.title.toLocaleLowerCase('tr-TR')));
-        if (!bestTopic) {
-            const topicFuse = new Fuse(topics, { keys: ['title'], threshold: 0.4 }); const words = text.split(' ');
-            for (let i = 0; i < words.length; i++) {
-                const gram3 = words.slice(i, i + 3).join(' '); const res3 = topicFuse.search(gram3);
-                if (res3.length > 0) { bestTopic = res3[0].item; break; }
+        let highestTopicScore = 0;
+        topics.forEach(topic => {
+            const score = getMatchScore(topic.title);
+            // Konunun kelimelerinden en az biri (Score > 0) uyuşursa listeye al
+            if (score > highestTopicScore && score >= 0.3) {
+                highestTopicScore = score;
+                bestTopic = topic;
             }
-        }
+        });
 
+        // --- ADIM C: KAYNAK TESPİTİ ---
         let bestCol = null;
+        let highestColScore = 0;
         if (bestTopic) {
-            bestCol = bestTopic.subColumns.find(c => text.includes(c.title.toLocaleLowerCase('tr-TR')));
-            if (!bestCol) {
-                const textNumbers = text.match(/\d+/g) || [];
-                for (const col of bestTopic.subColumns) {
-                    const colNumbers = col.title.match(/\d+/g) || [];
-                    if (colNumbers.length > 0 && colNumbers.some(n => textNumbers.includes(n))) { bestCol = col; break; }
+            bestTopic.subColumns.forEach(col => {
+                const score = getMatchScore(col.title);
+                if (score > highestColScore && score >= 0.3) {
+                    highestColScore = score;
+                    bestCol = col;
                 }
-            }
-            if (!bestCol) {
-                const colFuse = new Fuse(bestTopic.subColumns, { keys: ['title'], threshold: 0.4 }); const words = text.split(' ');
-                for (let i = 0; i < words.length; i++) {
-                    const gram2 = words.slice(i, i + 2).join(' '); const res = colFuse.search(gram2);
-                    if (res.length > 0) { bestCol = res[0].item; break; }
-                }
-            }
+            });
         }
 
+        // --- ADIM D: J.A.R.V.I.S DİNAMİK CEVAPLARI ---
         if (bestStudentMatch && bestTopic && bestCol && status) {
             handleDraftGradeChange(bestStudentMatch.id, bestCol.id, status);
             const statusLabels = { 'done': 'Yapıldı', 'missing': 'Eksik', 'assigned': 'Verildi', 'exempt': 'Muaf' };
-            setJarvisFeedback(`Tamamdır efendim! ${bestStudentMatch.name} - ${bestTopic.title} -> ${bestCol.title} "${statusLabels[status]}" olarak işaretlendi.`);
-        } else if (bestStudentMatch && bestTopic && !bestCol) { setJarvisFeedback(`Öğrenci ve "${bestTopic.title}" konusu bulundu ancak hangi kaynak olduğunu anlayamadım.`); } 
-        else if (bestStudentMatch && !bestTopic) { setJarvisFeedback(`${bestStudentMatch.name} bulundu, ancak hangi konu olduğunu cümleden çıkaramadım.`); } 
-        else if (bestStudentMatch && bestTopic && bestCol && !status) { setJarvisFeedback(`Hedef bulundu ancak eylemi (yaptı/yapmadı) anlayamadım.`); } 
-        else { setJarvisFeedback(`${bestStudentMatch.name} profili ekrana getirildi.`); }
+            setJarvisFeedback(`İşlem Tamam! ${bestStudentMatch.name} -> ${bestTopic.title} -> ${bestCol.title} "${statusLabels[status]}" yapıldı.`);
+        } else if (bestStudentMatch && bestTopic && !bestCol) { 
+            setJarvisFeedback(`${bestTopic.title} konusunu anladım ancak "${bestTopic.subColumns.map(c=>c.title).join(', ')}" kaynaklarından hangisi olduğunu çıkaramadım.`); 
+        } else if (bestStudentMatch && !bestTopic) { 
+            setJarvisFeedback(`${bestStudentMatch.name} bulundu, ancak hangi konudan bahsettiğinizi anlayamadım.`); 
+        } else if (bestStudentMatch && bestTopic && bestCol && !status) { 
+            setJarvisFeedback(`Hedefi buldum ancak ödevi ne yaptığını anlayamadım (Yaptı mı? Eksik mi?).`); 
+        } else { 
+            setJarvisFeedback(`${bestStudentMatch.name} profili ekrana getirildi.`); 
+        }
     };
 
     const toggleListening = () => {
@@ -107,7 +158,7 @@ const AssistantModal = ({ classes, updateClassInDb, onClose }) => {
             } return s;
         });
         updateClassInDb({ ...targetClass, students: updatedStudents });
-        setDraftGrades({}); setDraftNotes({}); setJarvisFeedback("Değişiklikler başarıyla veritabanına kaydedildi efendim."); setTimeout(() => onClose(), 1500);
+        setDraftGrades({}); setDraftNotes({}); setJarvisFeedback("Tüm değişiklikler başarıyla sisteme aktarıldı efendim."); setTimeout(() => onClose(), 1500);
     };
 
     useEffect(() => { toggleListening(); }, []);
@@ -116,7 +167,7 @@ const AssistantModal = ({ classes, updateClassInDb, onClose }) => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-2 md:p-4">
             <motion.div initial={{ opacity: 0, y: 50, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.95 }} className="bg-white rounded-[2rem] w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col max-h-[95vh] border border-slate-200">
                 <div className="p-5 md:p-6 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-purple-50 to-blue-50">
-                    <div className="flex items-center gap-3"><div className="bg-white p-2 rounded-xl shadow-sm relative">{isListening && <span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brandPurple opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-brandPurple"></span></span>}<Zap className="text-brandPurple" size={24}/></div><div><h3 className="font-black text-lg md:text-xl text-slate-800 tracking-tight">J.A.R.V.I.S <span className="text-xs text-brandPurple bg-purple-100 px-2 py-0.5 rounded-full ml-2">FUSE.JS NLP</span></h3><p className="text-xs text-slate-500 font-medium">Bulanık Arama Yapay Zekası</p></div></div>
+                    <div className="flex items-center gap-3"><div className="bg-white p-2 rounded-xl shadow-sm relative">{isListening && <span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brandPurple opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-brandPurple"></span></span>}<Zap className="text-brandPurple" size={24}/></div><div><h3 className="font-black text-lg md:text-xl text-slate-800 tracking-tight">J.A.R.V.I.S <span className="text-xs text-brandPurple bg-purple-100 px-2 py-0.5 rounded-full ml-2">NLP AI</span></h3><p className="text-xs text-slate-500 font-medium">Bulanık Arama Yapay Zekası</p></div></div>
                     <button onClick={onClose} className="bg-white p-2 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all shadow-sm hover-lift"><X size={20}/></button>
                 </div>
                 
@@ -174,4 +225,4 @@ const AssistantModal = ({ classes, updateClassInDb, onClose }) => {
         </div>
     );
 };
-export default AssistantModal;
+export default JarvisModal;
