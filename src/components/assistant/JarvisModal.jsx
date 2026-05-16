@@ -5,7 +5,7 @@ import { STATUS_OPTIONS } from '../../utils/constants';
 import { formatDate } from '../../utils/helpers';
 import Fuse from 'fuse.js';
 
-const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
+const AssistantModal = ({ classes, updateClassInDb, onClose }) => {
     const [isListening, setIsListening] = useState(false);
     const [speechTranscript, setSpeechTranscript] = useState("");
     const [jarvisFeedback, setJarvisFeedback] = useState("Sistem devrede. Emirlerinizi bekliyorum...");
@@ -174,4 +174,4 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
         </div>
     );
 };
-export default JarvisModal;
+export default AssistantModal;
