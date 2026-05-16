@@ -6,7 +6,7 @@ import { ChevronLeft, GraduationCap, Library, Settings, LogOut, Mic, X, Megaphon
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-// FİREBASE (getDocs ve getDoc eklendi)
+// FİREBASE
 import { db } from './config/firebase'; 
 import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc, getDocs, getDoc } from 'firebase/firestore';
 
@@ -101,6 +101,10 @@ const App = () => {
     
     const [showAssistant, setShowAssistant] = useState(false);
 
+    // 🔥 BU İKİ SATIRI SİLMİŞTİM, EKRAN BU YÜZDEN ÇÖKÜYORDU. GERİ EKLENDİ!
+    const regularClasses = classes.filter(c => c.type !== 'vip');
+    const vipClasses = classes.filter(c => c.type === 'vip');
+
     useEffect(() => {
         const unsubClasses = onSnapshot(collection(db, CLASSES_COLLECTION), (snap) => setClasses(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
         const unsubLibrary = onSnapshot(collection(db, LIBRARY_COLLECTION), (snap) => setLibraryItems(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
@@ -120,7 +124,7 @@ const App = () => {
     const verifyPin = async (inputPin) => { 
         let currentPin = dbTeacherPin;
         
-        // Eğer PWA aşırı hızlı açıldığı için şifre henüz inmediyse, GİZLİCE anında internetten çek!
+        // Eğer PWA aşırı hızlı açıldığı için şifre henüz inmediyse, anında internetten çek!
         if (currentPin === DEFAULT_PIN) {
             try {
                 const docSnap = await getDoc(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC));
@@ -139,11 +143,12 @@ const App = () => {
     const handleStudentLogin = async (username, password, isVipLogin = false) => {
         let currentClasses = classes;
         
-        // Eğer PWA sınıf listesini henüz indiremediyse, hata vermek yerine GİZLİCE anında çek!
+        // Eğer PWA sınıf listesini henüz indiremediyse, anında çek!
         if (currentClasses.length === 0) {
             try {
                 const snap = await getDocs(collection(db, CLASSES_COLLECTION));
                 currentClasses = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setClasses(currentClasses); // Sınıfları arka planda hemen güncelle
             } catch (error) { console.error("Firebase fetch hatası:", error); }
         }
 
