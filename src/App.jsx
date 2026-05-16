@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, GraduationCap, Library, Settings, LogOut, Mic, X, Megaphone, Edit3, Pencil, Trash2 } from 'lucide-react';
+// Yeni ikonlar eklendi: Download, Share
+import { ChevronLeft, GraduationCap, Library, Settings, LogOut, Mic, X, Megaphone, Edit3, Pencil, Trash2, Download, Share } from 'lucide-react';
 
 // PDF KÜTÜPHANELERİ
 import jsPDF from 'jspdf';
@@ -39,7 +40,59 @@ const App = () => {
     const [selectedClass, setSelectedClass] = useState(null);
     const [selectedStudentForView, setSelectedStudentForView] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-    useEffect(() => { const handleResize = () => setIsMobile(window.innerWidth < 768); window.addEventListener('resize', handleResize); return () => window.removeEventListener('resize', handleResize); }, []);
+    
+    // 📱 MOBİL UYGULAMA (PWA) YÜKLEME STATE'LERİ
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [isIos, setIsIos] = useState(false);
+    const [isStandalone, setIsStandalone] = useState(false);
+    const [showIosInstallModal, setShowIosInstallModal] = useState(false);
+
+    useEffect(() => { 
+        const handleResize = () => setIsMobile(window.innerWidth < 768); 
+        window.addEventListener('resize', handleResize); 
+
+        // Cihaz Kontrolü (PWA için)
+        const userAgent = window.navigator.userAgent.toLowerCase();
+        const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
+        setIsIos(isIosDevice);
+
+        // Zaten yüklü mü kontrolü
+        const isAppStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        setIsStandalone(isAppStandalone);
+
+        // Android Yükleme Olayı Yakalayıcı
+        const handleBeforeInstallPrompt = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        
+        // Başarıyla yüklendiğinde tetiklenen olay
+        window.addEventListener('appinstalled', () => {
+            setDeferredPrompt(null);
+            setIsStandalone(true);
+        });
+
+        return () => { 
+            window.removeEventListener('resize', handleResize); 
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        }; 
+    }, []);
+
+    // 📱 AKILLI YÜKLEME BUTONU TETİKLEYİCİSİ
+    const handleInstallClick = async () => {
+        if (deferredPrompt) {
+            // Android ise direkt kurulum penceresini aç
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') setDeferredPrompt(null);
+        } else if (isIos) {
+            // iPhone ise rehberi göster
+            setShowIosInstallModal(true);
+        } else {
+            alert("Uygulama zaten yüklü veya tarayıcınız bu özelliği desteklemiyor.");
+        }
+    };
     
     const [newStudentName, setNewStudentName] = useState("");
     const [modalType, setModalType] = useState(null); 
@@ -103,16 +156,11 @@ const App = () => {
     const deleteColumn = (classId, topicId, colId) => { if(!window.confirm('Kaynağı silmek istediğinize emin misiniz?')) return; const cls = classes.find(c => c.id === classId); const updatedTopics = cls.topics.map(t => t.id === topicId ? { ...t, subColumns: t.subColumns.filter(c => c.id !== colId) } : t); updateClassInDb({ ...cls, topics: updatedTopics }); };
     const deleteClass = (e, classId) => { e.stopPropagation(); if(!window.confirm('Tüm sınıf silinecek. Emin misiniz?')) return; deleteDoc(doc(db, CLASSES_COLLECTION, classId)); goHome(); };
     
-    // ------------------------------------------------------------------------
-    // 📄 PROFESYONEL PDF MOTORU (YENİ EKLENDİ)
-    // ------------------------------------------------------------------------
     const handlePrintStudentReport = async (cls, student) => {
-        // Arka planda çizilecek gizli HTML Tuvali
         const printDiv = document.createElement('div');
         printDiv.style.position = 'absolute'; printDiv.style.left = '-9999px'; printDiv.style.top = '-9999px';
         printDiv.style.width = '800px'; printDiv.style.background = '#ffffff'; printDiv.style.padding = '40px';
         printDiv.style.fontFamily = 'sans-serif'; printDiv.style.color = '#333';
-        
         const stats = calculateStats([student], cls.topics);
         let html = `
             <div style="border-bottom: 3px solid #4f46e5; padding-bottom: 20px; margin-bottom: 30px;">
@@ -121,16 +169,8 @@ const App = () => {
                 <p style="margin: 5px 0 0 0; color: #666; font-size: 16px;">Sınıf: ${cls.className} | Genel Başarı: %${stats.percentage}</p>
             </div>
             <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px;">
-                <thead>
-                    <tr style="background-color: #f8fafc;">
-                        <th style="border: 1px solid #e2e8f0; padding: 12px; text-align: left; color: #475569;">Konu ve Kaynak</th>
-                        <th style="border: 1px solid #e2e8f0; padding: 12px; text-align: left; color: #475569;">Durum</th>
-                        <th style="border: 1px solid #e2e8f0; padding: 12px; text-align: left; color: #475569;">Öğretmen Notu</th>
-                    </tr>
-                </thead>
-                <tbody>
+                <thead><tr style="background-color: #f8fafc;"><th style="border: 1px solid #e2e8f0; padding: 12px; text-align: left; color: #475569;">Konu ve Kaynak</th><th style="border: 1px solid #e2e8f0; padding: 12px; text-align: left; color: #475569;">Durum</th><th style="border: 1px solid #e2e8f0; padding: 12px; text-align: left; color: #475569;">Öğretmen Notu</th></tr></thead><tbody>
         `;
-        
         cls.topics.forEach(topic => {
             topic.subColumns.forEach(col => {
                 const statusId = student.grades?.[col.id] || 'assigned';
@@ -139,38 +179,18 @@ const App = () => {
                 else if(statusId === 'missing') statusHtml = '<span style="color: #dc2626; font-weight: bold;">✗ Eksik</span>';
                 else if(statusId === 'assigned') statusHtml = '<span style="color: #d97706; font-weight: bold;">⏳ Verildi</span>';
                 else statusHtml = '<span style="color: #94a3b8;">Muaf</span>';
-                
                 const note = student.assignmentNotes?.[col.id] || '-';
-                html += `
-                    <tr>
-                        <td style="border: 1px solid #e2e8f0; padding: 12px;"><b>${topic.title}</b><br/><span style="font-size:12px; color:#64748b;">${col.title}</span></td>
-                        <td style="border: 1px solid #e2e8f0; padding: 12px;">${statusHtml}</td>
-                        <td style="border: 1px solid #e2e8f0; padding: 12px; font-style: italic;">${note}</td>
-                    </tr>
-                `;
+                html += `<tr><td style="border: 1px solid #e2e8f0; padding: 12px;"><b>${topic.title}</b><br/><span style="font-size:12px; color:#64748b;">${col.title}</span></td><td style="border: 1px solid #e2e8f0; padding: 12px;">${statusHtml}</td><td style="border: 1px solid #e2e8f0; padding: 12px; font-style: italic;">${note}</td></tr>`;
             });
         });
-        
         html += `</tbody></table><div style="margin-top: 40px; text-align: center; color: #94a3b8; font-size: 12px;">Bu rapor otomatik olarak oluşturulmuştur. Tarih: ${new Date().toLocaleDateString('tr-TR')}</div>`;
-        
-        printDiv.innerHTML = html;
-        document.body.appendChild(printDiv);
-        
+        printDiv.innerHTML = html; document.body.appendChild(printDiv);
         try {
-            // HTML'i Resme (Canvas), Resmi de PDF'e çeviriyoruz
             const canvas = await html2canvas(printDiv, { scale: 2, useCORS: true });
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-            
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`${student.name.replace(/\s+/g, '_')}_Rapor.pdf`);
-        } catch (error) {
-            console.error("PDF oluşturma hatası:", error); alert("PDF oluşturulurken bir hata oluştu.");
-        } finally {
-            document.body.removeChild(printDiv);
-        }
+            const imgData = canvas.toDataURL('image/png'); const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth(); const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight); pdf.save(`${student.name.replace(/\s+/g, '_')}_Rapor.pdf`);
+        } catch (error) { console.error("PDF oluşturma hatası:", error); alert("PDF oluşturulurken bir hata oluştu."); } finally { document.body.removeChild(printDiv); }
     };
 
     const handlePrintPasswords = async (cls) => {
@@ -178,46 +198,17 @@ const App = () => {
         printDiv.style.position = 'absolute'; printDiv.style.left = '-9999px'; printDiv.style.top = '-9999px';
         printDiv.style.width = '800px'; printDiv.style.background = '#ffffff'; printDiv.style.padding = '40px';
         printDiv.style.fontFamily = 'sans-serif'; printDiv.style.color = '#333';
-        
-        let html = `
-            <div style="border-bottom: 3px solid #4f46e5; padding-bottom: 20px; margin-bottom: 30px;">
-                <h1 style="color: #4f46e5; margin: 0; font-size: 28px;">${cls.className} Sınıfı - Şifre Listesi</h1>
-            </div>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-                <thead>
-                    <tr style="background-color: #f8fafc;">
-                        <th style="border: 1px solid #e2e8f0; padding: 12px; text-align: left; color: #475569;">Öğrenci Adı</th>
-                        <th style="border: 1px solid #e2e8f0; padding: 12px; text-align: left; color: #475569;">Kullanıcı Adı</th>
-                        <th style="border: 1px solid #e2e8f0; padding: 12px; text-align: left; color: #475569;">Şifre</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-        
-        cls.students.forEach(s => {
-            html += `<tr><td style="border: 1px solid #e2e8f0; padding: 12px;"><strong>${s.name}</strong></td><td style="border: 1px solid #e2e8f0; padding: 12px; font-family: monospace; font-size: 14px;">${s.username}</td><td style="border: 1px solid #e2e8f0; padding: 12px; font-family: monospace; font-size: 16px; font-weight: bold; letter-spacing: 2px;">${s.password}</td></tr>`;
-        });
+        let html = `<div style="border-bottom: 3px solid #4f46e5; padding-bottom: 20px; margin-bottom: 30px;"><h1 style="color: #4f46e5; margin: 0; font-size: 28px;">${cls.className} Sınıfı - Şifre Listesi</h1></div><table style="width: 100%; border-collapse: collapse; margin-top: 20px;"><thead><tr style="background-color: #f8fafc;"><th style="border: 1px solid #e2e8f0; padding: 12px; text-align: left; color: #475569;">Öğrenci Adı</th><th style="border: 1px solid #e2e8f0; padding: 12px; text-align: left; color: #475569;">Kullanıcı Adı</th><th style="border: 1px solid #e2e8f0; padding: 12px; text-align: left; color: #475569;">Şifre</th></tr></thead><tbody>`;
+        cls.students.forEach(s => { html += `<tr><td style="border: 1px solid #e2e8f0; padding: 12px;"><strong>${s.name}</strong></td><td style="border: 1px solid #e2e8f0; padding: 12px; font-family: monospace; font-size: 14px;">${s.username}</td><td style="border: 1px solid #e2e8f0; padding: 12px; font-family: monospace; font-size: 16px; font-weight: bold; letter-spacing: 2px;">${s.password}</td></tr>`; });
         html += `</tbody></table>`;
-        
-        printDiv.innerHTML = html;
-        document.body.appendChild(printDiv);
-        
+        printDiv.innerHTML = html; document.body.appendChild(printDiv);
         try {
             const canvas = await html2canvas(printDiv, { scale: 2, useCORS: true });
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-            
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`${cls.className.replace(/\s+/g, '_')}_Sifreler.pdf`);
-        } catch (error) {
-            console.error("PDF oluşturma hatası:", error); alert("PDF oluşturulurken bir hata oluştu.");
-        } finally {
-            document.body.removeChild(printDiv);
-        }
+            const imgData = canvas.toDataURL('image/png'); const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth(); const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight); pdf.save(`${cls.className.replace(/\s+/g, '_')}_Sifreler.pdf`);
+        } catch (error) { console.error("PDF oluşturma hatası:", error); alert("PDF oluşturulurken bir hata oluştu."); } finally { document.body.removeChild(printDiv); }
     };
-    // ------------------------------------------------------------------------
 
     const handleOpenRisk = (cls) => { const stats = calculateStats(cls.students, cls.topics); if (stats.atRisk && stats.atRisk.length > 0) { let msg = `⚠️ RİSKLİ ÖĞRENCİLER (${cls.className})\n\n`; stats.atRisk.forEach(s => { msg += `• ${s.name} - Başarı Oranı: %${s.rate}\n`; }); alert(msg); } else { alert(`✅ ${cls.className} sınıfında risk grubunda olan öğrenci bulunmuyor.`); } };
     const openCellNoteModal = (classId, studentId, colId, currentNote) => { setCellNoteModal({ classId, studentId, colId, note: currentNote || "" }); };
@@ -246,8 +237,17 @@ const App = () => {
                  <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col items-center gap-2">
                     <div className="flex items-center gap-3 w-full justify-between">
                         {currentUserRole !== 'student' && currentUserRole !== 'vip-student' && view !== 'home' ? ( <button onClick={() => view === 'student-detail' ? setView('class-detail') : goHome()} className={`p-2 rounded-full transition-colors hover-lift ${currentUserRole === 'vip-student' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}><ChevronLeft size={24} /></button> ) : <div className="w-10"></div>}
+                        
                         <div className="text-center"><h1 className={`text-xl md:text-3xl font-black tracking-tight flex items-center justify-center gap-3 ${currentUserRole === 'vip-student' ? 'real-gold-text' : 'text-slate-800'}`}><div className={`p-2 rounded-xl shadow-md transition-transform hover:scale-105 hover-lift ${currentUserRole === 'vip-student' ? 'real-gold-bg shadow-vip-glow' : 'bg-gradient-to-tr from-brandPurple to-blue-600 shadow-glow'}`}><GraduationCap className={currentUserRole === 'vip-student' ? 'text-[#111]' : 'text-white'} size={24} strokeWidth={2.5} /></div> BERKANT HOCA</h1></div>
+                        
                         <div className="flex items-center gap-2 min-w-[80px] justify-end">
+                            {/* 🟢 UYGULAMAYI İNDİR BUTONU (SADECE WEBDE İKEN ÇIKAR) */}
+                            {!isStandalone && (deferredPrompt || isIos) && (
+                                <button onClick={handleInstallClick} className="p-2 text-emerald-600 hover:text-white bg-emerald-50 hover:bg-emerald-500 rounded-full transition-colors shadow-sm border border-emerald-200 hover-lift" title="Uygulamayı Telefona İndir">
+                                    <Download size={20}/>
+                                </button>
+                            )}
+
                             {isTeacherMode && <button onClick={() => setShowLibraryManager(true)} className="p-2 text-slate-500 hover:text-brandPurple bg-white hover:bg-purple-50 rounded-full transition-colors shadow-sm border border-slate-200 hover-lift"><Library size={20}/></button>}
                             {(currentUserRole === 'student' || currentUserRole === 'vip-student') && <button onClick={() => setStudentSettingsModal(true)} className={`p-2 rounded-full transition-colors hover-lift ${currentUserRole === 'vip-student' ? 'text-slate-300 hover:text-vipGold bg-slate-700 border border-slate-600 shadow-sm' : 'text-slate-500 hover:text-brandPurple bg-white shadow-sm border border-slate-200'}`} title="Hesabım"><Settings size={20}/></button>}
                             <button onClick={handleLogout} className={`p-2 rounded-full transition-colors hover-lift ${currentUserRole === 'vip-student' ? 'text-rose-400 hover:text-rose-300 bg-slate-700 border border-slate-600 shadow-sm' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 shadow-sm border border-slate-200'}`} title="Çıkış Yap"><LogOut size={20}/></button>
@@ -285,7 +285,31 @@ const App = () => {
             
             {showAssistant && <JarvisModal classes={classes} updateClassInDb={updateClassInDb} onClose={() => setShowAssistant(false)} />}
 
-            {/* MODALLAR */}
+            {/* 🍎 iOS (iPHONE) KURULUM REHBERİ MODALI */}
+            {showIosInstallModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+                    <motion.div initial={{ opacity: 0, scale: 0.9, y: 50 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl relative text-center">
+                        <button onClick={() => setShowIosInstallModal(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
+                        <div className="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500 shadow-sm"><Download size={32} /></div>
+                        <h3 className="text-xl font-black text-slate-800 mb-2">Uygulamayı Telefona Kur</h3>
+                        <p className="text-sm text-slate-600 mb-6 leading-relaxed">iPhone (iOS) güvenliği sebebiyle uygulamayı tek tıkla yükleyemiyoruz. Lütfen şu 2 adımı izleyin:</p>
+                        
+                        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-left space-y-4">
+                            <div className="flex items-start gap-3">
+                                <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm text-blue-500 shrink-0"><Share size={20}/></div>
+                                <div><p className="text-sm font-bold text-slate-700">Adım 1</p><p className="text-xs text-slate-500 mt-1">Ekranın en altındaki Safari menüsünden <b>"Paylaş"</b> ikonuna dokunun.</p></div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm text-slate-800 shrink-0"><Plus size={20}/></div>
+                                <div><p className="text-sm font-bold text-slate-700">Adım 2</p><p className="text-xs text-slate-500 mt-1">Açılan menüyü hafifçe aşağı kaydırıp <b>"Ana Ekrana Ekle"</b> seçeneğini seçin.</p></div>
+                            </div>
+                        </div>
+                        <button onClick={() => setShowIosInstallModal(false)} className="mt-6 w-full py-3 bg-brandPurple text-white font-bold rounded-xl hover:bg-purple-700 shadow-md transition-colors">Anladım</button>
+                    </motion.div>
+                </div>
+            )}
+
+            {/* DİĞER MODALLAR */}
             {modalType && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
