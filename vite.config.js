@@ -30,7 +30,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
-        // 🔥 SENİN BULDUĞUN EFSANE ÇÖZÜM: Firebase Auth ve Firestore API isteklerini asla cache'leme!
+        // 🔒 Firebase ve Canlı Veritabanı İstekleri Asla Cache'lenmesin
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/www\.googleapis\.com\/.*/i,
