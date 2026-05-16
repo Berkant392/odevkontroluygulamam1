@@ -8,6 +8,10 @@ import PdfDownloadButton from '../ui/PdfButton';
 import CurriculumTracker from '../curriculum/CurriculumTracker';
 
 const StudentDetail = ({ selectedStudentForView, selectedClass, currentUserRole, activeTab, setActiveTab, isTeacherMode, openCellNoteModal, updateGrade, updateClassInDb }) => {
+    
+    // YENİ EKLENENLERİ EN YUKARI ALMAK İÇİN
+    const reversedTopics = selectedClass.topics ? [...selectedClass.topics].reverse() : [];
+
     return (
         <motion.div key="student-detail" initial={{ opacity: 0, y: 30, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: "spring", stiffness: 260, damping: 20 }} className={`${currentUserRole === 'vip-student' ? 'bg-slate-800 border-slate-700 shadow-2xl' : 'bg-white border-slate-100 shadow-float'} rounded-[2.5rem] p-4 md:p-10 border relative z-10`}>
             <div className={`flex flex-col md:flex-row items-center md:items-start gap-6 mb-10 pb-8 border-b ${currentUserRole === 'vip-student' ? 'border-slate-700' : 'border-slate-100'} text-center md:text-left`}>
@@ -22,7 +26,7 @@ const StudentDetail = ({ selectedStudentForView, selectedClass, currentUserRole,
 
             {activeTab === 'homework' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { staggerChildren: 0.1 } }} className="space-y-8">
-                    {selectedClass.topics?.map((topic, i) => {
+                    {reversedTopics.map((topic, i) => {
                         const theme = currentUserRole === 'vip-student' ? { tag: 'bg-vipGold', text: 'text-vipGold' } : TOPIC_THEMES[i % TOPIC_THEMES.length]; 
                         const topicStats = calculateStats([selectedStudentForView], [{...topic, subColumns: topic.subColumns}]);
                         const pct = topicStats.percentage || 0; const isLate = isOverdue(topic.date);
@@ -53,7 +57,7 @@ const StudentDetail = ({ selectedStudentForView, selectedClass, currentUserRole,
                             </motion.div>
                         );
                     })}
-                    {selectedClass.topics?.length === 0 && <div className="text-center text-slate-500 py-10 font-medium">Bu sınıfa henüz ödev eklenmemiş.</div>}
+                    {reversedTopics.length === 0 && <div className="text-center text-slate-500 py-10 font-medium">Bu sınıfa henüz ödev eklenmemiş.</div>}
                 </motion.div>
             )}
 
