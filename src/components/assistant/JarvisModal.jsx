@@ -5,7 +5,7 @@ import { STATUS_OPTIONS } from '../../utils/constants';
 import { formatDate } from '../../utils/helpers';
 import Fuse from 'fuse.js';
 
-const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
+const AssistantModal = ({ classes, updateClassInDb, onClose }) => {
     const [isListening, setIsListening] = useState(false);
     const [speechTranscript, setSpeechTranscript] = useState("");
     const [jarvisFeedback, setJarvisFeedback] = useState("Sistem devrede. Emirlerinizi bekliyorum...");
@@ -18,60 +18,62 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
     const reversedFoundTopics = [...foundTopics].reverse();
 
     // ------------------------------------------------------------------------
-    // 🧠 J.A.R.V.I.S V2: TERSİNE N-GRAM & KATİ RAKAM MOTORU
+    // 🧠 J.A.R.V.I.S V2.1: GENİŞLETİLMİŞ SÖZLÜK & N-GRAM MOTORU
     // ------------------------------------------------------------------------
     const analyzeCommand = (transcript) => {
         let text = transcript.toLocaleLowerCase('tr-TR');
         
-        // 1. ÖZEL SÖZLÜK (ALIAS ÇEVİRİLERİ)
+        // 1. ÖZEL SÖZLÜK (ALIAS VE RAKAM ÇEVİRİLERİ)
         text = text.replace(/birinci/g, '1')
                    .replace(/ikinci/g, '2')
                    .replace(/üçüncü/g, '3')
                    .replace(/dördüncü/g, '4')
-                   .replace(/beşinci/g, '5');
+                   .replace(/beşinci/g, '5')
+                   .replace(/\bbir\b/g, '1')
+                   .replace(/\biki\b/g, '2')
+                   .replace(/\b[uü]ç\b/g, '3')
+                   .replace(/\bd[oö]rt\b/g, '4')
+                   .replace(/\bbeş\b/g, '5');
 
         if (text.includes('vdd') || text.includes('vedede') || text.includes('ve de de')) text += " video ders defteri";
         if (text.match(/\bsb\b/) || text.includes('se be')) text += " soru bankası";
 
-        // 2. NİYET TESPİTİ
+        // 2. NİYET (INTENT) TESPİTİ (Edilgen yapılar eklendi!)
         let status = null;
-        if (text.match(/çözmemiş|yapmamış|yapmadı|eksik|boş|yok|çözmüyor/)) status = 'missing';
-        else if (text.match(/çözdü|yaptı|tamamladı|bitirdi|full|bitti|çözmüş|yapmış/)) status = 'done';
-        else if (text.match(/verdim|verildi|atadım|ödev ver|çözecek/)) status = 'assigned';
+        if (text.match(/çözmemiş|yapmamış|yapmadı|eksik|boş|yok|çözmüyor|yapılmadı|çözülmedi/)) status = 'missing';
+        else if (text.match(/çözdü|yaptı|tamamladı|bitirdi|full|bitti|çözmüş|yapmış|yapıldı|çözüldü|tamamlandı/)) status = 'done';
+        else if (text.match(/verdim|verildi|atadım|ödev ver|çözecek|yapacak/)) status = 'assigned';
         else if (text.match(/muaf|gerek yok|çözmesin/)) status = 'exempt';
 
         // 3. J.A.R.V.I.S ARAMA ÇEKİRDEĞİ (N-Gram + Rakam Kısıtlaması)
         const extractNumbers = (str) => { const m = str.match(/\d+/g); return m ? m : []; };
-        const transcriptNumbers = extractNumbers(text); // Cümledeki tüm rakamları çıkar
+        const transcriptNumbers = extractNumbers(text); 
 
         const findBestMatch = (items, key, threshold = 0.4) => {
             if (!items || items.length === 0) return null;
 
-            // Öncelik 1: Birebir Eşleşme (En hızlısı)
             const exactMatch = items.find(item => text.includes(item[key].toLocaleLowerCase('tr-TR')));
             if (exactMatch) return exactMatch;
 
-            // Öncelik 2: N-Gram Bulanık Arama (Kelime gruplarıyla arama)
             const words = text.replace(/[.,!?]/g, "").split(/\s+/).filter(w => w.length > 0);
             const ngrams = [];
             for(let i=0; i < words.length; i++) {
-                ngrams.push(words[i]); // Tekli
-                if(i < words.length - 1) ngrams.push(words[i] + " " + words[i+1]); // İkili
-                if(i < words.length - 2) ngrams.push(words[i] + " " + words[i+1] + " " + words[i+2]); // Üçlü
-                if(i < words.length - 3) ngrams.push(words[i] + " " + words[i+1] + " " + words[i+2] + " " + words[i+3]); // Dörtlü
+                ngrams.push(words[i]); 
+                if(i < words.length - 1) ngrams.push(words[i] + " " + words[i+1]); 
+                if(i < words.length - 2) ngrams.push(words[i] + " " + words[i+1] + " " + words[i+2]); 
+                if(i < words.length - 3) ngrams.push(words[i] + " " + words[i+1] + " " + words[i+2] + " " + words[i+3]); 
             }
 
             const fuse = new Fuse(items, { keys: [key], threshold: threshold, includeScore: true, ignoreLocation: true });
             let bestMatch = null;
-            let bestScore = 1; // 0'a ne kadar yakınsa o kadar mükemmel
+            let bestScore = 1; 
 
             for (const ngram of ngrams) {
                 const results = fuse.search(ngram);
                 for (const res of results) {
-                    // KATİ RAKAM KURALI: Kaynak adında rakam varsa, cümlende de O RAKAM kesin olmalı!
                     const itemNumbers = extractNumbers(res.item[key]);
                     const hasMissingNumber = itemNumbers.some(num => !transcriptNumbers.includes(num));
-                    if (hasMissingNumber) continue; // Rakam uymuyorsa bu seçeneği anında çöpe at!
+                    if (hasMissingNumber) continue; 
 
                     if (res.score < bestScore) {
                         bestScore = res.score;
@@ -119,9 +121,6 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
         }
     };
 
-    // ------------------------------------------------------------------------
-    // 🎙️ MİKROFON YÖNETİMİ
-    // ------------------------------------------------------------------------
     const toggleListening = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) { alert("⚠️ Tarayıcınız ses tanıma desteklemiyor."); return; }
@@ -214,4 +213,4 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
         </div>
     );
 };
-export default JarvisModal;
+export default AssistantModal;
