@@ -18,10 +18,11 @@ import ClassDetail from './components/views/ClassDetail';
 import StudentDetail from './components/views/StudentDetail';
 import LibraryModal from './components/modals/LibraryModal';
 
-// 🔥 İŞTE ÇÖZÜM BURADA: Eski AssistantModal yerine JARVIS'i çağırıyoruz!
+// 🔥 EKSİK OLAN TAKVİM BİLEŞENİ EKLENDİ
+import CountdownTimer from './components/ui/Countdown'; 
+
+// 🧠 J.A.R.V.I.S YAPAY ZEKA ASİSTANI
 import JarvisModal from './components/assistant/JarvisModal'; 
-// Not: Eğer JarvisModal dosyasını "modals" klasörüne koyduysan yukarıdaki satırı şu şekilde değiştir:
-// import JarvisModal from './components/modals/JarvisModal';
 
 const App = () => {
     const [classes, setClasses] = useState([]);
@@ -59,7 +60,6 @@ const App = () => {
     const [libraryInput, setLibraryInput] = useState("");
     const [libraryDate, setLibraryDate] = useState("");
     
-    // Asistan Modal Kontrolü
     const [showAssistant, setShowAssistant] = useState(false);
 
     const regularClasses = classes.filter(c => c.type !== 'vip');
@@ -169,10 +169,8 @@ const App = () => {
 
             {showLibraryManager && <LibraryModal libraryCategory={libraryCategory} setLibraryCategory={setLibraryCategory} libraryInput={libraryInput} setLibraryInput={setLibraryInput} libraryDate={libraryDate} setLibraryDate={setLibraryDate} libraryItems={libraryItems} addLibraryItem={addLibraryItem} deleteLibraryItem={deleteLibraryItem} onClose={() => setShowLibraryManager(false)} />}
             
-            {/* 🔥 JARVIS BURADA ÇAĞRILIYOR */}
             {showAssistant && <JarvisModal classes={classes} updateClassInDb={updateClassInDb} onClose={() => setShowAssistant(false)} />}
 
-            {/* MODALLAR */}
             {modalType && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
