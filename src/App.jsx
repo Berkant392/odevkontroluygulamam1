@@ -1,18 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, GraduationCap, Library, Settings, LogOut, Mic, X, Megaphone, Edit3, Pencil, Trash2 } from 'lucide-react';
+
+// FİREBASE
 import { db } from './config/firebase'; 
 import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
+
+// YARDIMCILAR VE SABİTLER
 import { LIBRARY_TYPES, CLASSES_COLLECTION, LIBRARY_COLLECTION, SETTINGS_COLLECTION, SETTINGS_DOC, DEFAULT_PIN, STATUS_OPTIONS } from './utils/constants';
 import { generateId, calculateStats } from './utils/helpers';
+
+// 🧩 PARÇALANMIŞ BİLEŞENLERİMİZ
 import LoginScreen from './components/auth/LoginScreen';
 import TeacherDashboard from './components/dashboard/TeacherDashboard';
 import StudentDashboard from './components/dashboard/StudentDashboard';
 import ClassDetail from './components/views/ClassDetail';
 import StudentDetail from './components/views/StudentDetail';
 import LibraryModal from './components/modals/LibraryModal';
-import AssistantModal from './components/modals/AssistantModal';
-import CountdownTimer from './components/ui/Countdown';
+
+// 🔥 İŞTE ÇÖZÜM BURADA: Eski AssistantModal yerine JARVIS'i çağırıyoruz!
+import JarvisModal from './components/assistant/JarvisModal'; 
+// Not: Eğer JarvisModal dosyasını "modals" klasörüne koyduysan yukarıdaki satırı şu şekilde değiştir:
+// import JarvisModal from './components/modals/JarvisModal';
 
 const App = () => {
     const [classes, setClasses] = useState([]);
@@ -30,6 +39,7 @@ const App = () => {
     const [selectedStudentForView, setSelectedStudentForView] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     useEffect(() => { const handleResize = () => setIsMobile(window.innerWidth < 768); window.addEventListener('resize', handleResize); return () => window.removeEventListener('resize', handleResize); }, []);
+    
     const [newStudentName, setNewStudentName] = useState("");
     const [modalType, setModalType] = useState(null); 
     const [modalData, setModalData] = useState(null);
@@ -37,15 +47,19 @@ const App = () => {
     const [modalTitleVal, setModalTitleVal] = useState(""); 
     const [modalDateVal, setModalDateVal] = useState("");
     const [modalPdfVal, setModalPdfVal] = useState("");
+    
     const [activeTopicMenu, setActiveTopicMenu] = useState(null);
     const [activeColMenu, setActiveColMenu] = useState(null);
     const [activeCell, setActiveCell] = useState(null);
     const [studentSettingsModal, setStudentSettingsModal] = useState(false);
     const [cellNoteModal, setCellNoteModal] = useState(null);
+    
     const [showLibraryManager, setShowLibraryManager] = useState(false);
     const [libraryCategory, setLibraryCategory] = useState(LIBRARY_TYPES.TOPIC);
     const [libraryInput, setLibraryInput] = useState("");
     const [libraryDate, setLibraryDate] = useState("");
+    
+    // Asistan Modal Kontrolü
     const [showAssistant, setShowAssistant] = useState(false);
 
     const regularClasses = classes.filter(c => c.type !== 'vip');
@@ -72,18 +86,23 @@ const App = () => {
         for (const cls of classesToSearch) { const std = cls.students?.find(s => s.username === username.trim() && s.password === password.trim()); if (std) { foundStudent = std; foundClass = cls; break; } }
         if (foundStudent) { setCurrentUserRole(isVipLogin ? 'vip-student' : 'student'); setLoggedInStudent(foundStudent); setSelectedClass(foundClass); setSelectedStudentForView(foundStudent); setView('student-detail'); setActiveTab('homework'); const updatedStudents = foundClass.students.map(s => s.id === foundStudent.id ? { ...s, lastLogin: new Date().toISOString() } : s); updateClassInDb({ ...foundClass, students: updatedStudents }); } else { alert('Kullanıcı adı veya şifre hatalı!'); }
     };
+    
     const handleLogout = () => { setCurrentUserRole(null); setIsTeacherMode(false); setLoggedInStudent(null); setSelectedClass(null); setSelectedStudentForView(null); setView('home'); };
     const updateClassInDb = async (updatedClass) => { try { await updateDoc(doc(db, CLASSES_COLLECTION, updatedClass.id), updatedClass); if (selectedClass?.id === updatedClass.id) setSelectedClass(updatedClass); } catch (e) { console.error("Sınıf güncellenemedi:", e); } };
     const goHome = () => { setView('home'); setSelectedClass(null); setSelectedStudentForView(null); setActiveTab('homework'); };
     const openClass = (cls) => { setSelectedClass(cls); setView('class-detail'); setActiveTab('homework'); };
     const openStudent = (std) => { setSelectedStudentForView(std); setView('student-detail'); setActiveTab('homework'); };
+    
     const addLibraryItem = async (text) => { if(!text || typeof text !== 'string' || !text.trim()) return; let subTopics = []; let mainText = text.trim(); if (libraryCategory === LIBRARY_TYPES.CURRICULUM && text.includes(',')) { const parts = text.split(','); mainText = parts[0].trim(); subTopics = parts.slice(1).map(p => ({ title: p.trim() })).filter(p => p.title); } await addDoc(collection(db, LIBRARY_COLLECTION), { text: mainText, type: libraryCategory, date: libraryCategory === LIBRARY_TYPES.TOPIC ? libraryDate : null, subTopics: subTopics }); };
     const deleteLibraryItem = async (id) => { await deleteDoc(doc(db, LIBRARY_COLLECTION, id)); };
+    
     const addStudent = (classId) => { if(!newStudentName.trim()) return; const cls = classes.find(c => c.id === classId); const username = newStudentName.toLowerCase().replace(/\s+/g, '.') + Math.floor(Math.random()*1000); const password = Math.random().toString(36).slice(-6); const newStd = { id: generateId('std'), name: newStudentName, username, password, grades: {}, assignmentNotes: {} }; updateClassInDb({ ...cls, students: [...(cls.students || []), newStd] }); setNewStudentName(""); };
     const deleteStudent = (e, classId, studentId) => { e.stopPropagation(); if(!window.confirm('Öğrenciyi silmek istediğinize emin misiniz?')) return; const cls = classes.find(c => c.id === classId); updateClassInDb({ ...cls, students: cls.students.filter(s => s.id !== studentId) }); };
+    
     const updateGrade = (classId, studentId, colId, statusId) => { const cls = classes.find(c => c.id === classId); const updatedStudents = cls.students.map(s => s.id === studentId ? { ...s, grades: { ...(s.grades || {}), [colId]: statusId } } : s); updateClassInDb({ ...cls, students: updatedStudents }); setActiveCell(null); };
     const deleteColumn = (classId, topicId, colId) => { if(!window.confirm('Kaynağı silmek istediğinize emin misiniz?')) return; const cls = classes.find(c => c.id === classId); const updatedTopics = cls.topics.map(t => t.id === topicId ? { ...t, subColumns: t.subColumns.filter(c => c.id !== colId) } : t); updateClassInDb({ ...cls, topics: updatedTopics }); };
     const deleteClass = (e, classId) => { e.stopPropagation(); if(!window.confirm('Tüm sınıf silinecek. Emin misiniz?')) return; deleteDoc(doc(db, CLASSES_COLLECTION, classId)); goHome(); };
+    
     const handlePrintPasswords = (cls) => { const printWindow = window.open('', '_blank'); if (!printWindow) { alert("⚠️ Lütfen tarayıcınızın Pop-up engelleyicisini kapatın!"); return; } let html = `<html><head><title>${cls.className} - Şifre Listesi</title><style>body{font-family:sans-serif;padding:20px;}table{width:100%;border-collapse:collapse;margin-top:20px;}th,td{border:1px solid #ddd;padding:12px;text-align:left;}th{background-color:#f4f4f4;} h2{color:#4f46e5;}</style></head><body><h2>${cls.className} Sınıfı - Öğrenci Giriş Bilgileri</h2><table><tr><th>Öğrenci Adı</th><th>Kullanıcı Adı</th><th>Şifre</th></tr>`; cls.students.forEach(s => { html += `<tr><td><strong>${s.name}</strong></td><td>${s.username}</td><td style="letter-spacing: 2px;"><b>${s.password}</b></td></tr>`; }); html += `</table><script>window.onload = function() { setTimeout(function() { window.print(); }, 300); }; window.onafterprint = function() { window.close(); };</script></body></html>`; printWindow.document.write(html); printWindow.document.close(); };
     const handlePrintStudentReport = (cls, student) => { const printWindow = window.open('', '_blank'); if (!printWindow) { alert("⚠️ Lütfen tarayıcınızın Pop-up engelleyicisini kapatın!"); return; } let html = `<html><head><title>${student.name} - İlerleme Raporu</title><style>body{font-family:sans-serif;padding:20px;}table{width:100%;border-collapse:collapse;margin-top:20px;}th,td{border:1px solid #ddd;padding:12px;text-align:left;}th{background-color:#f4f4f4;} h2{color:#4f46e5;}</style></head><body><h2>${student.name} - Ödev ve İlerleme Raporu</h2><h3>Sınıf: ${cls.className} | Genel Başarı: %${calculateStats([student], cls.topics).percentage}</h3><table><tr><th>Konu ve Kaynak</th><th>Durum</th><th>Öğretmen Notu</th></tr>`; cls.topics.forEach(topic => { topic.subColumns.forEach(col => { const statusId = student.grades?.[col.id] || 'assigned'; let statusText = statusId === 'done' ? '<span style="color:green;font-weight:bold;">Yapıldı</span>' : statusId === 'missing' ? '<span style="color:red;font-weight:bold;">Eksik</span>' : statusId === 'assigned' ? '<span style="color:orange;font-weight:bold;">Verildi</span>' : '<span style="color:gray;">Muaf</span>'; const note = student.assignmentNotes?.[col.id] || '-'; html += `<tr><td><b>${topic.title}</b><br/>${col.title}</td><td>${statusText}</td><td>${note}</td></tr>`; }); }); html += `</table><script>window.onload = function() { setTimeout(function() { window.print(); }, 300); }; window.onafterprint = function() { window.close(); };</script></body></html>`; printWindow.document.write(html); printWindow.document.close(); };
     const handleOpenRisk = (cls) => { const stats = calculateStats(cls.students, cls.topics); if (stats.atRisk && stats.atRisk.length > 0) { let msg = `⚠️ RİSKLİ ÖĞRENCİLER (${cls.className})\n\n`; stats.atRisk.forEach(s => { msg += `• ${s.name} - Başarı Oranı: %${s.rate}\n`; }); alert(msg); } else { alert(`✅ ${cls.className} sınıfında risk grubunda olan öğrenci bulunmuyor.`); } };
@@ -149,9 +168,11 @@ const App = () => {
             </main>
 
             {showLibraryManager && <LibraryModal libraryCategory={libraryCategory} setLibraryCategory={setLibraryCategory} libraryInput={libraryInput} setLibraryInput={setLibraryInput} libraryDate={libraryDate} setLibraryDate={setLibraryDate} libraryItems={libraryItems} addLibraryItem={addLibraryItem} deleteLibraryItem={deleteLibraryItem} onClose={() => setShowLibraryManager(false)} />}
-            {showAssistant && <AssistantModal classes={classes} updateClassInDb={updateClassInDb} onClose={() => setShowAssistant(false)} />}
+            
+            {/* 🔥 JARVIS BURADA ÇAĞRILIYOR */}
+            {showAssistant && <JarvisModal classes={classes} updateClassInDb={updateClassInDb} onClose={() => setShowAssistant(false)} />}
 
-            {/* 🔥 MODALLAR (KÜTÜPHANEDEN HIZLI SEÇİM EKLENDİ) */}
+            {/* MODALLAR */}
             {modalType && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
@@ -172,7 +193,6 @@ const App = () => {
                                 <h3 className="font-bold text-lg mb-4 text-slate-800">{modalType === 'class' ? 'Yeni Sınıf Oluştur' : modalType === 'vip' ? 'Yeni Özel Ders Oluştur' : modalType === 'topic' ? 'Yeni Ödev Ekle' : modalType === 'edit-student' ? 'Öğrenci Adını Düzenle' : 'Düzenle'}</h3>
                                 <input type="text" autoFocus className="w-full border-2 border-slate-200 rounded-xl p-3 mb-2 font-bold outline-none focus:border-brandPurple" placeholder="Başlık girin..." value={modalInputVal} onChange={e => setModalInputVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleModalSubmit()} />
                                 
-                                {/* 📚 KÜTÜPHANEDEN HIZLI SEÇİM ÇİPLERİ */}
                                 {modalType === 'topic' && (
                                     <div className="mb-4">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Veya Kütüphaneden Seç:</label>
@@ -205,6 +225,7 @@ const App = () => {
             {activeColMenu && <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setActiveColMenu(null)}><motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-2 rounded-2xl shadow-xl flex flex-col gap-1 w-52" onClick={e => e.stopPropagation()}><button onClick={() => { const cls = classes.find(c => c.id === activeColMenu.classId); const col = cls.topics.find(t => t.id === activeColMenu.topicId).subColumns.find(c => c.id === activeColMenu.colId); setModalData({ classId: cls.id, topicId: activeColMenu.topicId, colId: col.id }); setModalInputVal(col.title); setModalPdfVal(col.pdfLink || ""); setModalType('edit-source'); setActiveColMenu(null); }} className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"><Pencil size={16}/> Kaynağı Düzenle</button><button onClick={() => { deleteColumn(activeColMenu.classId, activeColMenu.topicId, activeColMenu.colId); setActiveColMenu(null); }} className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"><Trash2 size={16}/> Kaynağı Sil</button></motion.div></div>}
             {activeTopicMenu && <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setActiveTopicMenu(null)}><motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-2 rounded-2xl shadow-xl flex flex-col gap-1 w-56" onClick={e => e.stopPropagation()}><button onClick={() => { const cls = classes.find(c => c.id === activeTopicMenu.classId); const top = cls.topics.find(t => t.id === activeTopicMenu.topicId); setModalData({ classId: cls.id, topicId: top.id }); setModalInputVal(top.title); setModalDateVal(top.date || ""); setModalType('edit-topic'); setActiveTopicMenu(null); }} className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"><Pencil size={16}/> Başlık / Tarih Düzenle</button></motion.div></div>}
             {cellNoteModal && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4"><motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl"><h3 className="font-bold text-lg mb-4 text-slate-800 flex items-center gap-2"><Edit3 size={20} className="text-amber-500"/>Öğretmen Notu</h3><textarea autoFocus rows="4" className="w-full border-2 border-slate-200 rounded-xl p-3 mb-4 font-medium text-sm outline-none focus:border-amber-400" placeholder="Öğrenci için notunuzu buraya yazın..." value={cellNoteModal.note} onChange={e => setCellNoteModal({ ...cellNoteModal, note: e.target.value })}></textarea><div className="flex gap-2 justify-end mt-2"><button onClick={() => setCellNoteModal(null)} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-xl">İptal</button><button onClick={() => { const cls = classes.find(c => c.id === cellNoteModal.classId); const updatedStudents = cls.students.map(s => s.id === cellNoteModal.studentId ? { ...s, assignmentNotes: { ...(s.assignmentNotes || {}), [cellNoteModal.colId]: cellNoteModal.note } } : s); updateClassInDb({ ...cls, students: updatedStudents }); setCellNoteModal(null); }} className="px-4 py-2 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 shadow-md">Notu Kaydet</button></div></motion.div></div>}
+            
             {isTeacherMode && <button onClick={() => setShowAssistant(true)} className="fab-button bg-brandPurple text-white" title="Akıllı Asistan"><div className="fab-pulse"></div><Mic size={28} /></button>}
         </div>
     );
