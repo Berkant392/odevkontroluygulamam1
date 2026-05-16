@@ -9,6 +9,10 @@ import StatusBadge from '../ui/StatusBadge';
 import CurriculumTracker from '../curriculum/CurriculumTracker';
 
 const ClassDetail = ({ selectedClass, activeTab, setActiveTab, isMobile, newStudentName, setNewStudentName, addStudent, updateGrade, openCellNoteModal, setModalData, setModalInputVal, setModalDateVal, setModalPdfVal, setModalType, deleteStudent, handlePrintStudentReport, openStudent, setActiveTopicMenu, setActiveColMenu, setActiveCell, deleteColumn, updateClassInDb, handleOpenRisk, handlePrintPasswords, deleteClass, libraryItems, saveToLibrary }) => {
+    
+    // YENİ EKLENENLERİ EN SOLA/YUKARIYA ALMAK İÇİN DİZİYİ TERSİNE ÇEVİRİYORUZ
+    const reversedTopics = selectedClass.topics ? [...selectedClass.topics].reverse() : [];
+
     return (
         <motion.div key="class-detail" initial={{ opacity: 0, y: 30, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: "spring", stiffness: 260, damping: 20 }} className="bg-white rounded-[2rem] shadow-float border border-slate-200 overflow-hidden relative z-10">
             <div className={`p-6 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${selectedClass.type === 'vip' ? 'bg-gradient-to-r from-yellow-50 to-white border-yellow-100' : 'bg-gradient-to-r from-slate-50 to-white border-slate-100'}`}>
@@ -32,7 +36,7 @@ const ClassDetail = ({ selectedClass, activeTab, setActiveTab, isMobile, newStud
                         <div className="space-y-4">
                             <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-float mb-6"><h4 className="font-black text-slate-800 mb-4 text-sm flex items-center gap-2 uppercase tracking-widest"><BookOpen size={18} className="text-brandPurple"/> Mobil Ödev Yönetimi</h4>
                                 <div className="space-y-4">
-                                    {selectedClass.topics?.map(topic => (
+                                    {reversedTopics.map(topic => (
                                         <div key={topic.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                                             <div className="flex justify-between items-center mb-3 pb-3 border-b border-slate-200"><span className="font-black text-slate-700 text-sm uppercase tracking-wide truncate pr-2">{topic.title}</span><div className="flex gap-1.5 shrink-0"><button onClick={() => { setModalData({ classId: selectedClass.id, topicId: topic.id, currentTitle: topic.title }); setModalInputVal(topic.title); setModalDateVal(topic.date || ''); setModalType('edit-topic'); }} className="p-2 bg-white border border-slate-200 text-slate-500 hover:text-brandPurple rounded-xl shadow-sm transition-colors hover-lift"><Pencil size={16}/></button><button onClick={() => { setModalData({ classId: selectedClass.id, topicId: topic.id }); setModalType('source'); }} className="px-3 py-2 bg-brandPurple text-white rounded-xl shadow-glow flex items-center gap-1.5 text-xs font-black tracking-wider transition-colors hover-lift"><Plus size={14}/> KAYNAK</button></div></div>
                                             <div className="flex flex-col gap-2">
@@ -43,7 +47,7 @@ const ClassDetail = ({ selectedClass, activeTab, setActiveTab, isMobile, newStud
                                             </div>
                                         </div>
                                     ))}
-                                    {(!selectedClass.topics || selectedClass.topics.length === 0) && <div className="text-sm font-bold text-slate-400 text-center py-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">Sınıfa ait ödev bulunmuyor.</div>}
+                                    {reversedTopics.length === 0 && <div className="text-sm font-bold text-slate-400 text-center py-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">Sınıfa ait ödev bulunmuyor.</div>}
                                 </div>
                             </div>
                             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex gap-2"><input type="text" placeholder="Yeni Öğrenci Ekle..." className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-700 w-full focus:border-brandPurple outline-none font-medium" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(selectedClass.id); }} /><motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => addStudent(selectedClass.id)} className={`text-white px-4 rounded-xl text-sm font-bold shadow-md ${selectedClass.type === 'vip' ? 'real-gold-bg text-slate-900' : 'bg-brandPurple'}`}>EKLE</motion.button></div>
@@ -55,7 +59,7 @@ const ClassDetail = ({ selectedClass, activeTab, setActiveTab, isMobile, newStud
                                 <thead>
                                     <tr>
                                         <th rowSpan={2} className="sticky-corner border-b border-r border-slate-200 min-w-[250px] shadow-sm p-4 text-xs font-black text-slate-500 uppercase tracking-widest bg-white">Öğrenci Listesi</th>
-                                        {selectedClass.topics?.map((topic, i) => {
+                                        {reversedTopics.map((topic, i) => {
                                             const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
                                             return ( 
                                                 <th key={topic.id} colSpan={Math.max(1, (topic.subColumns?.length || 0) + 1)} className={`text-center p-3 border-b border-r border-slate-200 sticky-header-top ${theme.main} min-w-[280px]`}>
@@ -65,7 +69,7 @@ const ClassDetail = ({ selectedClass, activeTab, setActiveTab, isMobile, newStud
                                         })}
                                     </tr>
                                     <tr>
-                                        {selectedClass.topics?.map((topic, i) => {
+                                        {reversedTopics.map((topic, i) => {
                                             const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
                                             return ( 
                                                 <React.Fragment key={topic.id}>
@@ -84,7 +88,7 @@ const ClassDetail = ({ selectedClass, activeTab, setActiveTab, isMobile, newStud
                                             <td className="sticky-col-left p-4 border-r border-slate-200">
                                                 <div className="flex justify-between items-center group"><div className="flex flex-col gap-1 cursor-pointer" onClick={() => openStudent(std)}><div className="flex items-center gap-3"><motion.div whileHover={{ scale: 1.1 }} className={`w-8 h-8 rounded-full ${selectedClass.type === 'vip' ? 'bg-yellow-100 text-amber-600' : 'bg-purple-100 text-brandPurple'} flex items-center justify-center font-black text-xs`}>{std.name.charAt(0)}</motion.div><span className={`text-sm font-bold text-slate-700 group-hover:${selectedClass.type === 'vip' ? 'text-amber-600' : 'text-brandPurple'} transition-colors`}>{std.name}</span><button onClick={(e) => { e.stopPropagation(); setModalData({ classId: selectedClass.id, studentId: std.id, currentName: std.name }); setModalInputVal(std.name); setModalType('edit-student'); }} className="text-slate-300 hover:text-brandPurple opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size={14}/></button></div>{std.username && ( <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 mt-1 ml-11" onClick={e=>e.stopPropagation()}><span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{std.username}</span><span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-1"><KeyRound size={10}/> {std.password}</span></div> )}</div><div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => { e.stopPropagation(); handlePrintStudentReport(selectedClass, std); }} className={`p-2 rounded-lg transition-colors ${selectedClass.type === 'vip' ? 'bg-yellow-50 text-amber-500 hover:bg-yellow-100' : 'bg-purple-50 text-brandPurple hover:bg-purple-100'}`} title="Rapor Yazdır"><Printer size={16}/></motion.button><motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => deleteStudent(e, selectedClass.id, std.id)} className="bg-rose-50 text-rose-400 hover:text-rose-600 hover:bg-rose-100 p-2 rounded-lg transition-colors"><Trash2 size={16}/></motion.button></div></div>
                                             </td>
-                                            {selectedClass.topics?.map((topic, i) => {
+                                            {reversedTopics.map((topic, i) => {
                                                 const theme = TOPIC_THEMES[i % TOPIC_THEMES.length];
                                                 return ( 
                                                     <React.Fragment key={topic.id}>
@@ -101,7 +105,7 @@ const ClassDetail = ({ selectedClass, activeTab, setActiveTab, isMobile, newStud
                                     ))}
                                     <tr>
                                         <td className="sticky-col-left p-4 border-r border-slate-200 border-t border-slate-200 bg-slate-50"><div className="flex gap-2"><div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 shrink-0"><UserPlus size={16}/></div><input type="text" placeholder="Yeni Öğrenci Ekle..." className="bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-sm text-slate-700 w-full focus:border-brandPurple outline-none font-medium shadow-sm" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') addStudent(selectedClass.id); }} /><motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => addStudent(selectedClass.id)} className={`text-white px-3 rounded-xl text-xs font-bold shadow-md transition-colors ${selectedClass.type === 'vip' ? 'real-gold-bg text-slate-900' : 'bg-brandPurple'}`}>EKLE</motion.button></div></td>
-                                        {selectedClass.topics?.map((t, i) => <td key={i} colSpan={Math.max(1, t.subColumns.length + 1)} className="border-t border-slate-200 bg-slate-50/50"></td>)}
+                                        {reversedTopics.map((t, i) => <td key={i} colSpan={Math.max(1, t.subColumns.length + 1)} className="border-t border-slate-200 bg-slate-50/50"></td>)}
                                     </tr>
                                 </tbody>
                             </table>
