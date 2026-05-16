@@ -6,9 +6,9 @@ import { ChevronLeft, GraduationCap, Library, Settings, LogOut, Mic, X, Megaphon
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-// FİREBASE
+// FİREBASE (getDocs ve getDoc eklendi)
 import { db } from './config/firebase'; 
-import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc, getDocs, getDoc } from 'firebase/firestore';
 
 // YARDIMCILAR VE SABİTLER
 import { LIBRARY_TYPES, CLASSES_COLLECTION, LIBRARY_COLLECTION, SETTINGS_COLLECTION, SETTINGS_DOC, DEFAULT_PIN, STATUS_OPTIONS } from './utils/constants';
@@ -24,7 +24,7 @@ import LibraryModal from './components/modals/LibraryModal';
 import CountdownTimer from './components/ui/Countdown'; 
 import JarvisModal from './components/assistant/JarvisModal'; 
 
-// 🔥 TÜRKÇE KARAKTER VE BÜYÜK/KÜÇÜK HARF TEMİZLEYİCİ (Geri Eklendi!)
+// 🔥 MOBİL KLAVYE KORUMASI
 const makeSafe = (str) => {
     if (!str) return "";
     return String(str).trim()
@@ -38,14 +38,6 @@ const makeSafe = (str) => {
 };
 
 const App = () => {
-    // 🔥 FİREBASE YÜKLENME KALKANI
-    const [isClassesLoaded, setIsClassesLoaded] = useState(false);
-    const [isConfigLoaded, setIsConfigLoaded] = useState(false);
-    const isFirebaseLoaded = isClassesLoaded && isConfigLoaded;
-
-    // 🔥 KALICI OTURUM (BENİ HATIRLA) KONTROLÜ
-    const [isRestoring, setIsRestoring] = useState(!!localStorage.getItem('berkantHocaSession'));
-
     const [classes, setClasses] = useState([]);
     const [libraryItems, setLibraryItems] = useState([]);
     const [currentUserRole, setCurrentUserRole] = useState(null);
@@ -109,15 +101,8 @@ const App = () => {
     
     const [showAssistant, setShowAssistant] = useState(false);
 
-    const regularClasses = classes.filter(c => c.type !== 'vip');
-    const vipClasses = classes.filter(c => c.type === 'vip');
-
-    // 🌐 FİREBASE VERİ ÇEKME
     useEffect(() => {
-        const unsubClasses = onSnapshot(collection(db, CLASSES_COLLECTION), (snap) => {
-            setClasses(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            setIsClassesLoaded(true);
-        });
+        const unsubClasses = onSnapshot(collection(db, CLASSES_COLLECTION), (snap) => setClasses(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
         const unsubLibrary = onSnapshot(collection(db, LIBRARY_COLLECTION), (snap) => setLibraryItems(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
         const unsubConfig = onSnapshot(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC), (docSnap) => {
             if (docSnap.exists()) {
@@ -127,64 +112,49 @@ const App = () => {
                 if (data.announcementTitle) setAnnouncementTitle(data.announcementTitle);
                 if (data.countdown) setCountdownConfig(data.countdown);
             }
-            setIsConfigLoaded(true);
         });
         return () => { unsubClasses(); unsubLibrary(); unsubConfig(); };
     }, []);
 
-    // 🚀 OTOMATİK GİRİŞ (AUTO-LOGIN) MOTORU - Klavye Korumalı
-    useEffect(() => {
-        if (isFirebaseLoaded && !currentUserRole) {
-            const sessionStr = localStorage.getItem('berkantHocaSession');
-            if (sessionStr) {
-                try {
-                    const session = JSON.parse(sessionStr);
-                    if (session.role === 'teacher') {
-                        if (String(session.pin).trim() === String(dbTeacherPin).trim()) {
-                            setIsTeacherMode(true); setCurrentUserRole('teacher'); setView('home'); setActiveTab('homework');
-                        } else {
-                            localStorage.removeItem('berkantHocaSession'); 
-                        }
-                    } else if (session.role === 'student' || session.role === 'vip-student') {
-                        const classesToSearch = session.role === 'vip-student' ? vipClasses : regularClasses;
-                        let foundStudent = null, foundClass = null;
-                        const safeSessionUser = makeSafe(session.username); // Koruma eklendi
-                        for (const cls of classesToSearch) {
-                            const std = cls.students?.find(s => s.username && makeSafe(s.username) === safeSessionUser && s.password === session.password);
-                            if (std) { foundStudent = std; foundClass = cls; break; }
-                        }
-                        if (foundStudent) {
-                            setCurrentUserRole(session.role); setLoggedInStudent(foundStudent); setSelectedClass(foundClass); setSelectedStudentForView(foundStudent); setView('student-detail'); setActiveTab('homework');
-                        } else {
-                            localStorage.removeItem('berkantHocaSession'); 
-                        }
-                    }
-                } catch (e) {
-                    localStorage.removeItem('berkantHocaSession');
-                }
-            }
-            setIsRestoring(false); 
+    // 🚀 YÖNETİCİ GİRİŞİ (AKILLI FETCH İLE GÜÇLENDİRİLDİ)
+    const verifyPin = async (inputPin) => { 
+        let currentPin = dbTeacherPin;
+        
+        // Eğer PWA aşırı hızlı açıldığı için şifre henüz inmediyse, GİZLİCE anında internetten çek!
+        if (currentPin === DEFAULT_PIN) {
+            try {
+                const docSnap = await getDoc(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC));
+                if (docSnap.exists() && docSnap.data().pin) currentPin = docSnap.data().pin;
+            } catch (error) { console.error("Firebase fetch hatası:", error); }
         }
-    }, [isFirebaseLoaded, classes, dbTeacherPin]); 
 
-
-    // 🔐 GİRİŞ FONKSİYONLARI 
-    const verifyPin = (inputPin) => { 
-        if (!isFirebaseLoaded) { alert("Sistem verileri yükleniyor... Lütfen bekleyin."); return; }
-        if (String(inputPin).trim() === String(dbTeacherPin).trim()) { 
-            localStorage.setItem('berkantHocaSession', JSON.stringify({ role: 'teacher', pin: String(inputPin).trim() }));
+        if (String(inputPin).trim() === String(currentPin).trim()) { 
             setIsTeacherMode(true); setCurrentUserRole('teacher'); setView('home'); setActiveTab('homework'); 
         } else { 
             alert("Hatalı PIN!"); 
         } 
     };
 
-    const handleStudentLogin = (username, password, isVipLogin = false) => {
-        if (!isFirebaseLoaded) { alert("Sistem verileri yükleniyor... Lütfen bekleyin."); return; }
+    // 🚀 ÖĞRENCİ GİRİŞİ (AKILLI FETCH İLE GÜÇLENDİRİLDİ)
+    const handleStudentLogin = async (username, password, isVipLogin = false) => {
+        let currentClasses = classes;
+        
+        // Eğer PWA sınıf listesini henüz indiremediyse, hata vermek yerine GİZLİCE anında çek!
+        if (currentClasses.length === 0) {
+            try {
+                const snap = await getDocs(collection(db, CLASSES_COLLECTION));
+                currentClasses = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            } catch (error) { console.error("Firebase fetch hatası:", error); }
+        }
 
-        let foundStudent = null, foundClass = null; const classesToSearch = isVipLogin ? vipClasses : regularClasses;
-        const safeUsername = makeSafe(username); // 🔥 KLAVYE KORUMASI BURADA!
+        const regularClassesList = currentClasses.filter(c => c.type !== 'vip');
+        const vipClassesList = currentClasses.filter(c => c.type === 'vip');
+        const classesToSearch = isVipLogin ? vipClassesList : regularClassesList;
+        
+        const safeUsername = makeSafe(username); 
         const safePassword = password.trim();
+
+        let foundStudent = null, foundClass = null;
 
         for (const cls of classesToSearch) { 
             const std = cls.students?.find(s => s.username && makeSafe(s.username) === safeUsername && s.password.trim() === safePassword); 
@@ -192,10 +162,7 @@ const App = () => {
         }
 
         if (foundStudent) { 
-            const role = isVipLogin ? 'vip-student' : 'student';
-            localStorage.setItem('berkantHocaSession', JSON.stringify({ role, username: safeUsername, password: safePassword }));
-            setCurrentUserRole(role); setLoggedInStudent(foundStudent); setSelectedClass(foundClass); setSelectedStudentForView(foundStudent); setView('student-detail'); setActiveTab('homework'); 
-            
+            setCurrentUserRole(isVipLogin ? 'vip-student' : 'student'); setLoggedInStudent(foundStudent); setSelectedClass(foundClass); setSelectedStudentForView(foundStudent); setView('student-detail'); setActiveTab('homework'); 
             const updatedStudents = foundClass.students.map(s => s.id === foundStudent.id ? { ...s, lastLogin: new Date().toISOString() } : s); 
             updateClassInDb({ ...foundClass, students: updatedStudents }); 
         } else { 
@@ -203,12 +170,7 @@ const App = () => {
         }
     };
     
-    // 🚪 ÇIKIŞ YAP (Hafızayı Siler)
-    const handleLogout = () => { 
-        localStorage.removeItem('berkantHocaSession');
-        setCurrentUserRole(null); setIsTeacherMode(false); setLoggedInStudent(null); setSelectedClass(null); setSelectedStudentForView(null); setView('home'); 
-    };
-    
+    const handleLogout = () => { setCurrentUserRole(null); setIsTeacherMode(false); setLoggedInStudent(null); setSelectedClass(null); setSelectedStudentForView(null); setView('home'); };
     const updateClassInDb = async (updatedClass) => { try { await updateDoc(doc(db, CLASSES_COLLECTION, updatedClass.id), updatedClass); if (selectedClass?.id === updatedClass.id) setSelectedClass(updatedClass); } catch (e) { console.error("Sınıf güncellenemedi:", e); } };
     const goHome = () => { setView('home'); setSelectedClass(null); setSelectedStudentForView(null); setActiveTab('homework'); };
     const openClass = (cls) => { setSelectedClass(cls); setView('class-detail'); setActiveTab('homework'); };
@@ -295,19 +257,6 @@ const App = () => {
         setModalType(null); setModalInputVal(""); setModalTitleVal(""); setModalDateVal(""); setModalPdfVal("");
     };
 
-    // 🕒 EĞER OTURUM GERİ YÜKLENİYORSA ŞIK BİR BEKLEME EKRANI GÖSTER
-    if (isRestoring) {
-        return (
-            <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white">
-                <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 2 }}>
-                    <GraduationCap size={64} className="text-brandPurple mb-6" />
-                </motion.div>
-                <h2 className="text-sm font-black tracking-widest animate-pulse text-slate-400">OTURUM AÇILIYOR...</h2>
-            </div>
-        );
-    }
-
-    // GİRİŞ EKRANI
     if (!currentUserRole) return <LoginScreen onStudentLogin={handleStudentLogin} onTeacherLogin={verifyPin} />;
 
     return (
@@ -365,7 +314,6 @@ const App = () => {
             
             {showAssistant && <JarvisModal classes={classes} updateClassInDb={updateClassInDb} onClose={() => setShowAssistant(false)} />}
 
-            {/* 🍎 iOS (iPHONE) KURULUM REHBERİ MODALI */}
             <AnimatePresence>
                 {showIosInstallModal && (
                     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" style={{position:'fixed', top:0, left:0, width:'100%', height:'100%'}}>
