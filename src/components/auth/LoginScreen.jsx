@@ -82,7 +82,6 @@ const LoginScreen = ({ onStudentLogin, onTeacherLogin }) => {
                             <motion.div variants={itemVariants} className="ldivline w-full max-w-[360px]"><div className="ldl"></div><div className="ldt">YÖNETİM</div><div className="ldl"></div></motion.div>
                             <motion.button variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.97 }} onClick={() => setAuthView('teacher-login')} className="lbtn lbtn-a w-full max-w-[360px]"><div className="liw liw-a"><Briefcase color="#60a5fa" size={18}/></div><div className="lbl"><div className="lts">Yönetici Girişi</div><div className="lss">Öğretmen paneli</div></div><ChevronRight className="lch" size={16}/></motion.button>
 
-                            {/* 🟢 MOBİL UYGULAMA İNDİR BUTONU */}
                             {!isStandalone && (deferredPrompt || isIos) && (
                                 <motion.button variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.97 }} onClick={handleInstallClick} className="lbtn w-full max-w-[360px]" style={{marginTop: '10px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)'}}><div className="liw" style={{background: 'rgba(16, 185, 129, 0.25)'}}><Download color="#10b981" size={18}/></div><div className="lbl"><div className="lts" style={{color: '#10b981'}}>Mobil Uygulamayı İndir</div><div className="lss" style={{color: 'rgba(16, 185, 129, 0.8)'}}>Ana ekrana kısayol ekle</div></div><ChevronRight className="lch" style={{color: '#10b981'}} size={16}/></motion.button>
                             )}
@@ -99,13 +98,12 @@ const LoginScreen = ({ onStudentLogin, onTeacherLogin }) => {
                                 
                                 <div className="login-input-group">
                                     <label className="login-label" style={{color: authView === 'vip-login' ? '#e6c27a' : '#94a3b8'}}>Kullanıcı Adı</label>
-                                    {/* 🛑 KLAVYE KORUMASI BURAYA EKLENDİ */}
-                                    <input type="text" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} placeholder="örn: ahmet.yilmaz" value={username} onChange={e => setUsername(e.target.value)} autoCapitalize="none" autoCorrect="off" spellCheck="false" />
+                                    <input type="text" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} placeholder="Kullanıcı Adınız" value={username} onChange={e => setUsername(e.target.value)} />
                                 </div>
                                 
                                 <div className="login-input-group" style={{marginTop: '20px'}}>
                                     <label className="login-label" style={{color: authView === 'vip-login' ? '#e6c27a' : '#94a3b8'}}>Şifre</label>
-                                    <input type="password" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} style={{letterSpacing: '0.3em', fontSize: '18px'}} placeholder="••••••" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && onStudentLogin(username, password, authView === 'vip-login')} autoCapitalize="none" autoCorrect="off" spellCheck="false" />
+                                    <input type="password" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} style={{letterSpacing: '0.3em', fontSize: '18px'}} placeholder="••••••" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && onStudentLogin(username, password, authView === 'vip-login')} />
                                 </div>
                                 
                                 <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }} onClick={() => onStudentLogin(username, password, authView === 'vip-login')} className={`lbtn w-full flex items-center justify-center rounded-xl transition-all ${authView === 'vip-login' ? 'real-gold-bg' : 'bg-brandPurple hover:bg-purple-600 shadow-glow'}`} style={{marginTop: '28px', padding: '16px', border: 'none'}}><span style={{color: authView === 'vip-login' ? '#111111' : '#ffffff', fontSize: '16px', fontWeight: '900', letterSpacing: '0.05em'}}>GİRİŞ YAP</span></motion.button>
@@ -132,7 +130,6 @@ const LoginScreen = ({ onStudentLogin, onTeacherLogin }) => {
                 </AnimatePresence>
             </motion.div>
 
-            {/* 🍎 iOS (iPHONE) KURULUM REHBERİ MODALI */}
             <AnimatePresence>
                 {showIosInstallModal && (
                     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" style={{position:'fixed', top:0, left:0, width:'100%', height:'100%'}}>
@@ -143,8 +140,14 @@ const LoginScreen = ({ onStudentLogin, onTeacherLogin }) => {
                             <p className="text-sm text-slate-400 mb-6 leading-relaxed">iPhone (iOS) güvenliği sebebiyle uygulamayı tek tıkla yükleyemiyoruz. Lütfen şu 2 adımı izleyin:</p>
                             
                             <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 text-left space-y-4">
-                                <div className="flex items-start gap-3"><div className="bg-slate-700 p-2 rounded-xl border border-slate-600 shadow-sm text-blue-400 shrink-0"><Share size={20}/></div><div><p className="text-sm font-bold text-slate-200">Adım 1</p><p className="text-xs text-slate-400 mt-1">Ekranın en altındaki Safari menüsünden <b>"Paylaş"</b> ikonuna dokunun.</p></div></div>
-                                <div className="flex items-start gap-3"><div className="bg-slate-700 p-2 rounded-xl border border-slate-600 shadow-sm text-slate-200 shrink-0"><Plus size={20}/></div><div><p className="text-sm font-bold text-slate-200">Adım 2</p><p className="text-xs text-slate-400 mt-1">Açılan menüyü aşağı kaydırıp <b>"Ana Ekrana Ekle"</b> seçeneğini seçin.</p></div></div>
+                                <div className="flex items-start gap-3">
+                                    <div className="bg-slate-700 p-2 rounded-xl border border-slate-600 shadow-sm text-blue-400 shrink-0"><Share size={20}/></div>
+                                    <div><p className="text-sm font-bold text-slate-200">Adım 1</p><p className="text-xs text-slate-400 mt-1">Ekranın en altındaki Safari menüsünden <b>"Paylaş"</b> ikonuna dokunun.</p></div>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <div className="bg-slate-700 p-2 rounded-xl border border-slate-600 shadow-sm text-slate-200 shrink-0"><Plus size={20}/></div>
+                                    <div><p className="text-sm font-bold text-slate-200">Adım 2</p><p className="text-xs text-slate-400 mt-1">Açılan menüyü aşağı kaydırıp <b>"Ana Ekrana Ekle"</b> seçeneğini seçin.</p></div>
+                                </div>
                             </div>
                             <button onClick={() => setShowIosInstallModal(false)} className="mt-6 w-full py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-md transition-colors">Anladım</button>
                         </motion.div>
