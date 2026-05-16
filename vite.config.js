@@ -7,6 +7,11 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        cleanupOutdatedCaches: true, // Eski çöp önbellekleri zorla siler
+        skipWaiting: true,           // Yeni güncelleme gelince bekletmeden kurar
+        clientsClaim: true,          // Sayfayı yenilemeye gerek kalmadan kontrolü ele alır
+      },
       devOptions: {
         enabled: true 
       },
