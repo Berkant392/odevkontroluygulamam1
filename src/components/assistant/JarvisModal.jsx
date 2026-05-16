@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, X, MicOff, RefreshCw, Crown, Calendar, StickyNote, AlertTriangle, Save, User, Mic, TerminalSquare, CheckCircle2 } from 'lucide-react';
+import { Zap, X, MicOff, Crown, Calendar, StickyNote, AlertTriangle, Save, User, Mic, TerminalSquare, CheckCircle2 } from 'lucide-react';
 import { STATUS_OPTIONS } from '../../utils/constants';
 import { formatDate } from '../../utils/helpers';
+import Fuse from 'fuse.js'; // 🧠 YENİ YAPAY ZEKA ARAMA MOTORUMUZ
 
 const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
     const [isListening, setIsListening] = useState(false);
     const [speechTranscript, setSpeechTranscript] = useState("");
-    const [jarvisFeedback, setJarvisFeedback] = useState("Emirlerinizi bekliyorum efendim...");
+    const [jarvisFeedback, setJarvisFeedback] = useState("Sistem devrede. Emirlerinizi bekliyorum...");
     
     const [foundStudents, setFoundStudents] = useState([]);
     const [foundTopics, setFoundTopics] = useState([]);
@@ -16,89 +17,92 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
     const [draftNotes, setDraftNotes] = useState({});
 
     // ------------------------------------------------------------------------
-    // 🎙️ J.A.R.V.I.S NLP (DOĞAL DİL İŞLEME VE NİYET OKUMA) MOTORU
+    // 🧠 J.A.R.V.I.S FUSE.JS (BULANIK MANTIK) NLP MOTORU
     // ------------------------------------------------------------------------
     const analyzeCommand = (transcript) => {
         const text = transcript.toLocaleLowerCase('tr-TR');
         
-        // 1. ADIM: NİYET (INTENT) TESPİTİ - Öğrenci ödevi ne yapmış?
+        // 1. ADIM: NİYET (INTENT) TESPİTİ - (Regex burada hala en iyisidir)
         let status = null;
         if (text.match(/çözmemiş|yapmamış|yapmadı|eksik|boş|yok/)) status = 'missing';
-        else if (text.match(/çözdü|yaptı|tamamladı|bitirdi|full|bitti/)) status = 'done';
+        else if (text.match(/çözdü|yaptı|tamamladı|bitirdi|full|bitti|çözmüş|yapmış/)) status = 'done';
         else if (text.match(/verdim|verildi|atadım|ödev ver|çözecek/)) status = 'assigned';
         else if (text.match(/muaf|gerek yok|çözmesin/)) status = 'exempt';
 
-        // 2. ADIM: ÖĞRENCİ TESPİTİ
-        let bestStudent = null;
-        let targetClass = null;
-        for (const cls of classes) {
-            for (const std of (cls.students || [])) {
-                const sName = std.name.toLocaleLowerCase('tr-TR');
-                const [firstName] = sName.split(' ');
-                // Tam ismi veya sadece ilk ismi geçiyorsa yakala
-                if (text.includes(sName) || (firstName && firstName.length > 2 && text.includes(firstName))) {
-                    bestStudent = std;
-                    targetClass = cls;
-                    break;
-                }
-            }
-            if (bestStudent) break;
-        }
+        // Tembel aramayı önlemek ve Fuse'a temiz data vermek için tüm öğrencileri düz bir listeye alalım
+        const allStudents = classes.flatMap(cls => 
+            (cls.students || []).map(std => ({ ...std, classId: cls.id, className: cls.className, isVip: cls.type === 'vip' }))
+        );
 
-        if (!bestStudent) {
+        // 2. ADIM: FUSE.JS İLE ÖĞRENCİ TESPİTİ
+        // threshold: 0.4 demek %40 harf/yazım hatasına (typo) kadar tolere et demek.
+        const studentFuse = new Fuse(allStudents, { keys: ['name'], threshold: 0.4, includeScore: true });
+        const studentResults = studentFuse.search(text);
+        
+        const bestStudentMatch = studentResults.length > 0 ? studentResults[0].item : null;
+
+        if (!bestStudentMatch) {
             setFoundStudents([]); setSelectedStudent(null); setFoundTopics([]);
-            setJarvisFeedback("Söylediğiniz cümlede bir öğrenci ismi tespit edemedim.");
+            setJarvisFeedback("Cümlenizde eşleşen bir öğrenci kaydı bulamadım efendim.");
             return;
         }
 
-        // Öğrenci bulundu, ekrana yansıt
-        setFoundStudents([{ ...bestStudent, classId: targetClass.id, className: targetClass.className, isVip: targetClass.type === 'vip' }]);
-        setSelectedStudent({ ...bestStudent, classId: targetClass.id });
-        setFoundTopics(targetClass.topics || []);
+        // Öğrenciyi Ekrana Yansıt
+        setFoundStudents([bestStudentMatch]);
+        setSelectedStudent(bestStudentMatch);
+        const targetClass = classes.find(c => c.id === bestStudentMatch.classId);
+        const topics = targetClass?.topics || [];
+        setFoundTopics(topics);
 
-        // 3. ADIM: KONU TESPİTİ
-        let bestTopic = null;
-        for (const topic of (targetClass.topics || [])) {
-            const tName = topic.title.toLocaleLowerCase('tr-TR');
-            const mainWord = tName.split(' ')[0]; // Örn: "Türev Alma" -> "türev"
-            if (text.includes(tName) || (mainWord.length > 3 && text.includes(mainWord))) {
-                bestTopic = topic;
-                break;
-            }
-        }
+        // 3. ADIM: FUSE.JS İLE KONU TESPİTİ (Örn: "2. dereceden" = "2 derece" = "ikinci derece")
+        const topicFuse = new Fuse(topics, { 
+            keys: ['title'], 
+            threshold: 0.5, // Konu isimleri uzun olduğu için toleransı yüksek tutuyoruz
+            ignoreLocation: true 
+        });
+        const topicResults = topicFuse.search(text);
+        const bestTopic = topicResults.length > 0 ? topicResults[0].item : null;
 
-        // 4. ADIM: KAYNAK (SUB-COLUMN) TESPİTİ
+        // 4. ADIM: FUSE.JS İLE KAYNAK (SUB-COLUMN) TESPİTİ
         let bestCol = null;
         if (bestTopic) {
-            for (const col of (bestTopic.subColumns || [])) {
-                const cName = col.title.toLocaleLowerCase('tr-TR');
-                const matchNumber = cName.match(/\d+/); // Başlıktaki sayıyı bul (Örn: "Kaynak 1" -> "1")
-                // Eğer kaynak adı cümlede tam geçiyorsa veya ("kaynak" kelimesi + sayı) geçiyorsa yakala
-                if (text.includes(cName) || (matchNumber && text.includes(matchNumber[0]) && (text.includes('kaynak') || text.includes('test')))) {
-                    bestCol = col;
-                    break;
+            // Eğer "vdd" , "kaynak 1", "test 3" dersen direkt o kolonun içinde arayacak
+            const colFuse = new Fuse(bestTopic.subColumns || [], {
+                keys: ['title'],
+                threshold: 0.5,
+                ignoreLocation: true
+            });
+            const colResults = colFuse.search(text);
+            
+            // Eğer ismen tam bulamazsa ama cümlede sayı varsa, o sayılı kaynağı zorla bulmayı deneriz
+            if (colResults.length > 0) {
+                bestCol = colResults[0].item;
+            } else {
+                const matchNumber = text.match(/\d+/);
+                if (matchNumber) {
+                    bestCol = bestTopic.subColumns.find(c => c.title.includes(matchNumber[0]));
                 }
             }
         }
 
-        // 5. ADIM: J.A.R.V.I.S SONUÇ RAPORU VE OTOMATİK İŞARETLEME
-        if (bestStudent && bestTopic && bestCol && status) {
-            handleDraftGradeChange(bestStudent.id, bestCol.id, status);
+        // 5. ADIM: J.A.R.V.I.S SONUÇ RAPORU
+        if (bestStudentMatch && bestTopic && bestCol && status) {
+            handleDraftGradeChange(bestStudentMatch.id, bestCol.id, status);
             const statusLabels = { 'done': 'Yapıldı', 'missing': 'Eksik', 'assigned': 'Verildi', 'exempt': 'Muaf' };
-            setJarvisFeedback(`Tamamdır! ${bestStudent.name} öğrencisinin ${bestTopic.title} -> ${bestCol.title} ödevi "${statusLabels[status]}" olarak işaretlendi.`);
-        } else if (bestStudent && bestTopic && !bestCol) {
-            setJarvisFeedback(`${bestStudent.name} öğrencisi ve ${bestTopic.title} konusu bulundu ancak hangi kaynak olduğunu anlayamadım.`);
-        } else if (bestStudent && !bestTopic) {
-            setJarvisFeedback(`${bestStudent.name} bulundu, ancak hangi konu olduğunu anlayamadım.`);
-        } else if (bestStudent && bestTopic && bestCol && !status) {
-            setJarvisFeedback(`Ödev bulundu ancak durumu anlayamadım (Yaptı mı, eksik mi?).`);
+            setJarvisFeedback(`Tamamdır efendim! ${bestStudentMatch.name} - ${bestTopic.title} -> ${bestCol.title} "${statusLabels[status]}" olarak işaretlendi.`);
+        } else if (bestStudentMatch && bestTopic && !bestCol) {
+            setJarvisFeedback(`Öğrenci ve "${bestTopic.title}" konusu bulundu ancak hangi kaynak olduğunu anlayamadım.`);
+        } else if (bestStudentMatch && !bestTopic) {
+            setJarvisFeedback(`${bestStudentMatch.name} bulundu, ancak hangi konu olduğunu cümleden çıkaramadım.`);
+        } else if (bestStudentMatch && bestTopic && bestCol && !status) {
+            setJarvisFeedback(`Hedef bulundu ancak eylemi (yaptı/yapmadı) anlayamadım.`);
         } else {
-            setJarvisFeedback(`${bestStudent.name} profili ekrana getirildi.`);
+            setJarvisFeedback(`${bestStudentMatch.name} profili ekrana getirildi.`);
         }
     };
 
     // ------------------------------------------------------------------------
-    // 🎙️ MİKROFON VE DİNLEME YÖNETİMİ
+    // 🎙️ MİKROFON YÖNETİMİ
     // ------------------------------------------------------------------------
     const toggleListening = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -118,7 +122,7 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
         recognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript;
             setSpeechTranscript(transcript);
-            analyzeCommand(transcript); // NLP Motoruna gönder
+            analyzeCommand(transcript);
         };
         recognition.onerror = (event) => {
             setIsListening(false); setJarvisFeedback("Ses anlaşılamadı veya mikrofon engellendi.");
@@ -154,7 +158,7 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
 
         updateClassInDb({ ...targetClass, students: updatedStudents });
         setDraftGrades({}); setDraftNotes({});
-        setJarvisFeedback("Değişiklikler başarıyla veritabanına kaydedildi.");
+        setJarvisFeedback("Değişiklikler başarıyla veritabanına kaydedildi efendim.");
         setTimeout(() => onClose(), 1500);
     };
 
@@ -172,8 +176,8 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
                             <Zap className="text-brandPurple" size={24}/>
                         </div>
                         <div>
-                            <h3 className="font-black text-lg md:text-xl text-slate-800 tracking-tight">J.A.R.V.I.S <span className="text-xs text-brandPurple bg-purple-100 px-2 py-0.5 rounded-full ml-2">NLP AI</span></h3>
-                            <p className="text-xs text-slate-500 font-medium">Doğal Dil İşlemeli Akıllı Asistan</p>
+                            <h3 className="font-black text-lg md:text-xl text-slate-800 tracking-tight">J.A.R.V.I.S <span className="text-xs text-brandPurple bg-purple-100 px-2 py-0.5 rounded-full ml-2">FUSE.JS NLP</span></h3>
+                            <p className="text-xs text-slate-500 font-medium">Bulanık Arama Yapay Zekası</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="bg-white p-2 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all shadow-sm hover-lift"><X size={20}/></button>
@@ -195,8 +199,8 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
                             {speechTranscript ? (
                                 <div className="w-full text-center">
                                     <p className="text-sm font-medium text-slate-400 italic mb-2">"{speechTranscript}"</p>
-                                    <div className="bg-brandPurple/20 border border-brandPurple/30 text-purple-200 px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
-                                        <CheckCircle2 size={16} className="text-brandPurple"/> {jarvisFeedback}
+                                    <div className="bg-brandPurple/20 border border-brandPurple/30 text-purple-200 px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all">
+                                        <CheckCircle2 size={16} className="text-brandPurple shrink-0"/> <span className="leading-tight">{jarvisFeedback}</span>
                                     </div>
                                 </div>
                             ) : (
@@ -212,7 +216,7 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
                 {/* İÇERİK ALANI */}
                 <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-slate-50">
                     <div className="w-full md:w-1/3 border-r border-slate-200 bg-white overflow-y-auto p-4 flex flex-col gap-2 max-h-[30vh] md:max-h-none">
-                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Seçili Profil</div>
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Eşleşen Profil</div>
                         {foundStudents.map(student => {
                             const isSelected = selectedStudent?.id === student.id; 
                             return (
@@ -257,7 +261,7 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
                                                     <div key={col.id} className={`flex flex-col gap-3 p-4 rounded-2xl transition-all ${isChanged ? 'bg-purple-50/50 border-2 border-brandPurple shadow-md' : 'bg-slate-50 border-2 border-transparent'}`}>
                                                         <div className="text-sm font-bold text-slate-700 flex justify-between">
                                                             {col.title}
-                                                            {isChanged && <span className="text-[9px] bg-brandPurple text-white px-2 py-0.5 rounded-full animate-pulse">J.A.R.V.I.S TARAFINDAN İŞARETLENDİ</span>}
+                                                            {isChanged && <span className="text-[9px] bg-brandPurple text-white px-2 py-0.5 rounded-full animate-pulse">J.A.R.V.I.S ONAYI BEKLİYOR</span>}
                                                         </div>
                                                         <div className="grid grid-cols-4 gap-2">
                                                             {STATUS_OPTIONS.map(opt => ( 
@@ -281,7 +285,7 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
                         ) : ( 
                             <div className="flex flex-col h-full items-center justify-center text-slate-400 bg-white rounded-3xl border border-dashed border-slate-300 p-8 opacity-50">
                                 <Zap size={48} className="mb-4" />
-                                <p className="text-sm font-bold">J.A.R.V.I.S Sizi Dinliyor</p>
+                                <p className="text-sm font-bold">Analiz Bekleniyor...</p>
                             </div> 
                         )}
                     </div>
@@ -293,7 +297,7 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
                         {Object.keys(draftGrades).length > 0 || Object.keys(draftNotes).length > 0 ? ( 
                             <span className="text-brandPurple bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-200 flex items-center justify-center md:justify-start gap-1.5"><AlertTriangle size={14}/> Onay bekleyen J.A.R.V.I.S işlemleri var</span> 
                         ) : ( 
-                            <span className="text-slate-400">Veritabanı güncel</span> 
+                            <span className="text-slate-400">Değişiklik yapılmadı</span> 
                         )}
                     </div>
                     <div className="flex gap-3 w-full md:w-auto">
