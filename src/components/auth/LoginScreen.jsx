@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GraduationCap, User, Crown, Briefcase, ChevronRight, ChevronLeft, Download, Share, Plus, X } from 'lucide-react';
+import { GraduationCap, User, Crown, Briefcase, ChevronRight, ChevronLeft } from 'lucide-react';
 
 const CanvasStarfield = () => {
     const canvasRef = useRef(null);
@@ -40,25 +40,6 @@ const LoginScreen = ({ onStudentLogin, onTeacherLogin }) => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [pin, setPin] = useState("");
-    const [deferredPrompt, setDeferredPrompt] = useState(null);
-    const [isIos, setIsIos] = useState(false);
-    const [isStandalone, setIsStandalone] = useState(false);
-    const [showIosInstallModal, setShowIosInstallModal] = useState(false);
-
-    useEffect(() => {
-        const userAgent = window.navigator.userAgent.toLowerCase(); setIsIos(/iphone|ipad|ipod/.test(userAgent));
-        setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true);
-        const handleBeforeInstallPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); };
-        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-        window.addEventListener('appinstalled', () => { setDeferredPrompt(null); setIsStandalone(true); });
-        return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    }, []);
-
-    const handleInstallClick = async () => {
-        if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') setDeferredPrompt(null); } 
-        else if (isIos) { setShowIosInstallModal(true); } 
-        else { alert("Uygulama zaten yüklü veya tarayıcınız bu özelliği desteklemiyor."); }
-    };
 
     const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.1 } } };
     const itemVariants = { hidden: { opacity: 0, y: 20, scale: 0.95 }, show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 300, damping: 24 } } };
@@ -81,10 +62,6 @@ const LoginScreen = ({ onStudentLogin, onTeacherLogin }) => {
                             <motion.button variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.97 }} onClick={() => setAuthView('vip-login')} className="lbtn lbtn-v w-full max-w-[360px]"><VipParticles /><div className="liw liw-v"><Crown color="#ffd700" size={18}/></div><div className="lbl"><div className="ltv">Özel Ders</div><div className="lsv">Özel ders öğrenci girişi</div></div><ChevronRight className="lch lch-v" size={16}/></motion.button>
                             <motion.div variants={itemVariants} className="ldivline w-full max-w-[360px]"><div className="ldl"></div><div className="ldt">YÖNETİM</div><div className="ldl"></div></motion.div>
                             <motion.button variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.97 }} onClick={() => setAuthView('teacher-login')} className="lbtn lbtn-a w-full max-w-[360px]"><div className="liw liw-a"><Briefcase color="#60a5fa" size={18}/></div><div className="lbl"><div className="lts">Yönetici Girişi</div><div className="lss">Öğretmen paneli</div></div><ChevronRight className="lch" size={16}/></motion.button>
-
-                            {!isStandalone && (deferredPrompt || isIos) && (
-                                <motion.button variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.97 }} onClick={handleInstallClick} className="lbtn w-full max-w-[360px]" style={{marginTop: '10px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)'}}><div className="liw" style={{background: 'rgba(16, 185, 129, 0.25)'}}><Download color="#10b981" size={18}/></div><div className="lbl"><div className="lts" style={{color: '#10b981'}}>Mobil Uygulamayı İndir</div><div className="lss" style={{color: 'rgba(16, 185, 129, 0.8)'}}>Ana ekrana kısayol ekle</div></div><ChevronRight className="lch" style={{color: '#10b981'}} size={16}/></motion.button>
-                            )}
                             <motion.div variants={itemVariants} className="lquote"><span className="lqm">"</span> Eğitim, dünyayı değiştirmek için en güçlü silahtır. <span className="lqm">"</span></motion.div>
                         </motion.div>
                     )}
@@ -98,12 +75,12 @@ const LoginScreen = ({ onStudentLogin, onTeacherLogin }) => {
                                 
                                 <div className="login-input-group">
                                     <label className="login-label" style={{color: authView === 'vip-login' ? '#e6c27a' : '#94a3b8'}}>Kullanıcı Adı</label>
-                                    <input type="text" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} placeholder="Kullanıcı Adınız" value={username} onChange={e => setUsername(e.target.value)} />
+                                    <input type="text" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} placeholder="Kullanıcı Adınız" value={username} onChange={e => setUsername(e.target.value)} autoCapitalize="none" autoCorrect="off" spellCheck="false" autoComplete="off" />
                                 </div>
                                 
                                 <div className="login-input-group" style={{marginTop: '20px'}}>
                                     <label className="login-label" style={{color: authView === 'vip-login' ? '#e6c27a' : '#94a3b8'}}>Şifre</label>
-                                    <input type="password" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} style={{letterSpacing: '0.3em', fontSize: '18px'}} placeholder="••••••" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && onStudentLogin(username, password, authView === 'vip-login')} />
+                                    <input type="password" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} style={{letterSpacing: '0.3em', fontSize: '18px'}} placeholder="••••••" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && onStudentLogin(username, password, authView === 'vip-login')} autoCapitalize="none" autoCorrect="off" spellCheck="false" />
                                 </div>
                                 
                                 <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }} onClick={() => onStudentLogin(username, password, authView === 'vip-login')} className={`lbtn w-full flex items-center justify-center rounded-xl transition-all ${authView === 'vip-login' ? 'real-gold-bg' : 'bg-brandPurple hover:bg-purple-600 shadow-glow'}`} style={{marginTop: '28px', padding: '16px', border: 'none'}}><span style={{color: authView === 'vip-login' ? '#111111' : '#ffffff', fontSize: '16px', fontWeight: '900', letterSpacing: '0.05em'}}>GİRİŞ YAP</span></motion.button>
@@ -120,7 +97,7 @@ const LoginScreen = ({ onStudentLogin, onTeacherLogin }) => {
 
                                 <div className="login-input-group">
                                     <label className="login-label">Yönetici PIN Kodu</label>
-                                    <input type="password" autoFocus className="login-input" style={{textAlign: 'center', fontSize: '24px', letterSpacing: '0.5em', padding: '16px'}} placeholder="••••" value={pin} onChange={e => setPin(e.target.value)} onKeyDown={e => e.key === 'Enter' && onTeacherLogin(pin)} />
+                                    <input type="password" inputMode="numeric" pattern="[0-9]*" autoFocus className="login-input" style={{textAlign: 'center', fontSize: '24px', letterSpacing: '0.5em', padding: '16px'}} placeholder="••••" value={pin} onChange={e => setPin(e.target.value)} onKeyDown={e => e.key === 'Enter' && onTeacherLogin(pin)} />
                                 </div>
                                 
                                 <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }} onClick={() => onTeacherLogin(pin)} className="lbtn lbtn-a w-full flex items-center justify-center rounded-xl" style={{marginTop: '28px', padding: '16px', background: 'rgba(96,165,250,0.15)', border: '1px solid rgba(96,165,250,0.3)'}}><span style={{color: '#60a5fa', fontSize: '16px', fontWeight: '900'}}>SİSTEME GİR</span></motion.button>
@@ -129,31 +106,6 @@ const LoginScreen = ({ onStudentLogin, onTeacherLogin }) => {
                     )}
                 </AnimatePresence>
             </motion.div>
-
-            <AnimatePresence>
-                {showIosInstallModal && (
-                    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" style={{position:'fixed', top:0, left:0, width:'100%', height:'100%'}}>
-                        <motion.div initial={{ opacity: 0, scale: 0.9, y: 50 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 50 }} className="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative text-center">
-                            <button onClick={() => setShowIosInstallModal(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:bg-slate-800 rounded-full transition-colors"><X size={20}/></button>
-                            <div className="bg-emerald-500/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-400 shadow-sm border border-emerald-500/30"><Download size={32} /></div>
-                            <h3 className="text-xl font-black text-white mb-2">Uygulamayı Telefona Kur</h3>
-                            <p className="text-sm text-slate-400 mb-6 leading-relaxed">iPhone (iOS) güvenliği sebebiyle uygulamayı tek tıkla yükleyemiyoruz. Lütfen şu 2 adımı izleyin:</p>
-                            
-                            <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 text-left space-y-4">
-                                <div className="flex items-start gap-3">
-                                    <div className="bg-slate-700 p-2 rounded-xl border border-slate-600 shadow-sm text-blue-400 shrink-0"><Share size={20}/></div>
-                                    <div><p className="text-sm font-bold text-slate-200">Adım 1</p><p className="text-xs text-slate-400 mt-1">Ekranın en altındaki Safari menüsünden <b>"Paylaş"</b> ikonuna dokunun.</p></div>
-                                </div>
-                                <div className="flex items-start gap-3">
-                                    <div className="bg-slate-700 p-2 rounded-xl border border-slate-600 shadow-sm text-slate-200 shrink-0"><Plus size={20}/></div>
-                                    <div><p className="text-sm font-bold text-slate-200">Adım 2</p><p className="text-xs text-slate-400 mt-1">Açılan menüyü aşağı kaydırıp <b>"Ana Ekrana Ekle"</b> seçeneğini seçin.</p></div>
-                                </div>
-                            </div>
-                            <button onClick={() => setShowIosInstallModal(false)} className="mt-6 w-full py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-md transition-colors">Anladım</button>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
         </div>
     );
 };
