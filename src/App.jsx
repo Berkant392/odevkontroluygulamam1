@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, GraduationCap, Library, Settings, LogOut, Mic, X, Megaphone, Edit3, Pencil, Trash2 } from 'lucide-react';
+import { ChevronLeft, GraduationCap, Library, Settings, LogOut, Mic, X, Megaphone, Edit3, Pencil, Trash2, Plus } from 'lucide-react';
 
 // PDF KÜTÜPHANELERİ
 import jsPDF from 'jspdf';
@@ -24,24 +24,13 @@ import LibraryModal from './components/modals/LibraryModal';
 import CountdownTimer from './components/ui/Countdown'; 
 import JarvisModal from './components/assistant/JarvisModal'; 
 
-// 🔥 MOBİL KLAVYE KORUMASI
-const makeSafe = (str) => {
-    if (!str) return "";
-    return String(str).trim()
-        .replace(/I/g, 'i').replace(/ı/g, 'i').replace(/İ/g, 'i')
-        .replace(/ğ/g, 'g').replace(/Ğ/g, 'g')
-        .replace(/ü/g, 'u').replace(/Ü/g, 'u')
-        .replace(/ş/g, 's').replace(/Ş/g, 's')
-        .replace(/ö/g, 'o').replace(/Ö/g, 'o')
-        .replace(/ç/g, 'c').replace(/Ç/g, 'c')
-        .toLowerCase();
-};
-
 const App = () => {
+    // 🔥 FİREBASE YÜKLENME KALKANI
     const [isClassesLoaded, setIsClassesLoaded] = useState(false);
     const [isConfigLoaded, setIsConfigLoaded] = useState(false);
     const isFirebaseLoaded = isClassesLoaded && isConfigLoaded;
 
+    // 🔥 KALICI OTURUM KONTROLÜ
     const [isRestoring, setIsRestoring] = useState(!!localStorage.getItem('berkantHocaSession'));
 
     const [classes, setClasses] = useState([]);
@@ -64,7 +53,7 @@ const App = () => {
         window.addEventListener('resize', handleResize); 
         return () => window.removeEventListener('resize', handleResize); 
     }, []);
-
+    
     const [newStudentName, setNewStudentName] = useState("");
     const [modalType, setModalType] = useState(null); 
     const [modalData, setModalData] = useState(null);
@@ -109,7 +98,7 @@ const App = () => {
         return () => { unsubClasses(); unsubLibrary(); unsubConfig(); };
     }, []);
 
-    // 🚀 OTOMATİK GİRİŞ (AUTO-LOGIN) MOTORU 
+    // 🚀 OTOMATİK GİRİŞ (AUTO-LOGIN) MOTORU
     useEffect(() => {
         if (isFirebaseLoaded && !currentUserRole) {
             const sessionStr = localStorage.getItem('berkantHocaSession');
@@ -125,9 +114,8 @@ const App = () => {
                     } else if (session.role === 'student' || session.role === 'vip-student') {
                         const classesToSearch = session.role === 'vip-student' ? vipClasses : regularClasses;
                         let foundStudent = null, foundClass = null;
-                        const safeSessionUser = makeSafe(session.username);
                         for (const cls of classesToSearch) {
-                            const std = cls.students?.find(s => s.username && makeSafe(s.username) === safeSessionUser && s.password === session.password);
+                            const std = cls.students?.find(s => s.username === session.username && s.password === session.password);
                             if (std) { foundStudent = std; foundClass = cls; break; }
                         }
                         if (foundStudent) {
@@ -163,7 +151,7 @@ const App = () => {
         } 
     };
 
-    // 🚀 ÖĞRENCİ GİRİŞİ
+    // 🚀 ÖĞRENCİ GİRİŞİ 
     const handleStudentLogin = async (username, password, isVipLogin = false) => {
         let currentClasses = classes;
         
@@ -179,13 +167,13 @@ const App = () => {
         const vipClassesList = currentClasses.filter(c => c.type === 'vip');
         const classesToSearch = isVipLogin ? vipClassesList : regularClassesList;
         
-        const safeUsername = makeSafe(username); 
+        const safeUsername = username.trim(); 
         const safePassword = password.trim();
 
         let foundStudent = null, foundClass = null;
 
         for (const cls of classesToSearch) { 
-            const std = cls.students?.find(s => s.username && makeSafe(s.username) === safeUsername && s.password.trim() === safePassword); 
+            const std = cls.students?.find(s => s.username === safeUsername && s.password === safePassword); 
             if (std) { foundStudent = std; foundClass = cls; break; } 
         }
 
