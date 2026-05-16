@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Zap, X, MicOff, Crown, Calendar, StickyNote, AlertTriangle, Save, User, Mic, TerminalSquare, CheckCircle2 } from 'lucide-react';
 import { STATUS_OPTIONS } from '../../utils/constants';
 import { formatDate } from '../../utils/helpers';
-import Fuse from 'fuse.js'; // 🧠 YENİ YAPAY ZEKA ARAMA MOTORUMUZ
+import Fuse from 'fuse.js';
 
 const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
     const [isListening, setIsListening] = useState(false);
@@ -17,70 +17,89 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
     const [draftNotes, setDraftNotes] = useState({});
 
     // ------------------------------------------------------------------------
-    // 🧠 J.A.R.V.I.S FUSE.JS (BULANIK MANTIK) NLP MOTORU
+    // 🧠 J.A.R.V.I.S NLP (NİYET OKUMA VE BULANIK ARAMA) MOTORU
     // ------------------------------------------------------------------------
     const analyzeCommand = (transcript) => {
         const text = transcript.toLocaleLowerCase('tr-TR');
         
-        // 1. ADIM: NİYET (INTENT) TESPİTİ - (Regex burada hala en iyisidir)
+        // 1. ADIM: NİYET (INTENT) TESPİTİ
         let status = null;
         if (text.match(/çözmemiş|yapmamış|yapmadı|eksik|boş|yok/)) status = 'missing';
         else if (text.match(/çözdü|yaptı|tamamladı|bitirdi|full|bitti|çözmüş|yapmış/)) status = 'done';
         else if (text.match(/verdim|verildi|atadım|ödev ver|çözecek/)) status = 'assigned';
         else if (text.match(/muaf|gerek yok|çözmesin/)) status = 'exempt';
 
-        // Tembel aramayı önlemek ve Fuse'a temiz data vermek için tüm öğrencileri düz bir listeye alalım
         const allStudents = classes.flatMap(cls => 
             (cls.students || []).map(std => ({ ...std, classId: cls.id, className: cls.className, isVip: cls.type === 'vip' }))
         );
 
-        // 2. ADIM: FUSE.JS İLE ÖĞRENCİ TESPİTİ
-        // threshold: 0.4 demek %40 harf/yazım hatasına (typo) kadar tolere et demek.
-        const studentFuse = new Fuse(allStudents, { keys: ['name'], threshold: 0.4, includeScore: true });
-        const studentResults = studentFuse.search(text);
+        // 2. ADIM: ÖĞRENCİ TESPİTİ (Önce tam eşleşme, sonra parçalı bulanık arama)
+        let bestStudentMatch = null;
+        bestStudentMatch = allStudents.find(std => text.includes(std.name.toLocaleLowerCase('tr-TR')));
         
-        const bestStudentMatch = studentResults.length > 0 ? studentResults[0].item : null;
+        if (!bestStudentMatch) {
+            const studentFuse = new Fuse(allStudents, { keys: ['name'], threshold: 0.3 });
+            const words = text.split(' ');
+            for (let i = 0; i < words.length; i++) {
+                const wordPair = words.slice(i, i + 2).join(' '); // Cümleyi ikili gruplara böl
+                const res = studentFuse.search(wordPair);
+                if (res.length > 0) { bestStudentMatch = res[0].item; break; }
+            }
+        }
 
         if (!bestStudentMatch) {
             setFoundStudents([]); setSelectedStudent(null); setFoundTopics([]);
-            setJarvisFeedback("Cümlenizde eşleşen bir öğrenci kaydı bulamadım efendim.");
+            setJarvisFeedback("Cümlenizde kayıtlı bir öğrenci ismi bulamadım efendim.");
             return;
         }
 
-        // Öğrenciyi Ekrana Yansıt
+        // Öğrenci Bulundu!
         setFoundStudents([bestStudentMatch]);
         setSelectedStudent(bestStudentMatch);
         const targetClass = classes.find(c => c.id === bestStudentMatch.classId);
         const topics = targetClass?.topics || [];
         setFoundTopics(topics);
 
-        // 3. ADIM: FUSE.JS İLE KONU TESPİTİ (Örn: "2. dereceden" = "2 derece" = "ikinci derece")
-        const topicFuse = new Fuse(topics, { 
-            keys: ['title'], 
-            threshold: 0.5, // Konu isimleri uzun olduğu için toleransı yüksek tutuyoruz
-            ignoreLocation: true 
-        });
-        const topicResults = topicFuse.search(text);
-        const bestTopic = topicResults.length > 0 ? topicResults[0].item : null;
+        // 3. ADIM: KONU TESPİTİ (Önce tam, sonra parçalı Fuse.js)
+        let bestTopic = null;
+        bestTopic = topics.find(t => text.includes(t.title.toLocaleLowerCase('tr-TR')));
+        
+        if (!bestTopic) {
+            const topicFuse = new Fuse(topics, { keys: ['title'], threshold: 0.4 });
+            const words = text.split(' ');
+            for (let i = 0; i < words.length; i++) {
+                const gram3 = words.slice(i, i + 3).join(' '); // Üçlü kelime grupları (Örn: 2 dereceden denklemler)
+                const res3 = topicFuse.search(gram3);
+                if (res3.length > 0) { bestTopic = res3[0].item; break; }
+            }
+        }
 
-        // 4. ADIM: FUSE.JS İLE KAYNAK (SUB-COLUMN) TESPİTİ
+        // 4. ADIM: KAYNAK (SUB-COLUMN) TESPİTİ
         let bestCol = null;
         if (bestTopic) {
-            // Eğer "vdd" , "kaynak 1", "test 3" dersen direkt o kolonun içinde arayacak
-            const colFuse = new Fuse(bestTopic.subColumns || [], {
-                keys: ['title'],
-                threshold: 0.5,
-                ignoreLocation: true
-            });
-            const colResults = colFuse.search(text);
+            // A) Tam İsim
+            bestCol = bestTopic.subColumns.find(c => text.includes(c.title.toLocaleLowerCase('tr-TR')));
             
-            // Eğer ismen tam bulamazsa ama cümlede sayı varsa, o sayılı kaynağı zorla bulmayı deneriz
-            if (colResults.length > 0) {
-                bestCol = colResults[0].item;
-            } else {
-                const matchNumber = text.match(/\d+/);
-                if (matchNumber) {
-                    bestCol = bestTopic.subColumns.find(c => c.title.includes(matchNumber[0]));
+            // B) Cümledeki rakamları yakalayıp eşleştirme
+            if (!bestCol) {
+                const textNumbers = text.match(/\d+/g) || [];
+                for (const col of bestTopic.subColumns) {
+                    const colNumbers = col.title.match(/\d+/g) || [];
+                    if (colNumbers.length > 0 && colNumbers.some(n => textNumbers.includes(n))) {
+                        bestCol = col;
+                        break;
+                    }
+                }
+            }
+
+            // C) Son çare bulanık arama
+            if (!bestCol) {
+                const colFuse = new Fuse(bestTopic.subColumns, { keys: ['title'], threshold: 0.4 });
+                const words = text.split(' ');
+                for (let i = 0; i < words.length; i++) {
+                    const gram2 = words.slice(i, i + 2).join(' ');
+                    const res = colFuse.search(gram2);
+                    if (res.length > 0) { bestCol = res[0].item; break; }
                 }
             }
         }
