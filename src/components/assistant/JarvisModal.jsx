@@ -15,6 +15,9 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
     const [draftGrades, setDraftGrades] = useState({});
     const [draftNotes, setDraftNotes] = useState({});
 
+    // EKRANA YENİLERİ ÜSTTE ÇİZMEK İÇİN TERSİNE ÇEVİRİYORUZ
+    const reversedFoundTopics = [...foundTopics].reverse();
+
     const analyzeCommand = (transcript) => {
         const text = transcript.toLocaleLowerCase('tr-TR');
         let status = null;
@@ -136,7 +139,7 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
                         {selectedStudent ? (
                             <div className="space-y-6">
                                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex justify-between"><span>Ödevler</span>{selectedStudent.isVip && <span className="text-vipGoldAccent font-bold">Özel Ders</span>}</div>
-                                {foundTopics.map(topic => (
+                                {reversedFoundTopics.map(topic => (
                                     <div key={topic.id} className={`bg-white rounded-3xl border ${selectedStudent.isVip ? 'border-yellow-200' : 'border-slate-200'} p-5 shadow-sm`}>
                                         <h4 className="font-black text-slate-800 text-lg mb-4 border-b border-slate-100 pb-3 flex items-center gap-2 justify-between"><div className="flex items-center gap-2"><div className={`w-2 h-6 ${selectedStudent.isVip ? 'bg-vipGoldAccent' : 'bg-brandPurple'} rounded-full`}></div>{topic.title}</div>{topic.date && <span className="text-xs text-slate-400 font-medium flex items-center gap-1"><Calendar size={12}/>{formatDate(topic.date)}</span>}</h4>
                                         <div className="space-y-4">
@@ -157,6 +160,7 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
                                         </div>
                                     </div>
                                 ))}
+                                {reversedFoundTopics.length === 0 && <div className="text-xs text-slate-400 text-center py-8 bg-white rounded-2xl border border-slate-200">Konu bulunamadı.</div>}
                             </div>
                         ) : ( <div className="flex flex-col h-full items-center justify-center text-slate-400 bg-white rounded-3xl border border-dashed border-slate-300 p-8 opacity-50"><Zap size={48} className="mb-4" /><p className="text-sm font-bold">Analiz Bekleniyor...</p></div> )}
                     </div>
