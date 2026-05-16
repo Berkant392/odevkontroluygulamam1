@@ -7,28 +7,70 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, 
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// --- SÜRÜKLENEBİLİR KONU (TOPIC) BİLEŞENİ ---
-const SortableTopicItem = ({ topic, isTeacherMode, isVip, tProgress, editingTopicId, editVal, setEditVal, saveEditTopic, toggleTopic, startEditTopic, deleteTopic, saveToLibrary, editingSubTopicId, saveEditSub, toggleSubTopic, startEditSub, deleteSubTopic, newSubTopicTitles, setNewSubTopicTitles, addSubTopic }) => {
-    
-    // Sortable Hook'u (Bu bloğu sürüklenebilir yapar)
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: topic.id, disabled: !isTeacherMode });
+// --- SÜRÜKLENEBİLİR ALT KONU (SUB-TOPIC) BİLEŞENİ (YENİ EKLENDİ) ---
+const SortableSubTopicItem = ({ sub, topicId, isTeacherMode, isVip, isEditingThisSub, editVal, setEditVal, saveEditSub, toggleSubTopic, startEditSub, deleteSubTopic }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sub.id, disabled: !isTeacherMode });
     
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
         zIndex: isDragging ? 50 : 1,
+        opacity: isDragging ? 0.8 : 1,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className={`flex items-center gap-3 group/sub relative p-1.5 rounded-lg transition-colors ${isDragging ? 'bg-slate-100 shadow border border-brandPurple/30' : 'hover:bg-slate-50'}`}>
+            {isTeacherMode && (
+                <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-brandPurple p-1 rounded-md transition-colors flex-shrink-0 touch-none">
+                    <GripVertical size={16} />
+                </div>
+            )}
+            <button onClick={() => toggleSubTopic(topicId, sub.id)} className={`flex-shrink-0 transition-colors ${sub.isCompleted ? (isVip ? 'text-vipGold' : 'text-brandPurple') : (isVip ? 'text-slate-400 hover:text-vipGold' : 'text-slate-400 hover:text-brandPurple')} ${!isTeacherMode && 'cursor-default pointer-events-none'}`}>
+                {sub.isCompleted ? <CheckSquare size={20} strokeWidth={2.5} /> : <Square size={20} strokeWidth={2.5} />}
+            </button>
+            
+            <div className="flex-1 flex items-center justify-between">
+                {isEditingThisSub ? (
+                    <div className="flex items-center gap-2 w-full max-w-sm">
+                        <input type="text" autoFocus className="flex-1 bg-white border border-brandPurple rounded-lg px-3 py-1.5 text-base font-bold text-slate-800 outline-none shadow-sm" value={editVal} onChange={e => setEditVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveEditSub(topicId, sub.id)} />
+                        <button onClick={() => saveEditSub(topicId, sub.id)} className="p-1.5 bg-successGreen text-white rounded-lg hover:bg-green-600 transition-colors"><Check size={16}/></button>
+                    </div>
+                ) : (
+                    <span className={`text-lg font-bold transition-all ${sub.isCompleted ? (isVip ? 'text-slate-500 line-through' : 'text-slate-400/50 line-through') : (isVip ? 'text-slate-300' : 'text-slate-600')}`}>
+                        {sub.title}
+                    </span>
+                )}
+                
+                {isTeacherMode && !isEditingThisSub && (
+                    <div className="opacity-0 group-hover/sub:opacity-100 flex items-center gap-1 transition-all">
+                        <button onClick={() => startEditSub(sub.id, sub.title)} className="p-1.5 text-slate-300 hover:text-brandPurple transition-colors"><Pencil size={16}/></button>
+                        <button onClick={() => deleteSubTopic(topicId, sub.id)} className="p-1.5 text-slate-300 hover:text-errorRed transition-colors"><Trash2 size={16}/></button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// --- SÜRÜKLENEBİLİR ANA KONU (TOPIC) BİLEŞENİ ---
+const SortableTopicItem = ({ topic, isTeacherMode, isVip, tProgress, editingTopicId, editVal, setEditVal, saveEditTopic, toggleTopic, startEditTopic, deleteTopic, saveToLibrary, editingSubTopicId, saveEditSub, toggleSubTopic, startEditSub, deleteSubTopic, newSubTopicTitles, setNewSubTopicTitles, addSubTopic }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: topic.id, disabled: !isTeacherMode });
+    
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 40 : 1,
         opacity: isDragging ? 0.6 : 1,
     };
 
     const isEditingThisTopic = editingTopicId === topic.id;
 
     return (
-        <div ref={setNodeRef} style={style} className={`flex flex-col group/topic relative p-2 rounded-xl transition-colors ${isDragging ? 'bg-slate-100/50 shadow-lg border border-brandPurple/30' : 'bg-transparent border border-transparent'}`}>
+        <div ref={setNodeRef} style={style} className={`flex flex-col group/topic relative p-3 rounded-xl transition-colors ${isDragging ? 'bg-slate-100/80 shadow-xl border border-brandPurple/40' : 'bg-transparent border border-transparent'}`}>
             
             <div className="flex items-start gap-3">
-                {/* SÜRÜKLEME KULPU (SADECE ÖĞRETMENE GÖRÜNÜR) */}
                 {isTeacherMode && (
-                    <div {...attributes} {...listeners} className="mt-1 cursor-grab active:cursor-grabbing text-slate-300 hover:text-brandPurple p-1 rounded-md transition-colors opacity-0 group-hover/topic:opacity-100 flex-shrink-0">
+                    <div {...attributes} {...listeners} className="mt-1 cursor-grab active:cursor-grabbing text-slate-300 hover:text-brandPurple p-1 rounded-md transition-colors flex-shrink-0 touch-none">
                         <GripVertical size={20} />
                     </div>
                 )}
@@ -65,39 +107,29 @@ const SortableTopicItem = ({ topic, isTeacherMode, isVip, tProgress, editingTopi
                 </div>
             </div>
 
-            <div className={`pl-11 mt-3 space-y-3 ${isTeacherMode ? 'ml-8' : ''}`}>
-                {topic.subTopics?.map(sub => {
-                    const isEditingThisSub = editingSubTopicId === sub.id;
-                    return (
-                        <div key={sub.id} className="flex items-center gap-3 group/sub hover-lift">
-                            <button onClick={() => toggleSubTopic(topic.id, sub.id)} className={`flex-shrink-0 transition-colors ${sub.isCompleted ? (isVip ? 'text-vipGold' : 'text-brandPurple') : (isVip ? 'text-slate-400 hover:text-vipGold' : 'text-slate-400 hover:text-brandPurple')} ${!isTeacherMode && 'cursor-default pointer-events-none'}`}>
-                                {sub.isCompleted ? <CheckSquare size={20} strokeWidth={2.5} /> : <Square size={20} strokeWidth={2.5} />}
-                            </button>
-                            
-                            <div className="flex-1 flex items-center justify-between">
-                                {isEditingThisSub ? (
-                                    <div className="flex items-center gap-2 w-full max-w-sm">
-                                        <input type="text" autoFocus className="flex-1 bg-white border border-brandPurple rounded-lg px-3 py-1.5 text-base font-bold text-slate-800 outline-none shadow-sm" value={editVal} onChange={e => setEditVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveEditSub(topic.id, sub.id)} />
-                                        <button onClick={() => saveEditSub(topic.id, sub.id)} className="p-1.5 bg-successGreen text-white rounded-lg hover:bg-green-600 transition-colors"><Check size={16}/></button>
-                                    </div>
-                                ) : (
-                                    <span className={`text-lg font-bold transition-all ${sub.isCompleted ? (isVip ? 'text-slate-500 line-through' : 'text-slate-400/50 line-through') : (isVip ? 'text-slate-300' : 'text-slate-600')}`}>
-                                        {sub.title}
-                                    </span>
-                                )}
-                                
-                                {isTeacherMode && !isEditingThisSub && (
-                                    <div className="opacity-0 group-hover/sub:opacity-100 flex items-center gap-1 transition-all">
-                                        <button onClick={() => startEditSub(sub.id, sub.title)} className="p-1.5 text-slate-300 hover:text-brandPurple transition-colors"><Pencil size={16}/></button>
-                                        <button onClick={() => deleteSubTopic(topic.id, sub.id)} className="p-1.5 text-slate-300 hover:text-errorRed transition-colors"><Trash2 size={16}/></button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })}
+            <div className={`pl-11 mt-3 space-y-1 ${isTeacherMode ? 'ml-8' : ''}`}>
+                {/* ALT BAŞLIKLAR İÇİN İKİNCİ BİR SORTABLE CONTEXT YARATIYORUZ */}
+                <SortableContext items={(topic.subTopics || []).map(st => st.id)} strategy={verticalListSortingStrategy}>
+                    {topic.subTopics?.map(sub => (
+                        <SortableSubTopicItem
+                            key={sub.id}
+                            sub={sub}
+                            topicId={topic.id}
+                            isTeacherMode={isTeacherMode}
+                            isVip={isVip}
+                            isEditingThisSub={editingSubTopicId === sub.id}
+                            editVal={editVal}
+                            setEditVal={setEditVal}
+                            saveEditSub={saveEditSub}
+                            toggleSubTopic={toggleSubTopic}
+                            startEditSub={startEditSub}
+                            deleteSubTopic={deleteSubTopic}
+                        />
+                    ))}
+                </SortableContext>
+                
                 {isTeacherMode && (
-                    <div className="flex items-center gap-3 mt-2 opacity-50 focus-within:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-3 mt-3 opacity-50 focus-within:opacity-100 transition-opacity">
                         <CornerDownRight size={20} className="text-slate-400" />
                         <input type="text" placeholder="Alt başlık ekle..." className="flex-1 bg-transparent border-none text-base font-bold text-slate-600 focus:outline-none focus:ring-0 placeholder:text-slate-400" value={newSubTopicTitles[topic.id] || ""} onChange={e => setNewSubTopicTitles(p => ({...p, [topic.id]: e.target.value}))} onKeyDown={e => e.key==='Enter' && addSubTopic(topic.id)}/>
                     </div>
@@ -112,32 +144,50 @@ const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode, libraryItems =
     const [newTopicTitle, setNewTopicTitle] = useState("");
     const [newSubTopicTitles, setNewSubTopicTitles] = useState({});
     
-    // Düzenleme (Edit) State'leri
     const [editingTopicId, setEditingTopicId] = useState(null);
     const [editingSubTopicId, setEditingSubTopicId] = useState(null);
     const [editVal, setEditVal] = useState("");
 
-    // Kütüphane Modal State'i
     const [showLibModal, setShowLibModal] = useState(false);
 
     const curriculum = cls.curriculum || [];
     const isVip = cls.type === 'vip' && !isTeacherMode;
 
-    // SÜRÜKLE BIRAK SENSÖRLERİ (Mouse ve Dokunmatik Ekran İçin)
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-        useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
-    // SÜRÜKLEME BİTTİĞİNDE VERİTABANINI GÜNCELLE
+    // ZEKİ SÜRÜKLEME SONLANDIRICI (Ana Başlık mı Sürüklendi Alt Başlık mı?)
     const handleDragEnd = (event) => {
         const { active, over } = event;
-        if (active.id !== over?.id) {
+        if (!over || active.id === over.id) return;
+
+        // EĞER ANA BAŞLIK SÜRÜKLENDİYSE
+        if (String(active.id).startsWith('curr_') && String(over.id).startsWith('curr_')) {
             const oldIndex = curriculum.findIndex((item) => item.id === active.id);
             const newIndex = curriculum.findIndex((item) => item.id === over.id);
             const newCurriculum = arrayMove(curriculum, oldIndex, newIndex);
             updateClassInDb({ ...cls, curriculum: newCurriculum });
+        } 
+        // EĞER ALT BAŞLIK SÜRÜKLENDİYSE
+        else if (String(active.id).startsWith('sub_') && String(over.id).startsWith('sub_')) {
+            // Sürüklenen alt başlığın hangi ana başlığa ait olduğunu bul
+            let parentTopicIndex = curriculum.findIndex(t => t.subTopics?.some(st => st.id === active.id));
+            if (parentTopicIndex !== -1) {
+                const parentTopic = curriculum[parentTopicIndex];
+                const oldIndex = parentTopic.subTopics.findIndex(st => st.id === active.id);
+                const newIndex = parentTopic.subTopics.findIndex(st => st.id === over.id);
+                
+                // Eğer ikisi de aynı ana başlığın altındaysa sıralamayı yap
+                if (oldIndex !== -1 && newIndex !== -1) {
+                    const newSubTopics = arrayMove(parentTopic.subTopics, oldIndex, newIndex);
+                    const newCurriculum = [...curriculum];
+                    newCurriculum[parentTopicIndex] = { ...parentTopic, subTopics: newSubTopics };
+                    updateClassInDb({ ...cls, curriculum: newCurriculum });
+                }
+            }
         }
     };
 
@@ -162,7 +212,6 @@ const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode, libraryItems =
     const deleteTopic = (topicId) => updateClassInDb({ ...cls, curriculum: curriculum.filter(t => t.id !== topicId) });
     const deleteSubTopic = (topicId, subTopicId) => { const updated = curriculum.map(t => { if(t.id === topicId) return { ...t, subTopics: (t.subTopics || []).filter(st => st.id !== subTopicId) }; return t; }); updateClassInDb({ ...cls, curriculum: updated }); };
 
-    // Düzenleme Fonksiyonları
     const startEditTopic = (id, title) => { setEditingTopicId(id); setEditVal(title); setEditingSubTopicId(null); };
     const saveEditTopic = (id) => {
         if(!editVal.trim()) { setEditingTopicId(null); return; }
@@ -226,7 +275,6 @@ const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode, libraryItems =
                     </div>
                 ) : (
                     <div className="space-y-6">
-                        {/* DND-KIT ANA SAĞLAYICI */}
                         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                             <SortableContext items={curriculum.map(t => t.id)} strategy={verticalListSortingStrategy}>
                                 {curriculum.map((topic) => (
