@@ -8,7 +8,7 @@ import Fuse from 'fuse.js';
 const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
     const [isListening, setIsListening] = useState(false);
     const [speechTranscript, setSpeechTranscript] = useState("");
-    const [jarvisFeedback, setJarvisFeedback] = useState("Sistem devrede. Sesli komutlarınızı bekliyorum...");
+    const [jarvisFeedback, setJarvisFeedback] = useState("Sistem devrede. Emirlerinizi bekliyorum...");
     const [foundStudents, setFoundStudents] = useState([]);
     const [foundTopics, setFoundTopics] = useState([]);
     const [selectedStudent, setSelectedStudent] = useState(null);
@@ -18,112 +18,98 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
     const reversedFoundTopics = [...foundTopics].reverse();
 
     // ------------------------------------------------------------------------
-    // 🧠 J.A.R.V.I.S ÜSTÜN ZEKALI NLP MOTORU (KELİME-BAZLI ANALİZ)
+    // 🧠 J.A.R.V.I.S V2: TERSİNE N-GRAM & KATİ RAKAM MOTORU
     // ------------------------------------------------------------------------
     const analyzeCommand = (transcript) => {
         let text = transcript.toLocaleLowerCase('tr-TR');
         
-        // 1. ÖZEL SÖZLÜK (ALIAS / TELAFFUZ DÜZELTMELERİ)
-        // Telaffuz edilen kelimeleri veritabanındaki teknik adlara çeviriyoruz
-        if (text.includes('vdd') || text.includes('vedede')) text += " video ders defteri";
-        if (text.match(/\bsb\b/) || text.includes('sebe')) text += " soru bankası";
-        if (text.includes('meb') || text.match(/\bm e b\b/)) text += " milli eğitim bakanlığı";
-        
+        // 1. ÖZEL SÖZLÜK (ALIAS ÇEVİRİLERİ)
         text = text.replace(/birinci/g, '1')
                    .replace(/ikinci/g, '2')
                    .replace(/üçüncü/g, '3')
                    .replace(/dördüncü/g, '4')
-                   .replace(/beşinci/g, '5')
-                   .replace(/['".,\/#!$%\^&\*;:{}=\-_`~()]/g, ""); // Noktalama işaretlerini sil
+                   .replace(/beşinci/g, '5');
 
-        // 2. NİYET (INTENT) TESPİTİ
+        if (text.includes('vdd') || text.includes('vedede') || text.includes('ve de de')) text += " video ders defteri";
+        if (text.match(/\bsb\b/) || text.includes('se be')) text += " soru bankası";
+
+        // 2. NİYET TESPİTİ
         let status = null;
         if (text.match(/çözmemiş|yapmamış|yapmadı|eksik|boş|yok|çözmüyor/)) status = 'missing';
-        else if (text.match(/çözdü|yaptı|tamamladı|bitirdi|full|bitti|çözmüş|yapmış|çözüyor/)) status = 'done';
+        else if (text.match(/çözdü|yaptı|tamamladı|bitirdi|full|bitti|çözmüş|yapmış/)) status = 'done';
         else if (text.match(/verdim|verildi|atadım|ödev ver|çözecek/)) status = 'assigned';
         else if (text.match(/muaf|gerek yok|çözmesin/)) status = 'exempt';
 
-        // 3. BULANIK ARAMA MOTORUNU CÜMLE ÜZERİNE KUR (TYPO TOLERANSI)
-        const words = text.split(/\s+/).filter(w => w.length > 0);
-        // Fuse'u tüm cümle kelimeleri üzerinde çalıştırıyoruz. Threshold 0.35 ufak harf hatalarını affeder.
-        const wordFuse = new Fuse(words.map(w => ({ word: w })), { keys: ['word'], threshold: 0.35 });
+        // 3. J.A.R.V.I.S ARAMA ÇEKİRDEĞİ (N-Gram + Rakam Kısıtlaması)
+        const extractNumbers = (str) => { const m = str.match(/\d+/g); return m ? m : []; };
+        const transcriptNumbers = extractNumbers(text); // Cümledeki tüm rakamları çıkar
 
-        // Ortak Puanlama Fonksiyonu (Hedefin kaç kelimesi cümlede geçiyor?)
-        const getMatchScore = (targetName) => {
-            const targetWords = targetName.toLocaleLowerCase('tr-TR').replace(/[.,]/g,"").split(/\s+/).filter(w => w.length > 0);
-            if (targetWords.length === 0) return 0;
-            let matches = 0;
-            targetWords.forEach(tw => {
-                if (!isNaN(tw)) {
-                    // Eğer hedef kelime bir rakamsa (1, 2) tam olarak eşleşmesini bekle (1 ile 2 karışmasın)
-                    if (words.includes(tw)) matches++;
-                } else {
-                    // Metinse bulanık arama ile bul (Örn: "denklemler" ile "denklemleri" eşleşir)
-                    if (wordFuse.search(tw).length > 0) matches++;
+        const findBestMatch = (items, key, threshold = 0.4) => {
+            if (!items || items.length === 0) return null;
+
+            // Öncelik 1: Birebir Eşleşme (En hızlısı)
+            const exactMatch = items.find(item => text.includes(item[key].toLocaleLowerCase('tr-TR')));
+            if (exactMatch) return exactMatch;
+
+            // Öncelik 2: N-Gram Bulanık Arama (Kelime gruplarıyla arama)
+            const words = text.replace(/[.,!?]/g, "").split(/\s+/).filter(w => w.length > 0);
+            const ngrams = [];
+            for(let i=0; i < words.length; i++) {
+                ngrams.push(words[i]); // Tekli
+                if(i < words.length - 1) ngrams.push(words[i] + " " + words[i+1]); // İkili
+                if(i < words.length - 2) ngrams.push(words[i] + " " + words[i+1] + " " + words[i+2]); // Üçlü
+                if(i < words.length - 3) ngrams.push(words[i] + " " + words[i+1] + " " + words[i+2] + " " + words[i+3]); // Dörtlü
+            }
+
+            const fuse = new Fuse(items, { keys: [key], threshold: threshold, includeScore: true, ignoreLocation: true });
+            let bestMatch = null;
+            let bestScore = 1; // 0'a ne kadar yakınsa o kadar mükemmel
+
+            for (const ngram of ngrams) {
+                const results = fuse.search(ngram);
+                for (const res of results) {
+                    // KATİ RAKAM KURALI: Kaynak adında rakam varsa, cümlende de O RAKAM kesin olmalı!
+                    const itemNumbers = extractNumbers(res.item[key]);
+                    const hasMissingNumber = itemNumbers.some(num => !transcriptNumbers.includes(num));
+                    if (hasMissingNumber) continue; // Rakam uymuyorsa bu seçeneği anında çöpe at!
+
+                    if (res.score < bestScore) {
+                        bestScore = res.score;
+                        bestMatch = res.item;
+                    }
                 }
-            });
-            return matches / targetWords.length; // Eşleşme yüzdesi (Örn: 2 kelimeden 1'i uyarsa %50)
+            }
+            return bestMatch;
         };
 
-        // --- ADIM A: ÖĞRENCİ TESPİTİ ---
+        // --- ADIM A: ÖĞRENCİ BUL ---
         const allStudents = classes.flatMap(cls => (cls.students || []).map(std => ({ ...std, classId: cls.id, className: cls.className, isVip: cls.type === 'vip' })));
-        
-        let bestStudentMatch = null;
-        let highestStudentScore = 0;
-        
-        allStudents.forEach(std => {
-            const score = getMatchScore(std.name);
-            // Öğrencinin adının veya soyadının en azından biri uyuşmalı (Score >= 0.5)
-            if (score > highestStudentScore && score >= 0.49) {
-                highestStudentScore = score;
-                bestStudentMatch = std;
-            }
-        });
+        const bestStudentMatch = findBestMatch(allStudents, 'name', 0.4);
 
         if (!bestStudentMatch) {
             setFoundStudents([]); setSelectedStudent(null); setFoundTopics([]);
-            setJarvisFeedback("Cümlenizde kayıtlı bir öğrenci ismi tespit edemedim efendim."); 
-            return; 
+            setJarvisFeedback("Cümlenizde kayıtlı bir öğrenci ismi tespit edemedim."); return;
         }
 
-        setFoundStudents([bestStudentMatch]); 
-        setSelectedStudent(bestStudentMatch);
+        setFoundStudents([bestStudentMatch]); setSelectedStudent(bestStudentMatch);
         const targetClass = classes.find(c => c.id === bestStudentMatch.classId); 
         const topics = targetClass?.topics || []; 
         setFoundTopics(topics);
 
-        // --- ADIM B: KONU TESPİTİ ---
-        let bestTopic = null;
-        let highestTopicScore = 0;
-        topics.forEach(topic => {
-            const score = getMatchScore(topic.title);
-            // Konunun kelimelerinden en az biri (Score > 0) uyuşursa listeye al
-            if (score > highestTopicScore && score >= 0.3) {
-                highestTopicScore = score;
-                bestTopic = topic;
-            }
-        });
+        // --- ADIM B: KONU BUL ---
+        const bestTopic = findBestMatch(topics, 'title', 0.4);
 
-        // --- ADIM C: KAYNAK TESPİTİ ---
+        // --- ADIM C: KAYNAK BUL ---
         let bestCol = null;
-        let highestColScore = 0;
-        if (bestTopic) {
-            bestTopic.subColumns.forEach(col => {
-                const score = getMatchScore(col.title);
-                if (score > highestColScore && score >= 0.3) {
-                    highestColScore = score;
-                    bestCol = col;
-                }
-            });
-        }
+        if (bestTopic) bestCol = findBestMatch(bestTopic.subColumns || [], 'title', 0.4);
 
-        // --- ADIM D: J.A.R.V.I.S DİNAMİK CEVAPLARI ---
+        // --- ADIM D: GERİ BİLDİRİM ---
         if (bestStudentMatch && bestTopic && bestCol && status) {
             handleDraftGradeChange(bestStudentMatch.id, bestCol.id, status);
             const statusLabels = { 'done': 'Yapıldı', 'missing': 'Eksik', 'assigned': 'Verildi', 'exempt': 'Muaf' };
             setJarvisFeedback(`İşlem Tamam! ${bestStudentMatch.name} -> ${bestTopic.title} -> ${bestCol.title} "${statusLabels[status]}" yapıldı.`);
         } else if (bestStudentMatch && bestTopic && !bestCol) { 
-            setJarvisFeedback(`${bestTopic.title} konusunu anladım ancak "${bestTopic.subColumns.map(c=>c.title).join(', ')}" kaynaklarından hangisi olduğunu çıkaramadım.`); 
+            setJarvisFeedback(`${bestTopic.title} konusunu anladım ancak hangi kaynak olduğunu çıkaramadım.`); 
         } else if (bestStudentMatch && !bestTopic) { 
             setJarvisFeedback(`${bestStudentMatch.name} bulundu, ancak hangi konudan bahsettiğinizi anlayamadım.`); 
         } else if (bestStudentMatch && bestTopic && bestCol && !status) { 
@@ -133,6 +119,9 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
         }
     };
 
+    // ------------------------------------------------------------------------
+    // 🎙️ MİKROFON YÖNETİMİ
+    // ------------------------------------------------------------------------
     const toggleListening = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) { alert("⚠️ Tarayıcınız ses tanıma desteklemiyor."); return; }
@@ -158,7 +147,7 @@ const JarvisModal = ({ classes, updateClassInDb, onClose }) => {
             } return s;
         });
         updateClassInDb({ ...targetClass, students: updatedStudents });
-        setDraftGrades({}); setDraftNotes({}); setJarvisFeedback("Tüm değişiklikler başarıyla sisteme aktarıldı efendim."); setTimeout(() => onClose(), 1500);
+        setDraftGrades({}); setDraftNotes({}); setJarvisFeedback("Tüm değişiklikler başarıyla veritabanına işlendi efendim."); setTimeout(() => onClose(), 1500);
     };
 
     useEffect(() => { toggleListening(); }, []);
