@@ -8,7 +8,7 @@ import html2canvas from 'html2canvas';
 
 // FİREBASE
 import { db } from './config/firebase'; 
-import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc, getDocs, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 
 // YARDIMCILAR VE SABİTLER
 import { LIBRARY_TYPES, CLASSES_COLLECTION, LIBRARY_COLLECTION, SETTINGS_COLLECTION, SETTINGS_DOC, DEFAULT_PIN, STATUS_OPTIONS } from './utils/constants';
@@ -25,14 +25,6 @@ import CountdownTimer from './components/ui/Countdown';
 import JarvisModal from './components/assistant/JarvisModal'; 
 
 const App = () => {
-    // 🔥 FİREBASE YÜKLENME KALKANI
-    const [isClassesLoaded, setIsClassesLoaded] = useState(false);
-    const [isConfigLoaded, setIsConfigLoaded] = useState(false);
-    const isFirebaseLoaded = isClassesLoaded && isConfigLoaded;
-
-    // 🔥 KALICI OTURUM KONTROLÜ
-    const [isRestoring, setIsRestoring] = useState(!!localStorage.getItem('berkantHocaSession'));
-
     const [classes, setClasses] = useState([]);
     const [libraryItems, setLibraryItems] = useState([]);
     const [currentUserRole, setCurrentUserRole] = useState(null);
@@ -40,7 +32,7 @@ const App = () => {
     const [loggedInStudent, setLoggedInStudent] = useState(null);
     const [dbTeacherPin, setDbTeacherPin] = useState(DEFAULT_PIN); 
     const [announcementTitle, setAnnouncementTitle] = useState("Sistem Duyurusu");
-    const [systemAnnouncement, setSystemAnnouncement] = useState("Eğitim, dünyayı değiştirmek için en güçlü silahdır.");
+    const [systemAnnouncement, setSystemAnnouncement] = useState("Eğitim, dünyayı değiştirmek için en güçlü silahtır.");
     const [countdownConfig, setCountdownConfig] = useState({ targetDate: '2026-06-20T00:00:00', startDate: '2025-06-20T00:00:00', label: '20 Haziran 2026' });
     const [view, setView] = useState('home'); 
     const [activeTab, setActiveTab] = useState('homework'); 
@@ -101,10 +93,7 @@ const App = () => {
 
     // 🌐 FİREBASE VERİ ÇEKME
     useEffect(() => {
-        const unsubClasses = onSnapshot(collection(db, CLASSES_COLLECTION), (snap) => {
-            setClasses(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            setIsClassesLoaded(true);
-        });
+        const unsubClasses = onSnapshot(collection(db, CLASSES_COLLECTION), (snap) => setClasses(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
         const unsubLibrary = onSnapshot(collection(db, LIBRARY_COLLECTION), (snap) => setLibraryItems(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
         const unsubConfig = onSnapshot(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC), (docSnap) => {
             if (docSnap.exists()) {
@@ -114,24 +103,20 @@ const App = () => {
                 if (data.announcementTitle) setAnnouncementTitle(data.announcementTitle);
                 if (data.countdown) setCountdownConfig(data.countdown);
             }
-            setIsConfigLoaded(true);
         });
         return () => { unsubClasses(); unsubLibrary(); unsubConfig(); };
     }, []);
 
-    // 🚀 OTOMATİK GİRİŞ (AUTO-LOGIN) MOTORU - Saf Eşleşme
+    // 🚀 OTOMATİK GİRİŞ (BENİ HATIRLA)
+    // Sınıflar yüklendiği anda (length > 0) hafızaya bakar, kayıt varsa anında içeri alır!
     useEffect(() => {
-        if (isFirebaseLoaded && !currentUserRole) {
+        if (!currentUserRole && classes.length > 0) {
             const sessionStr = localStorage.getItem('berkantHocaSession');
             if (sessionStr) {
                 try {
                     const session = JSON.parse(sessionStr);
-                    if (session.role === 'teacher') {
-                        if (String(session.pin).trim() === String(dbTeacherPin).trim()) {
-                            setIsTeacherMode(true); setCurrentUserRole('teacher'); setView('home'); setActiveTab('homework');
-                        } else {
-                            localStorage.removeItem('berkantHocaSession'); 
-                        }
+                    if (session.role === 'teacher' && String(session.pin).trim() === String(dbTeacherPin).trim()) {
+                        setIsTeacherMode(true); setCurrentUserRole('teacher'); setView('home'); setActiveTab('homework');
                     } else if (session.role === 'student' || session.role === 'vip-student') {
                         const classesToSearch = session.role === 'vip-student' ? vipClasses : regularClasses;
                         let foundStudent = null, foundClass = null;
@@ -141,30 +126,20 @@ const App = () => {
                         }
                         if (foundStudent) {
                             setCurrentUserRole(session.role); setLoggedInStudent(foundStudent); setSelectedClass(foundClass); setSelectedStudentForView(foundStudent); setView('student-detail'); setActiveTab('homework');
-                        } else {
-                            localStorage.removeItem('berkantHocaSession'); 
                         }
                     }
                 } catch (e) {
-                    localStorage.removeItem('berkantHocaSession');
+                    console.error("Oturum geri yükleme hatası:", e);
                 }
             }
-            setIsRestoring(false); 
         }
-    }, [isFirebaseLoaded, classes, dbTeacherPin]); 
-
+    }, [classes, dbTeacherPin, currentUserRole]); 
 
     // 🔐 YÖNETİCİ GİRİŞİ 
-    const verifyPin = async (inputPin) => { 
-        let currentPin = dbTeacherPin;
-        if (currentPin === DEFAULT_PIN) {
-            try {
-                const docSnap = await getDoc(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC));
-                if (docSnap.exists() && docSnap.data().pin) currentPin = docSnap.data().pin;
-            } catch (error) { console.error("Firebase fetch hatası:", error); }
-        }
-
-        if (String(inputPin).trim() === String(currentPin).trim()) { 
+    const verifyPin = (inputPin) => { 
+        if (classes.length === 0) { alert("Veritabanı yükleniyor... Lütfen 1-2 saniye bekleyin."); return; }
+        
+        if (String(inputPin).trim() === String(dbTeacherPin).trim()) { 
             localStorage.setItem('berkantHocaSession', JSON.stringify({ role: 'teacher', pin: String(inputPin).trim() }));
             setIsTeacherMode(true); setCurrentUserRole('teacher'); setView('home'); setActiveTab('homework'); 
         } else { 
@@ -172,35 +147,25 @@ const App = () => {
         } 
     };
 
-    // 🚀 ÖĞRENCİ GİRİŞİ (Harf Duyarlılığı Geri Getirildi, makeSafe İptal)
-    const handleStudentLogin = async (username, password, isVipLogin = false) => {
-        let currentClasses = classes;
-        
-        if (currentClasses.length === 0) {
-            try {
-                const snap = await getDocs(collection(db, CLASSES_COLLECTION));
-                currentClasses = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setClasses(currentClasses);
-            } catch (error) { console.error("Firebase fetch hatası:", error); }
-        }
+    // 🚀 ÖĞRENCİ GİRİŞİ 
+    const handleStudentLogin = (username, password, isVipLogin = false) => {
+        if (classes.length === 0) { alert("Veritabanı yükleniyor... Lütfen 1-2 saniye bekleyin."); return; }
 
-        const regularClassesList = currentClasses.filter(c => c.type !== 'vip');
-        const vipClassesList = currentClasses.filter(c => c.type === 'vip');
-        const classesToSearch = isVipLogin ? vipClassesList : regularClassesList;
+        let foundStudent = null, foundClass = null; 
+        const classesToSearch = isVipLogin ? vipClasses : regularClasses;
         
-        const safeUsername = username.trim(); 
-        const safePassword = password.trim();
-
-        let foundStudent = null, foundClass = null;
+        // SADECE Kullanıcı Adı'nın büyük/küçük harfini tolere et. ŞİFRELER EXACT (Birebir) EŞLEŞECEK!
+        const inputUsername = username.trim().toLowerCase(); 
+        const inputPassword = password.trim();
 
         for (const cls of classesToSearch) { 
-            const std = cls.students?.find(s => s.username === safeUsername && s.password === safePassword); 
+            const std = cls.students?.find(s => s.username && s.username.toLowerCase() === inputUsername && s.password.trim() === inputPassword); 
             if (std) { foundStudent = std; foundClass = cls; break; } 
         }
 
         if (foundStudent) { 
             const role = isVipLogin ? 'vip-student' : 'student';
-            localStorage.setItem('berkantHocaSession', JSON.stringify({ role, username: safeUsername, password: safePassword }));
+            localStorage.setItem('berkantHocaSession', JSON.stringify({ role, username: foundStudent.username, password: foundStudent.password }));
             setCurrentUserRole(role); setLoggedInStudent(foundStudent); setSelectedClass(foundClass); setSelectedStudentForView(foundStudent); setView('student-detail'); setActiveTab('homework'); 
             
             const updatedStudents = foundClass.students.map(s => s.id === foundStudent.id ? { ...s, lastLogin: new Date().toISOString() } : s); 
@@ -301,17 +266,6 @@ const App = () => {
         else if (modalType === 'edit-source') { const cls = classes.find(c => c.id === modalData.classId); const updatedTopics = cls.topics.map(t => { if (t.id === modalData.topicId) { return { ...t, subColumns: t.subColumns.map(c => c.id === modalData.colId ? { ...c, title: modalInputVal, pdfLink: modalPdfVal } : c) }; } return t; }); updateClassInDb({ ...cls, topics: updatedTopics }); }
         setModalType(null); setModalInputVal(""); setModalTitleVal(""); setModalDateVal(""); setModalPdfVal("");
     };
-
-    if (isRestoring) {
-        return (
-            <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white">
-                <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 2 }}>
-                    <GraduationCap size={64} className="text-brandPurple mb-6" />
-                </motion.div>
-                <h2 className="text-sm font-black tracking-widest animate-pulse text-slate-400">OTURUM AÇILIYOR...</h2>
-            </div>
-        );
-    }
 
     if (!currentUserRole) return <LoginScreen onStudentLogin={handleStudentLogin} onTeacherLogin={verifyPin} />;
 
