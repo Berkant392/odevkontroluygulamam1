@@ -81,9 +81,14 @@ const App = () => {
     }, []);
 
     const verifyPin = (inputPin) => { if (String(inputPin).trim() === String(dbTeacherPin).trim()) { setIsTeacherMode(true); setCurrentUserRole('teacher'); setView('home'); setActiveTab('homework'); } else { alert("Hatalı PIN!"); } };
+    
+    // 🔥 MOBİL GİRİŞ HATASI BURADA DÜZELTİLDİ: toLowerCase() eklendi
     const handleStudentLogin = (username, password, isVipLogin = false) => {
         let foundStudent = null, foundClass = null; const classesToSearch = isVipLogin ? vipClasses : regularClasses;
-        for (const cls of classesToSearch) { const std = cls.students?.find(s => s.username === username.trim() && s.password === password.trim()); if (std) { foundStudent = std; foundClass = cls; break; } }
+        for (const cls of classesToSearch) { 
+            const std = cls.students?.find(s => s.username === username.trim().toLowerCase() && s.password === password.trim()); 
+            if (std) { foundStudent = std; foundClass = cls; break; } 
+        }
         if (foundStudent) { setCurrentUserRole(isVipLogin ? 'vip-student' : 'student'); setLoggedInStudent(foundStudent); setSelectedClass(foundClass); setSelectedStudentForView(foundStudent); setView('student-detail'); setActiveTab('homework'); const updatedStudents = foundClass.students.map(s => s.id === foundStudent.id ? { ...s, lastLogin: new Date().toISOString() } : s); updateClassInDb({ ...foundClass, students: updatedStudents }); } else { alert('Kullanıcı adı veya şifre hatalı!'); }
     };
     
