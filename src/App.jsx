@@ -24,6 +24,19 @@ import LibraryModal from './components/modals/LibraryModal';
 import CountdownTimer from './components/ui/Countdown'; 
 import JarvisModal from './components/assistant/JarvisModal'; 
 
+// 🔥 TÜRKÇE KARAKTER VE BÜYÜK/KÜÇÜK HARF TEMİZLEYİCİ (Geri Eklendi!)
+const makeSafe = (str) => {
+    if (!str) return "";
+    return String(str).trim()
+        .replace(/I/g, 'i').replace(/ı/g, 'i').replace(/İ/g, 'i')
+        .replace(/ğ/g, 'g').replace(/Ğ/g, 'g')
+        .replace(/ü/g, 'u').replace(/Ü/g, 'u')
+        .replace(/ş/g, 's').replace(/Ş/g, 's')
+        .replace(/ö/g, 'o').replace(/Ö/g, 'o')
+        .replace(/ç/g, 'c').replace(/Ç/g, 'c')
+        .toLowerCase();
+};
+
 const App = () => {
     // 🔥 FİREBASE YÜKLENME KALKANI
     const [isClassesLoaded, setIsClassesLoaded] = useState(false);
@@ -119,7 +132,7 @@ const App = () => {
         return () => { unsubClasses(); unsubLibrary(); unsubConfig(); };
     }, []);
 
-    // 🚀 OTOMATİK GİRİŞ (AUTO-LOGIN) MOTORU
+    // 🚀 OTOMATİK GİRİŞ (AUTO-LOGIN) MOTORU - Klavye Korumalı
     useEffect(() => {
         if (isFirebaseLoaded && !currentUserRole) {
             const sessionStr = localStorage.getItem('berkantHocaSession');
@@ -127,38 +140,38 @@ const App = () => {
                 try {
                     const session = JSON.parse(sessionStr);
                     if (session.role === 'teacher') {
-                        if (String(session.pin) === String(dbTeacherPin).trim()) {
+                        if (String(session.pin).trim() === String(dbTeacherPin).trim()) {
                             setIsTeacherMode(true); setCurrentUserRole('teacher'); setView('home'); setActiveTab('homework');
                         } else {
-                            localStorage.removeItem('berkantHocaSession'); // PIN değişmişse oturumu düşür
+                            localStorage.removeItem('berkantHocaSession'); 
                         }
                     } else if (session.role === 'student' || session.role === 'vip-student') {
                         const classesToSearch = session.role === 'vip-student' ? vipClasses : regularClasses;
                         let foundStudent = null, foundClass = null;
+                        const safeSessionUser = makeSafe(session.username); // Koruma eklendi
                         for (const cls of classesToSearch) {
-                            const std = cls.students?.find(s => s.username === session.username && s.password === session.password);
+                            const std = cls.students?.find(s => s.username && makeSafe(s.username) === safeSessionUser && s.password === session.password);
                             if (std) { foundStudent = std; foundClass = cls; break; }
                         }
                         if (foundStudent) {
                             setCurrentUserRole(session.role); setLoggedInStudent(foundStudent); setSelectedClass(foundClass); setSelectedStudentForView(foundStudent); setView('student-detail'); setActiveTab('homework');
                         } else {
-                            localStorage.removeItem('berkantHocaSession'); // Öğrenci silinmiş veya şifresi değişmişse
+                            localStorage.removeItem('berkantHocaSession'); 
                         }
                     }
                 } catch (e) {
                     localStorage.removeItem('berkantHocaSession');
                 }
             }
-            setIsRestoring(false); // Yükleme ekranını kapat
+            setIsRestoring(false); 
         }
     }, [isFirebaseLoaded, classes, dbTeacherPin]); 
 
 
-    // 🔐 GİRİŞ FONKSİYONLARI (Artık hafızaya da kaydediyor)
+    // 🔐 GİRİŞ FONKSİYONLARI 
     const verifyPin = (inputPin) => { 
         if (!isFirebaseLoaded) { alert("Sistem verileri yükleniyor... Lütfen bekleyin."); return; }
         if (String(inputPin).trim() === String(dbTeacherPin).trim()) { 
-            // Oturumu Kaydet
             localStorage.setItem('berkantHocaSession', JSON.stringify({ role: 'teacher', pin: String(inputPin).trim() }));
             setIsTeacherMode(true); setCurrentUserRole('teacher'); setView('home'); setActiveTab('homework'); 
         } else { 
@@ -170,16 +183,16 @@ const App = () => {
         if (!isFirebaseLoaded) { alert("Sistem verileri yükleniyor... Lütfen bekleyin."); return; }
 
         let foundStudent = null, foundClass = null; const classesToSearch = isVipLogin ? vipClasses : regularClasses;
-        const safeUsername = username.trim(); const safePassword = password.trim();
+        const safeUsername = makeSafe(username); // 🔥 KLAVYE KORUMASI BURADA!
+        const safePassword = password.trim();
 
         for (const cls of classesToSearch) { 
-            const std = cls.students?.find(s => s.username === safeUsername && s.password === safePassword); 
+            const std = cls.students?.find(s => s.username && makeSafe(s.username) === safeUsername && s.password.trim() === safePassword); 
             if (std) { foundStudent = std; foundClass = cls; break; } 
         }
 
         if (foundStudent) { 
             const role = isVipLogin ? 'vip-student' : 'student';
-            // Oturumu Kaydet
             localStorage.setItem('berkantHocaSession', JSON.stringify({ role, username: safeUsername, password: safePassword }));
             setCurrentUserRole(role); setLoggedInStudent(foundStudent); setSelectedClass(foundClass); setSelectedStudentForView(foundStudent); setView('student-detail'); setActiveTab('homework'); 
             
@@ -286,9 +299,9 @@ const App = () => {
     if (isRestoring) {
         return (
             <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white">
-                <motion.animate animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 2 }}>
+                <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 2 }}>
                     <GraduationCap size={64} className="text-brandPurple mb-6" />
-                </motion.animate>
+                </motion.div>
                 <h2 className="text-sm font-black tracking-widest animate-pulse text-slate-400">OTURUM AÇILIYOR...</h2>
             </div>
         );
