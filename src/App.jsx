@@ -25,6 +25,9 @@ import CountdownTimer from './components/ui/Countdown';
 import JarvisModal from './components/assistant/JarvisModal'; 
 
 const App = () => {
+    // 🔥 FİREBASE YÜKLENME KALKANI (YENİ EKLENDİ)
+    const [isFirebaseLoaded, setIsFirebaseLoaded] = useState(false);
+
     const [classes, setClasses] = useState([]);
     const [libraryItems, setLibraryItems] = useState([]);
     const [currentUserRole, setCurrentUserRole] = useState(null);
@@ -111,22 +114,31 @@ const App = () => {
     const vipClasses = classes.filter(c => c.type === 'vip');
 
     useEffect(() => {
-        const unsubClasses = onSnapshot(collection(db, CLASSES_COLLECTION), (snap) => setClasses(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
+        const unsubClasses = onSnapshot(collection(db, CLASSES_COLLECTION), (snap) => {
+            setClasses(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            setIsFirebaseLoaded(true); // Sınıflar geldi, kalkanı aç!
+        });
         const unsubLibrary = onSnapshot(collection(db, LIBRARY_COLLECTION), (snap) => setLibraryItems(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
         const unsubConfig = onSnapshot(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC), (docSnap) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                if (data.pin) setDbTeacherPin(data.pin);
+                if (data.pin) setDbTeacherPin(data.pin); // SENİN ÖZEL ŞİFREN BURADA İNİYOR
                 if (data.announcement) setSystemAnnouncement(data.announcement);
                 if (data.announcementTitle) setAnnouncementTitle(data.announcementTitle);
                 if (data.countdown) setCountdownConfig(data.countdown);
             }
+            setIsFirebaseLoaded(true); // Şifre geldi, kalkanı aç!
         });
         return () => { unsubClasses(); unsubLibrary(); unsubConfig(); };
     }, []);
 
     // 🔥 GİRİŞ KORUMALARI EKLENDİ (Firebase Gecikmesi & Klavye Büyük Harf Hatası Çözümü)
     const verifyPin = (inputPin) => { 
+        if (!isFirebaseLoaded) {
+            alert("Sistem verileri yükleniyor... Lütfen 1-2 saniye bekleyip tekrar deneyin.");
+            return;
+        }
+
         if (String(inputPin).trim() === String(dbTeacherPin).trim()) { 
             setIsTeacherMode(true); setCurrentUserRole('teacher'); setView('home'); setActiveTab('homework'); 
         } else { 
@@ -135,14 +147,13 @@ const App = () => {
     };
 
     const handleStudentLogin = (username, password, isVipLogin = false) => {
-        if (classes.length === 0) {
-            alert("Sistem verileri yükleniyor... Lütfen 1-2 saniye bekleyip tekrar giriş yapmayı deneyin.");
+        if (!isFirebaseLoaded) {
+            alert("Sistem verileri yükleniyor... Lütfen 1-2 saniye bekleyip tekrar deneyin.");
             return;
         }
 
-        let foundStudent = null, foundClass = null; 
-        const classesToSearch = isVipLogin ? vipClasses : regularClasses;
-        const safeUsername = username.trim().toLowerCase(); // Klavyeden gelen büyük harfleri yoksay
+        let foundStudent = null, foundClass = null; const classesToSearch = isVipLogin ? vipClasses : regularClasses;
+        const safeUsername = username.trim().toLowerCase(); 
         const safePassword = password.trim();
 
         for (const cls of classesToSearch) { 
@@ -150,19 +161,7 @@ const App = () => {
             if (std) { foundStudent = std; foundClass = cls; break; } 
         }
 
-        if (foundStudent) { 
-            setCurrentUserRole(isVipLogin ? 'vip-student' : 'student'); 
-            setLoggedInStudent(foundStudent); 
-            setSelectedClass(foundClass); 
-            setSelectedStudentForView(foundStudent); 
-            setView('student-detail'); 
-            setActiveTab('homework'); 
-            
-            const updatedStudents = foundClass.students.map(s => s.id === foundStudent.id ? { ...s, lastLogin: new Date().toISOString() } : s); 
-            updateClassInDb({ ...foundClass, students: updatedStudents }); 
-        } else { 
-            alert('Kullanıcı adı veya şifre hatalı!'); 
-        }
+        if (foundStudent) { setCurrentUserRole(isVipLogin ? 'vip-student' : 'student'); setLoggedInStudent(foundStudent); setSelectedClass(foundClass); setSelectedStudentForView(foundStudent); setView('student-detail'); setActiveTab('homework'); const updatedStudents = foundClass.students.map(s => s.id === foundStudent.id ? { ...s, lastLogin: new Date().toISOString() } : s); updateClassInDb({ ...foundClass, students: updatedStudents }); } else { alert('Kullanıcı adı veya şifre hatalı!'); }
     };
     
     const handleLogout = () => { setCurrentUserRole(null); setIsTeacherMode(false); setLoggedInStudent(null); setSelectedClass(null); setSelectedStudentForView(null); setView('home'); };
