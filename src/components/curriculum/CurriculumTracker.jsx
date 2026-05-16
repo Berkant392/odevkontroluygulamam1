@@ -1,7 +1,113 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, BookOpen, CheckSquare, Square, CornerDownRight, Pencil, Check, Library, Save, X } from 'lucide-react';
+import { Plus, Trash2, BookOpen, CheckSquare, Square, CornerDownRight, Pencil, Check, Library, Save, X, GripVertical } from 'lucide-react';
 import { generateId } from '../../utils/helpers';
 
+// DND-KIT (SÜRÜKLE BIRAK) İÇE AKTARIMLARI
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// --- SÜRÜKLENEBİLİR KONU (TOPIC) BİLEŞENİ ---
+const SortableTopicItem = ({ topic, isTeacherMode, isVip, tProgress, editingTopicId, editVal, setEditVal, saveEditTopic, toggleTopic, startEditTopic, deleteTopic, saveToLibrary, editingSubTopicId, saveEditSub, toggleSubTopic, startEditSub, deleteSubTopic, newSubTopicTitles, setNewSubTopicTitles, addSubTopic }) => {
+    
+    // Sortable Hook'u (Bu bloğu sürüklenebilir yapar)
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: topic.id, disabled: !isTeacherMode });
+    
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 1,
+        opacity: isDragging ? 0.6 : 1,
+    };
+
+    const isEditingThisTopic = editingTopicId === topic.id;
+
+    return (
+        <div ref={setNodeRef} style={style} className={`flex flex-col group/topic relative p-2 rounded-xl transition-colors ${isDragging ? 'bg-slate-100/50 shadow-lg border border-brandPurple/30' : 'bg-transparent border border-transparent'}`}>
+            
+            <div className="flex items-start gap-3">
+                {/* SÜRÜKLEME KULPU (SADECE ÖĞRETMENE GÖRÜNÜR) */}
+                {isTeacherMode && (
+                    <div {...attributes} {...listeners} className="mt-1 cursor-grab active:cursor-grabbing text-slate-300 hover:text-brandPurple p-1 rounded-md transition-colors opacity-0 group-hover/topic:opacity-100 flex-shrink-0">
+                        <GripVertical size={20} />
+                    </div>
+                )}
+
+                <button onClick={() => toggleTopic(topic.id)} className={`mt-1 flex-shrink-0 transition-colors ${topic.isCompleted ? (isVip ? 'text-vipGold' : 'text-brandPurple') : (isVip ? 'text-slate-400 hover:text-vipGold' : 'text-slate-400 hover:text-brandPurple')} ${!isTeacherMode && 'cursor-default pointer-events-none'}`}>
+                    {topic.isCompleted ? <CheckSquare size={28} strokeWidth={2.5} /> : <Square size={28} strokeWidth={2.5} />}
+                </button>
+                
+                <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-2">
+                    <div className="flex items-center gap-3 w-full md:w-auto flex-1">
+                        {isEditingThisTopic ? (
+                            <div className="flex items-center gap-2 w-full max-w-md">
+                                <input type="text" autoFocus className="flex-1 bg-white border-2 border-brandPurple rounded-xl px-4 py-2 text-lg font-black text-slate-800 outline-none shadow-sm" value={editVal} onChange={e => setEditVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveEditTopic(topic.id)} />
+                                <button onClick={() => saveEditTopic(topic.id)} className="p-2.5 bg-successGreen text-white rounded-xl hover:bg-green-600 shadow-sm transition-colors"><Check size={18}/></button>
+                            </div>
+                        ) : (
+                            <h3 className={`text-2xl font-black transition-all ${topic.isCompleted ? (isVip ? 'text-slate-500 line-through decoration-2' : 'text-slate-400/50 line-through decoration-2') : (isVip ? 'text-white' : 'text-slate-800')}`}>
+                                {topic.title}
+                            </h3>
+                        )}
+                        {!isEditingThisTopic && (
+                            <span className={`text-xs font-black px-2.5 py-1 rounded-lg border ${topic.isCompleted ? 'bg-successGreen/10 text-successGreen border-successGreen/20' : (isVip ? 'bg-slate-800 text-vipGold border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-200')}`}>
+                                %{tProgress}
+                            </span>
+                        )}
+                    </div>
+                    {isTeacherMode && !isEditingThisTopic && (
+                        <div className="opacity-0 group-hover/topic:opacity-100 flex items-center gap-1 transition-all">
+                            <button onClick={() => { if(saveToLibrary) { saveToLibrary(topic); alert("Tüm blok başarıyla kütüphaneye kaydedildi!"); } }} className="p-2 text-slate-400 hover:text-blue-500 transition-colors" title="Blok Olarak Kütüphaneye Kaydet"><Save size={20}/></button>
+                            <button onClick={() => startEditTopic(topic.id, topic.title)} className="p-2 text-slate-400 hover:text-brandPurple transition-colors" title="Başlığı Düzenle"><Pencil size={20}/></button>
+                            <button onClick={() => deleteTopic(topic.id)} className="p-2 text-slate-400 hover:text-errorRed transition-colors" title="Konuyu Sil"><Trash2 size={20}/></button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className={`pl-11 mt-3 space-y-3 ${isTeacherMode ? 'ml-8' : ''}`}>
+                {topic.subTopics?.map(sub => {
+                    const isEditingThisSub = editingSubTopicId === sub.id;
+                    return (
+                        <div key={sub.id} className="flex items-center gap-3 group/sub hover-lift">
+                            <button onClick={() => toggleSubTopic(topic.id, sub.id)} className={`flex-shrink-0 transition-colors ${sub.isCompleted ? (isVip ? 'text-vipGold' : 'text-brandPurple') : (isVip ? 'text-slate-400 hover:text-vipGold' : 'text-slate-400 hover:text-brandPurple')} ${!isTeacherMode && 'cursor-default pointer-events-none'}`}>
+                                {sub.isCompleted ? <CheckSquare size={20} strokeWidth={2.5} /> : <Square size={20} strokeWidth={2.5} />}
+                            </button>
+                            
+                            <div className="flex-1 flex items-center justify-between">
+                                {isEditingThisSub ? (
+                                    <div className="flex items-center gap-2 w-full max-w-sm">
+                                        <input type="text" autoFocus className="flex-1 bg-white border border-brandPurple rounded-lg px-3 py-1.5 text-base font-bold text-slate-800 outline-none shadow-sm" value={editVal} onChange={e => setEditVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveEditSub(topic.id, sub.id)} />
+                                        <button onClick={() => saveEditSub(topic.id, sub.id)} className="p-1.5 bg-successGreen text-white rounded-lg hover:bg-green-600 transition-colors"><Check size={16}/></button>
+                                    </div>
+                                ) : (
+                                    <span className={`text-lg font-bold transition-all ${sub.isCompleted ? (isVip ? 'text-slate-500 line-through' : 'text-slate-400/50 line-through') : (isVip ? 'text-slate-300' : 'text-slate-600')}`}>
+                                        {sub.title}
+                                    </span>
+                                )}
+                                
+                                {isTeacherMode && !isEditingThisSub && (
+                                    <div className="opacity-0 group-hover/sub:opacity-100 flex items-center gap-1 transition-all">
+                                        <button onClick={() => startEditSub(sub.id, sub.title)} className="p-1.5 text-slate-300 hover:text-brandPurple transition-colors"><Pencil size={16}/></button>
+                                        <button onClick={() => deleteSubTopic(topic.id, sub.id)} className="p-1.5 text-slate-300 hover:text-errorRed transition-colors"><Trash2 size={16}/></button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+                {isTeacherMode && (
+                    <div className="flex items-center gap-3 mt-2 opacity-50 focus-within:opacity-100 transition-opacity">
+                        <CornerDownRight size={20} className="text-slate-400" />
+                        <input type="text" placeholder="Alt başlık ekle..." className="flex-1 bg-transparent border-none text-base font-bold text-slate-600 focus:outline-none focus:ring-0 placeholder:text-slate-400" value={newSubTopicTitles[topic.id] || ""} onChange={e => setNewSubTopicTitles(p => ({...p, [topic.id]: e.target.value}))} onKeyDown={e => e.key==='Enter' && addSubTopic(topic.id)}/>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// --- ANA BİLEŞEN ---
 const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode, libraryItems = [], saveToLibrary }) => {
     const [newTopicTitle, setNewTopicTitle] = useState("");
     const [newSubTopicTitles, setNewSubTopicTitles] = useState({});
@@ -16,6 +122,24 @@ const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode, libraryItems =
 
     const curriculum = cls.curriculum || [];
     const isVip = cls.type === 'vip' && !isTeacherMode;
+
+    // SÜRÜKLE BIRAK SENSÖRLERİ (Mouse ve Dokunmatik Ekran İçin)
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    // SÜRÜKLEME BİTTİĞİNDE VERİTABANINI GÜNCELLE
+    const handleDragEnd = (event) => {
+        const { active, over } = event;
+        if (active.id !== over?.id) {
+            const oldIndex = curriculum.findIndex((item) => item.id === active.id);
+            const newIndex = curriculum.findIndex((item) => item.id === over.id);
+            const newCurriculum = arrayMove(curriculum, oldIndex, newIndex);
+            updateClassInDb({ ...cls, curriculum: newCurriculum });
+        }
+    };
 
     const calculateOverallProgress = () => {
         if (!curriculum.length) return 0;
@@ -101,87 +225,37 @@ const CurriculumTracker = ({ cls, updateClassInDb, isTeacherMode, libraryItems =
                         Henüz hiç konu eklenmemiş.
                     </div>
                 ) : (
-                    <div className="space-y-8">
-                        {curriculum.map((topic) => {
-                            const tProgress = getTopicProgress(topic);
-                            const isEditingThisTopic = editingTopicId === topic.id;
-                            
-                            return (
-                                <div key={topic.id} className="flex flex-col group/topic">
-                                    <div className="flex items-start gap-4">
-                                        <button onClick={() => toggleTopic(topic.id)} className={`mt-1 flex-shrink-0 transition-colors ${topic.isCompleted ? (isVip ? 'text-vipGold' : 'text-brandPurple') : (isVip ? 'text-slate-400 hover:text-vipGold' : 'text-slate-400 hover:text-brandPurple')} ${!isTeacherMode && 'cursor-default pointer-events-none'}`}>
-                                            {topic.isCompleted ? <CheckSquare size={28} strokeWidth={2.5} /> : <Square size={28} strokeWidth={2.5} />}
-                                        </button>
-                                        
-                                        <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-2">
-                                            <div className="flex items-center gap-3 w-full md:w-auto flex-1">
-                                                {isEditingThisTopic ? (
-                                                    <div className="flex items-center gap-2 w-full max-w-md">
-                                                        <input type="text" autoFocus className="flex-1 bg-white border-2 border-brandPurple rounded-xl px-4 py-2 text-lg font-black text-slate-800 outline-none shadow-sm" value={editVal} onChange={e => setEditVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveEditTopic(topic.id)} />
-                                                        <button onClick={() => saveEditTopic(topic.id)} className="p-2.5 bg-successGreen text-white rounded-xl hover:bg-green-600 shadow-sm transition-colors"><Check size={18}/></button>
-                                                    </div>
-                                                ) : (
-                                                    <h3 className={`text-2xl font-black transition-all ${topic.isCompleted ? (isVip ? 'text-slate-500 line-through decoration-2' : 'text-slate-400/50 line-through decoration-2') : (isVip ? 'text-white' : 'text-slate-800')}`}>
-                                                        {topic.title}
-                                                    </h3>
-                                                )}
-                                                {!isEditingThisTopic && (
-                                                    <span className={`text-xs font-black px-2.5 py-1 rounded-lg border ${topic.isCompleted ? 'bg-successGreen/10 text-successGreen border-successGreen/20' : (isVip ? 'bg-slate-800 text-vipGold border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-200')}`}>
-                                                        %{tProgress}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            {isTeacherMode && !isEditingThisTopic && (
-                                                <div className="opacity-0 group-hover/topic:opacity-100 flex items-center gap-1 transition-all">
-                                                    <button onClick={() => { if(saveToLibrary) { saveToLibrary(topic); alert("Tüm blok başarıyla kütüphaneye kaydedildi!"); } }} className="p-2 text-slate-400 hover:text-blue-500 transition-colors" title="Blok Olarak Kütüphaneye Kaydet"><Save size={20}/></button>
-                                                    <button onClick={() => startEditTopic(topic.id, topic.title)} className="p-2 text-slate-400 hover:text-brandPurple transition-colors" title="Başlığı Düzenle"><Pencil size={20}/></button>
-                                                    <button onClick={() => deleteTopic(topic.id)} className="p-2 text-slate-400 hover:text-errorRed transition-colors" title="Konuyu Sil"><Trash2 size={20}/></button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="pl-11 mt-3 space-y-3">
-                                        {topic.subTopics?.map(sub => {
-                                            const isEditingThisSub = editingSubTopicId === sub.id;
-                                            return (
-                                                <div key={sub.id} className="flex items-center gap-3 group/sub hover-lift">
-                                                    <button onClick={() => toggleSubTopic(topic.id, sub.id)} className={`flex-shrink-0 transition-colors ${sub.isCompleted ? (isVip ? 'text-vipGold' : 'text-brandPurple') : (isVip ? 'text-slate-400 hover:text-vipGold' : 'text-slate-400 hover:text-brandPurple')} ${!isTeacherMode && 'cursor-default pointer-events-none'}`}>
-                                                        {sub.isCompleted ? <CheckSquare size={20} strokeWidth={2.5} /> : <Square size={20} strokeWidth={2.5} />}
-                                                    </button>
-                                                    
-                                                    <div className="flex-1 flex items-center justify-between">
-                                                        {isEditingThisSub ? (
-                                                            <div className="flex items-center gap-2 w-full max-w-sm">
-                                                                <input type="text" autoFocus className="flex-1 bg-white border border-brandPurple rounded-lg px-3 py-1.5 text-base font-bold text-slate-800 outline-none shadow-sm" value={editVal} onChange={e => setEditVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveEditSub(topic.id, sub.id)} />
-                                                                <button onClick={() => saveEditSub(topic.id, sub.id)} className="p-1.5 bg-successGreen text-white rounded-lg hover:bg-green-600 transition-colors"><Check size={16}/></button>
-                                                            </div>
-                                                        ) : (
-                                                            <span className={`text-lg font-bold transition-all ${sub.isCompleted ? (isVip ? 'text-slate-500 line-through' : 'text-slate-400/50 line-through') : (isVip ? 'text-slate-300' : 'text-slate-600')}`}>
-                                                                {sub.title}
-                                                            </span>
-                                                        )}
-                                                        
-                                                        {isTeacherMode && !isEditingThisSub && (
-                                                            <div className="opacity-0 group-hover/sub:opacity-100 flex items-center gap-1 transition-all">
-                                                                <button onClick={() => startEditSub(sub.id, sub.title)} className="p-1.5 text-slate-300 hover:text-brandPurple transition-colors"><Pencil size={16}/></button>
-                                                                <button onClick={() => deleteSubTopic(topic.id, sub.id)} className="p-1.5 text-slate-300 hover:text-errorRed transition-colors"><Trash2 size={16}/></button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                        {isTeacherMode && (
-                                            <div className="flex items-center gap-3 mt-2 opacity-50 focus-within:opacity-100 transition-opacity">
-                                                <CornerDownRight size={20} className="text-slate-400" />
-                                                <input type="text" placeholder="Alt başlık ekle..." className="flex-1 bg-transparent border-none text-base font-bold text-slate-600 focus:outline-none focus:ring-0 placeholder:text-slate-400" value={newSubTopicTitles[topic.id] || ""} onChange={e => setNewSubTopicTitles(p => ({...p, [topic.id]: e.target.value}))} onKeyDown={e => e.key==='Enter' && addSubTopic(topic.id)}/>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
+                    <div className="space-y-6">
+                        {/* DND-KIT ANA SAĞLAYICI */}
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                            <SortableContext items={curriculum.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                                {curriculum.map((topic) => (
+                                    <SortableTopicItem
+                                        key={topic.id}
+                                        topic={topic}
+                                        isTeacherMode={isTeacherMode}
+                                        isVip={isVip}
+                                        tProgress={getTopicProgress(topic)}
+                                        editingTopicId={editingTopicId}
+                                        editVal={editVal}
+                                        setEditVal={setEditVal}
+                                        saveEditTopic={saveEditTopic}
+                                        toggleTopic={toggleTopic}
+                                        startEditTopic={startEditTopic}
+                                        deleteTopic={deleteTopic}
+                                        saveToLibrary={saveToLibrary}
+                                        editingSubTopicId={editingSubTopicId}
+                                        saveEditSub={saveEditSub}
+                                        toggleSubTopic={toggleSubTopic}
+                                        startEditSub={startEditSub}
+                                        deleteSubTopic={deleteSubTopic}
+                                        newSubTopicTitles={newSubTopicTitles}
+                                        setNewSubTopicTitles={setNewSubTopicTitles}
+                                        addSubTopic={addSubTopic}
+                                    />
+                                ))}
+                            </SortableContext>
+                        </DndContext>
                     </div>
                 )}
             </div>
