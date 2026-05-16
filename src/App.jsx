@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, GraduationCap, Library, Settings, LogOut, Mic, X, Megaphone, Edit3, Pencil, Trash2 } from 'lucide-react';
+import { ChevronLeft, GraduationCap, Library, Settings, LogOut, Mic, X, Megaphone, Edit3, Pencil, Trash2, Download, Share, Plus } from 'lucide-react';
 
 // PDF KÜTÜPHANELERİ
 import jsPDF from 'jspdf';
@@ -39,7 +39,52 @@ const App = () => {
     const [selectedClass, setSelectedClass] = useState(null);
     const [selectedStudentForView, setSelectedStudentForView] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-    useEffect(() => { const handleResize = () => setIsMobile(window.innerWidth < 768); window.addEventListener('resize', handleResize); return () => window.removeEventListener('resize', handleResize); }, []);
+    
+    // 📱 MOBİL UYGULAMA (PWA) YÜKLEME STATE'LERİ
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [isIos, setIsIos] = useState(false);
+    const [isStandalone, setIsStandalone] = useState(false);
+    const [showIosInstallModal, setShowIosInstallModal] = useState(false);
+
+    useEffect(() => { 
+        const handleResize = () => setIsMobile(window.innerWidth < 768); 
+        window.addEventListener('resize', handleResize); 
+
+        const userAgent = window.navigator.userAgent.toLowerCase();
+        const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
+        setIsIos(isIosDevice);
+
+        const isAppStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        setIsStandalone(isAppStandalone);
+
+        const handleBeforeInstallPrompt = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        
+        window.addEventListener('appinstalled', () => {
+            setDeferredPrompt(null);
+            setIsStandalone(true);
+        });
+
+        return () => { 
+            window.removeEventListener('resize', handleResize); 
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        }; 
+    }, []);
+
+    const handleInstallClick = async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') setDeferredPrompt(null);
+        } else if (isIos) {
+            setShowIosInstallModal(true);
+        } else {
+            alert("Uygulama zaten yüklü veya tarayıcınız bu özelliği desteklemiyor.");
+        }
+    };
     
     const [newStudentName, setNewStudentName] = useState("");
     const [modalType, setModalType] = useState(null); 
@@ -80,16 +125,44 @@ const App = () => {
         return () => { unsubClasses(); unsubLibrary(); unsubConfig(); };
     }, []);
 
-    const verifyPin = (inputPin) => { if (String(inputPin).trim() === String(dbTeacherPin).trim()) { setIsTeacherMode(true); setCurrentUserRole('teacher'); setView('home'); setActiveTab('homework'); } else { alert("Hatalı PIN!"); } };
-    
-    // 🔥 MOBİL GİRİŞ HATASI BURADA DÜZELTİLDİ: toLowerCase() eklendi
+    // 🔥 GİRİŞ KORUMALARI EKLENDİ (Firebase Gecikmesi & Klavye Büyük Harf Hatası Çözümü)
+    const verifyPin = (inputPin) => { 
+        if (String(inputPin).trim() === String(dbTeacherPin).trim()) { 
+            setIsTeacherMode(true); setCurrentUserRole('teacher'); setView('home'); setActiveTab('homework'); 
+        } else { 
+            alert("Hatalı PIN!"); 
+        } 
+    };
+
     const handleStudentLogin = (username, password, isVipLogin = false) => {
-        let foundStudent = null, foundClass = null; const classesToSearch = isVipLogin ? vipClasses : regularClasses;
+        if (classes.length === 0) {
+            alert("Sistem verileri yükleniyor... Lütfen 1-2 saniye bekleyip tekrar giriş yapmayı deneyin.");
+            return;
+        }
+
+        let foundStudent = null, foundClass = null; 
+        const classesToSearch = isVipLogin ? vipClasses : regularClasses;
+        const safeUsername = username.trim().toLowerCase(); // Klavyeden gelen büyük harfleri yoksay
+        const safePassword = password.trim();
+
         for (const cls of classesToSearch) { 
-            const std = cls.students?.find(s => s.username === username.trim().toLowerCase() && s.password === password.trim()); 
+            const std = cls.students?.find(s => s.username && s.username.toLowerCase() === safeUsername && s.password === safePassword); 
             if (std) { foundStudent = std; foundClass = cls; break; } 
         }
-        if (foundStudent) { setCurrentUserRole(isVipLogin ? 'vip-student' : 'student'); setLoggedInStudent(foundStudent); setSelectedClass(foundClass); setSelectedStudentForView(foundStudent); setView('student-detail'); setActiveTab('homework'); const updatedStudents = foundClass.students.map(s => s.id === foundStudent.id ? { ...s, lastLogin: new Date().toISOString() } : s); updateClassInDb({ ...foundClass, students: updatedStudents }); } else { alert('Kullanıcı adı veya şifre hatalı!'); }
+
+        if (foundStudent) { 
+            setCurrentUserRole(isVipLogin ? 'vip-student' : 'student'); 
+            setLoggedInStudent(foundStudent); 
+            setSelectedClass(foundClass); 
+            setSelectedStudentForView(foundStudent); 
+            setView('student-detail'); 
+            setActiveTab('homework'); 
+            
+            const updatedStudents = foundClass.students.map(s => s.id === foundStudent.id ? { ...s, lastLogin: new Date().toISOString() } : s); 
+            updateClassInDb({ ...foundClass, students: updatedStudents }); 
+        } else { 
+            alert('Kullanıcı adı veya şifre hatalı!'); 
+        }
     };
     
     const handleLogout = () => { setCurrentUserRole(null); setIsTeacherMode(false); setLoggedInStudent(null); setSelectedClass(null); setSelectedStudentForView(null); setView('home'); };
@@ -193,6 +266,13 @@ const App = () => {
                         <div className="text-center"><h1 className={`text-xl md:text-3xl font-black tracking-tight flex items-center justify-center gap-3 ${currentUserRole === 'vip-student' ? 'real-gold-text' : 'text-slate-800'}`}><div className={`p-2 rounded-xl shadow-md transition-transform hover:scale-105 hover-lift ${currentUserRole === 'vip-student' ? 'real-gold-bg shadow-vip-glow' : 'bg-gradient-to-tr from-brandPurple to-blue-600 shadow-glow'}`}><GraduationCap className={currentUserRole === 'vip-student' ? 'text-[#111]' : 'text-white'} size={24} strokeWidth={2.5} /></div> BERKANT HOCA</h1></div>
                         
                         <div className="flex items-center gap-2 min-w-[80px] justify-end">
+                            {/* 🟢 UYGULAMAYI İNDİR BUTONU */}
+                            {!isStandalone && (deferredPrompt || isIos) && (
+                                <button onClick={handleInstallClick} className="p-2 text-emerald-600 hover:text-white bg-emerald-50 hover:bg-emerald-500 rounded-full transition-colors shadow-sm border border-emerald-200 hover-lift" title="Uygulamayı Telefona İndir">
+                                    <Download size={20}/>
+                                </button>
+                            )}
+
                             {isTeacherMode && <button onClick={() => setShowLibraryManager(true)} className="p-2 text-slate-500 hover:text-brandPurple bg-white hover:bg-purple-50 rounded-full transition-colors shadow-sm border border-slate-200 hover-lift"><Library size={20}/></button>}
                             {(currentUserRole === 'student' || currentUserRole === 'vip-student') && <button onClick={() => setStudentSettingsModal(true)} className={`p-2 rounded-full transition-colors hover-lift ${currentUserRole === 'vip-student' ? 'text-slate-300 hover:text-vipGold bg-slate-700 border border-slate-600 shadow-sm' : 'text-slate-500 hover:text-brandPurple bg-white shadow-sm border border-slate-200'}`} title="Hesabım"><Settings size={20}/></button>}
                             <button onClick={handleLogout} className={`p-2 rounded-full transition-colors hover-lift ${currentUserRole === 'vip-student' ? 'text-rose-400 hover:text-rose-300 bg-slate-700 border border-slate-600 shadow-sm' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 shadow-sm border border-slate-200'}`} title="Çıkış Yap"><LogOut size={20}/></button>
@@ -230,7 +310,33 @@ const App = () => {
             
             {showAssistant && <JarvisModal classes={classes} updateClassInDb={updateClassInDb} onClose={() => setShowAssistant(false)} />}
 
-            {/* MODALLAR */}
+            {/* 🍎 iOS (iPHONE) KURULUM REHBERİ MODALI */}
+            <AnimatePresence>
+                {showIosInstallModal && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" style={{position:'fixed', top:0, left:0, width:'100%', height:'100%'}}>
+                        <motion.div initial={{ opacity: 0, scale: 0.9, y: 50 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 50 }} className="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative text-center">
+                            <button onClick={() => setShowIosInstallModal(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:bg-slate-800 rounded-full transition-colors"><X size={20}/></button>
+                            <div className="bg-emerald-500/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-400 shadow-sm border border-emerald-500/30"><Download size={32} /></div>
+                            <h3 className="text-xl font-black text-white mb-2">Uygulamayı Telefona Kur</h3>
+                            <p className="text-sm text-slate-400 mb-6 leading-relaxed">iPhone (iOS) güvenliği sebebiyle uygulamayı tek tıkla yükleyemiyoruz. Lütfen şu 2 adımı izleyin:</p>
+                            
+                            <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 text-left space-y-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="bg-slate-700 p-2 rounded-xl border border-slate-600 shadow-sm text-blue-400 shrink-0"><Share size={20}/></div>
+                                    <div><p className="text-sm font-bold text-slate-200">Adım 1</p><p className="text-xs text-slate-400 mt-1">Ekranın en altındaki Safari menüsünden <b>"Paylaş"</b> ikonuna dokunun.</p></div>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <div className="bg-slate-700 p-2 rounded-xl border border-slate-600 shadow-sm text-slate-200 shrink-0"><Plus size={20}/></div>
+                                    <div><p className="text-sm font-bold text-slate-200">Adım 2</p><p className="text-xs text-slate-400 mt-1">Açılan menüyü aşağı kaydırıp <b>"Ana Ekrana Ekle"</b> seçeneğini seçin.</p></div>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowIosInstallModal(false)} className="mt-6 w-full py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-md transition-colors">Anladım</button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* DİĞER MODALLAR */}
             {modalType && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
