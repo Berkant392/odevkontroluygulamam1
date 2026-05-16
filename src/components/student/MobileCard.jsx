@@ -9,6 +9,9 @@ const MobileStudentCard = ({ student, cls, updateGrade, onOpenNote, onEditStuden
     const [expanded, setExpanded] = useState(false);
     const studentStats = calculateStats([student], cls.topics);
     
+    // YENİ EKLENENLERİ EN YUKARI ALMAK İÇİN
+    const reversedTopics = cls.topics ? [...cls.topics].reverse() : [];
+
     return (
         <div className="bg-white rounded-2xl shadow-soft border border-slate-200 overflow-hidden mb-4 transition-all duration-300">
             <div className="p-4 flex items-center justify-between cursor-pointer bg-slate-50/50 hover:bg-slate-50 transition-colors" onClick={() => setExpanded(!expanded)}>
@@ -22,11 +25,11 @@ const MobileStudentCard = ({ student, cls, updateGrade, onOpenNote, onEditStuden
             {expanded && (
                 <div className="p-4 border-t border-slate-100 bg-white">
                     <div className="flex justify-end gap-2 mb-4 pb-4 border-b border-slate-100"><button onClick={(e) => { e.stopPropagation(); onEditStudent(student); }} className="text-xs flex items-center gap-1 text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg font-bold"><Pencil size={14}/> Düzenle</button><button onClick={(e) => { e.stopPropagation(); onPrintReport(cls, student); }} className="text-xs flex items-center gap-1 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-bold"><Printer size={14}/> Rapor</button><button onClick={(e) => { e.stopPropagation(); onDeleteStudent(e, cls.id, student.id); }} className="text-xs flex items-center gap-1 text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg font-bold"><Trash2 size={14}/> Sil</button></div>
-                    {cls.topics?.length === 0 ? (
+                    {reversedTopics.length === 0 ? (
                         <p className="text-center text-sm text-slate-400 py-4">Bu sınıfa henüz ödev eklenmemiş.</p>
                     ) : (
                         <div className="space-y-6">
-                            {cls.topics?.map((topic, i) => {
+                            {reversedTopics.map((topic, i) => {
                                 const theme = cls.type === 'vip' ? { main: 'bg-amber-100 text-amber-900 border-amber-200' } : TOPIC_THEMES[i % TOPIC_THEMES.length]; const isLate = isOverdue(topic.date);
                                 return (
                                     <div key={topic.id} className={`border border-slate-100 rounded-xl overflow-hidden shadow-sm`}>
