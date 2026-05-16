@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GraduationCap, User, Crown, Briefcase, ChevronRight, ChevronLeft } from 'lucide-react';
+// Yeni ikonlar eklendi: Download, Share, Plus, X
+import { GraduationCap, User, Crown, Briefcase, ChevronRight, ChevronLeft, Download, Share, Plus, X } from 'lucide-react';
 
 // -------------------------------------------------------------
 // V3 HTML KUSURSUZ CANVAS YILDIZ MOTORU
@@ -92,6 +93,51 @@ const LoginScreen = ({ onStudentLogin, onTeacherLogin }) => {
     const [password, setPassword] = useState("");
     const [pin, setPin] = useState("");
 
+    // 📱 PWA (MOBİL UYGULAMA) STATE'LERİ
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [isIos, setIsIos] = useState(false);
+    const [isStandalone, setIsStandalone] = useState(false);
+    const [showIosInstallModal, setShowIosInstallModal] = useState(false);
+
+    useEffect(() => {
+        // Cihazın iOS olup olmadığını kontrol et
+        const userAgent = window.navigator.userAgent.toLowerCase();
+        const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
+        setIsIos(isIosDevice);
+
+        // Uygulama zaten telefona yüklü mü?
+        const isAppStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        setIsStandalone(isAppStandalone);
+
+        // Android İndirme Penceresi Olayını Yakala
+        const handleBeforeInstallPrompt = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        
+        // Yüklendiğinde butonu sakla
+        window.addEventListener('appinstalled', () => {
+            setDeferredPrompt(null);
+            setIsStandalone(true);
+        });
+
+        return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    }, []);
+
+    // 📱 AKILLI İNDİRME BUTONU TETİKLEYİCİSİ
+    const handleInstallClick = async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') setDeferredPrompt(null);
+        } else if (isIos) {
+            setShowIosInstallModal(true);
+        } else {
+            alert("Uygulama zaten yüklü veya tarayıcınız bu özelliği desteklemiyor.");
+        }
+    };
+
     const containerVariants = {
         hidden: { opacity: 0 },
         show: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.1 } }
@@ -144,6 +190,15 @@ const LoginScreen = ({ onStudentLogin, onTeacherLogin }) => {
                                 <div className="lbl"><div className="lts">Yönetici Girişi</div><div className="lss">Öğretmen paneli</div></div>
                                 <ChevronRight className="lch" size={16}/>
                             </motion.button>
+
+                            {/* 🟢 MOBİL UYGULAMA İNDİR BUTONU (SADECE WEBDE İKEN VE YÜKLÜ DEĞİLSE ÇIKAR) */}
+                            {!isStandalone && (deferredPrompt || isIos) && (
+                                <motion.button variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.97 }} onClick={handleInstallClick} className="lbtn w-full max-w-[360px]" style={{marginTop: '10px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)'}}>
+                                    <div className="liw" style={{background: 'rgba(16, 185, 129, 0.25)'}}><Download color="#10b981" size={18}/></div>
+                                    <div className="lbl"><div className="lts" style={{color: '#10b981'}}>Mobil Uygulamayı İndir</div><div className="lss" style={{color: 'rgba(16, 185, 129, 0.8)'}}>Ana ekrana kısayol ekle</div></div>
+                                    <ChevronRight className="lch" style={{color: '#10b981'}} size={16}/>
+                                </motion.button>
+                            )}
                             
                             <motion.div variants={itemVariants} className="lquote"><span className="lqm">"</span> Eğitim, dünyayı değiştirmek için en güçlü silahtır. <span className="lqm">"</span></motion.div>
                         </motion.div>
@@ -209,6 +264,32 @@ const LoginScreen = ({ onStudentLogin, onTeacherLogin }) => {
                     )}
                 </AnimatePresence>
             </motion.div>
+
+            {/* 🍎 iOS (iPHONE) KURULUM REHBERİ MODALI (Siyah Temaya Uygun) */}
+            <AnimatePresence>
+                {showIosInstallModal && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" style={{position:'fixed', top:0, left:0, width:'100%', height:'100%'}}>
+                        <motion.div initial={{ opacity: 0, scale: 0.9, y: 50 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 50 }} className="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative text-center">
+                            <button onClick={() => setShowIosInstallModal(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:bg-slate-800 rounded-full transition-colors"><X size={20}/></button>
+                            <div className="bg-emerald-500/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-400 shadow-sm border border-emerald-500/30"><Download size={32} /></div>
+                            <h3 className="text-xl font-black text-white mb-2">Uygulamayı Telefona Kur</h3>
+                            <p className="text-sm text-slate-400 mb-6 leading-relaxed">iPhone (iOS) güvenliği sebebiyle uygulamayı tek tıkla yükleyemiyoruz. Lütfen şu 2 adımı izleyin:</p>
+                            
+                            <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 text-left space-y-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="bg-slate-700 p-2 rounded-xl border border-slate-600 shadow-sm text-blue-400 shrink-0"><Share size={20}/></div>
+                                    <div><p className="text-sm font-bold text-slate-200">Adım 1</p><p className="text-xs text-slate-400 mt-1">Ekranın en altındaki Safari menüsünden <b>"Paylaş"</b> ikonuna dokunun.</p></div>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <div className="bg-slate-700 p-2 rounded-xl border border-slate-600 shadow-sm text-slate-200 shrink-0"><Plus size={20}/></div>
+                                    <div><p className="text-sm font-bold text-slate-200">Adım 2</p><p className="text-xs text-slate-400 mt-1">Açılan menüyü aşağı kaydırıp <b>"Ana Ekrana Ekle"</b> seçeneğini seçin.</p></div>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowIosInstallModal(false)} className="mt-6 w-full py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-md transition-colors">Anladım</button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
