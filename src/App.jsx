@@ -25,8 +25,12 @@ import CountdownTimer from './components/ui/Countdown';
 import JarvisModal from './components/assistant/JarvisModal'; 
 
 const App = () => {
-    // 🔥 FİREBASE YÜKLENME KALKANI (YENİ EKLENDİ)
-    const [isFirebaseLoaded, setIsFirebaseLoaded] = useState(false);
+    // 🔥 PWA ÇİFT KİLİTLİ VERİ KALKANI
+    const [isClassesLoaded, setIsClassesLoaded] = useState(false);
+    const [isConfigLoaded, setIsConfigLoaded] = useState(false);
+    
+    // Her iki veri de gelmeden kalkan ASLA açılmaz!
+    const isFirebaseLoaded = isClassesLoaded && isConfigLoaded;
 
     const [classes, setClasses] = useState([]);
     const [libraryItems, setLibraryItems] = useState([]);
@@ -116,29 +120,27 @@ const App = () => {
     useEffect(() => {
         const unsubClasses = onSnapshot(collection(db, CLASSES_COLLECTION), (snap) => {
             setClasses(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            setIsFirebaseLoaded(true); // Sınıflar geldi, kalkanı aç!
+            setIsClassesLoaded(true); // Sınıflar geldi kildi aç
         });
         const unsubLibrary = onSnapshot(collection(db, LIBRARY_COLLECTION), (snap) => setLibraryItems(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
         const unsubConfig = onSnapshot(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC), (docSnap) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                if (data.pin) setDbTeacherPin(data.pin); // SENİN ÖZEL ŞİFREN BURADA İNİYOR
+                if (data.pin) setDbTeacherPin(data.pin);
                 if (data.announcement) setSystemAnnouncement(data.announcement);
                 if (data.announcementTitle) setAnnouncementTitle(data.announcementTitle);
                 if (data.countdown) setCountdownConfig(data.countdown);
             }
-            setIsFirebaseLoaded(true); // Şifre geldi, kalkanı aç!
+            setIsConfigLoaded(true); // Özel PIN Şifresi Geldi kilidi aç!
         });
         return () => { unsubClasses(); unsubLibrary(); unsubConfig(); };
     }, []);
 
-    // 🔥 GİRİŞ KORUMALARI EKLENDİ (Firebase Gecikmesi & Klavye Büyük Harf Hatası Çözümü)
     const verifyPin = (inputPin) => { 
         if (!isFirebaseLoaded) {
-            alert("Sistem verileri yükleniyor... Lütfen 1-2 saniye bekleyip tekrar deneyin.");
+            alert("Sistem verileri yükleniyor... Lütfen 1 saniye bekleyip tekrar deneyin.");
             return;
         }
-
         if (String(inputPin).trim() === String(dbTeacherPin).trim()) { 
             setIsTeacherMode(true); setCurrentUserRole('teacher'); setView('home'); setActiveTab('homework'); 
         } else { 
@@ -148,7 +150,7 @@ const App = () => {
 
     const handleStudentLogin = (username, password, isVipLogin = false) => {
         if (!isFirebaseLoaded) {
-            alert("Sistem verileri yükleniyor... Lütfen 1-2 saniye bekleyip tekrar deneyin.");
+            alert("Sistem verileri yükleniyor... Lütfen 1 saniye bekleyip tekrar deneyin.");
             return;
         }
 
@@ -265,7 +267,6 @@ const App = () => {
                         <div className="text-center"><h1 className={`text-xl md:text-3xl font-black tracking-tight flex items-center justify-center gap-3 ${currentUserRole === 'vip-student' ? 'real-gold-text' : 'text-slate-800'}`}><div className={`p-2 rounded-xl shadow-md transition-transform hover:scale-105 hover-lift ${currentUserRole === 'vip-student' ? 'real-gold-bg shadow-vip-glow' : 'bg-gradient-to-tr from-brandPurple to-blue-600 shadow-glow'}`}><GraduationCap className={currentUserRole === 'vip-student' ? 'text-[#111]' : 'text-white'} size={24} strokeWidth={2.5} /></div> BERKANT HOCA</h1></div>
                         
                         <div className="flex items-center gap-2 min-w-[80px] justify-end">
-                            {/* 🟢 UYGULAMAYI İNDİR BUTONU */}
                             {!isStandalone && (deferredPrompt || isIos) && (
                                 <button onClick={handleInstallClick} className="p-2 text-emerald-600 hover:text-white bg-emerald-50 hover:bg-emerald-500 rounded-full transition-colors shadow-sm border border-emerald-200 hover-lift" title="Uygulamayı Telefona İndir">
                                     <Download size={20}/>
