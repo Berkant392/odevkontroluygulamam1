@@ -75,12 +75,12 @@ const LoginScreen = ({ onStudentLogin, onTeacherLogin }) => {
                                 
                                 <div className="login-input-group">
                                     <label className="login-label" style={{color: authView === 'vip-login' ? '#e6c27a' : '#94a3b8'}}>Kullanıcı Adı</label>
-                                    <input type="text" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} placeholder="Kullanıcı Adınız" value={username} onChange={e => setUsername(e.target.value)} autoCapitalize="none" autoCorrect="off" spellCheck="false" autoComplete="off" />
+                                    <input type="text" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} placeholder="Kullanıcı Adınız" value={username} onChange={e => setUsername(e.target.value)} />
                                 </div>
                                 
                                 <div className="login-input-group" style={{marginTop: '20px'}}>
                                     <label className="login-label" style={{color: authView === 'vip-login' ? '#e6c27a' : '#94a3b8'}}>Şifre</label>
-                                    <input type="password" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} style={{letterSpacing: '0.3em', fontSize: '18px'}} placeholder="••••••" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && onStudentLogin(username, password, authView === 'vip-login')} autoCapitalize="none" autoCorrect="off" spellCheck="false" />
+                                    <input type="password" className={`login-input ${authView === 'vip-login' ? 'vip-input' : ''}`} style={{letterSpacing: '0.3em', fontSize: '18px'}} placeholder="••••••" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && onStudentLogin(username, password, authView === 'vip-login')} />
                                 </div>
                                 
                                 <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }} onClick={() => onStudentLogin(username, password, authView === 'vip-login')} className={`lbtn w-full flex items-center justify-center rounded-xl transition-all ${authView === 'vip-login' ? 'real-gold-bg' : 'bg-brandPurple hover:bg-purple-600 shadow-glow'}`} style={{marginTop: '28px', padding: '16px', border: 'none'}}><span style={{color: authView === 'vip-login' ? '#111111' : '#ffffff', fontSize: '16px', fontWeight: '900', letterSpacing: '0.05em'}}>GİRİŞ YAP</span></motion.button>
