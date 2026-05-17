@@ -42,8 +42,56 @@ const App = () => {
     const [isConfigLoaded, setIsConfigLoaded] = useState(false);
     const isFirebaseLoaded = isClassesLoaded && isConfigLoaded;
 
-    const [isRestoring, setIsRestoring] = useState(!!localStorage.getItem('berkantHocaSession'));
+    useEffect(() => {
+    if (!isFirebaseLoaded) return; // Firebase hazır değilse hiç çalışma
 
+    const sessionStr = localStorage.getItem('berkantHocaSession');
+    if (!sessionStr) {
+        setIsRestoring(false);
+        return;
+    }
+
+    try {
+        const session = JSON.parse(sessionStr);
+        if (session.role === 'teacher') {
+            if (String(session.pin).trim() === String(dbTeacherPin).trim()) {
+                setIsTeacherMode(true);
+                setCurrentUserRole('teacher');
+                setView('home');
+                setActiveTab('homework');
+            } else {
+                localStorage.removeItem('berkantHocaSession');
+            }
+        } else if (session.role === 'student' || session.role === 'vip-student') {
+            const classesToSearch = session.role === 'vip-student' ? vipClasses : regularClasses;
+            let foundStudent = null, foundClass = null;
+            const safeSessionUser = makeSafe(session.username);
+            
+            for (const cls of classesToSearch) {
+                const std = cls.students?.find(s => 
+                    s.username && makeSafe(s.username) === safeSessionUser && 
+                    s.password === session.password
+                );
+                if (std) { foundStudent = std; foundClass = cls; break; }
+            }
+            
+            if (foundStudent) {
+                setCurrentUserRole(session.role);
+                setLoggedInStudent(foundStudent);
+                setSelectedClass(foundClass);
+                setSelectedStudentForView(foundStudent);
+                setView('student-detail');
+                setActiveTab('homework');
+            } else {
+                localStorage.removeItem('berkantHocaSession');
+            }
+        }
+    } catch (e) {
+        localStorage.removeItem('berkantHocaSession');
+    }
+    
+    setIsRestoring(false); // Her durumda en sona taşı
+}, [isFirebaseLoaded, classes, dbTeacherPin]); // dependency array aynı kalıyor
     const [classes, setClasses] = useState([]);
     const [libraryItems, setLibraryItems] = useState([]);
     const [currentUserRole, setCurrentUserRole] = useState(null);
