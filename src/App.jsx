@@ -325,7 +325,15 @@ setIsIos(/iphone|ipad|ipod/.test(userAgent));
         );
     }
 
-    if (!currentUserRole) return <LoginScreen onStudentLogin={handleStudentLogin} onTeacherLogin={verifyPin} />;
+    if (!currentUserRole) return (
+  <LoginScreen 
+    onStudentLogin={handleStudentLogin} 
+    onTeacherLogin={verifyPin}
+    deferredPrompt={deferredPrompt}
+    isIos={isIos}
+    isStandalone={isStandalone}
+  />
+);
 
     return (
         <div className={`min-h-screen pb-32 relative transition-colors duration-1000 ${currentUserRole === 'vip-student' ? 'bg-slate-900' : 'bg-lightBg'}`}>
