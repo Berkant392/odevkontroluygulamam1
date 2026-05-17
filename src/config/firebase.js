@@ -16,7 +16,7 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 
 // PWA için kritik: Firestore verisini cihazda önbelleğe al
-// Bu sayede PWA ilk açıldığında veriler anında hazır olur
+// Bu sayede PWA ilk açıldığında veriler anında hazır olur ve "Yükleniyor" ekranı saniyesinde geçer
 enableIndexedDbPersistence(db).catch((err) => {
     if (err.code === 'failed-precondition') {
         console.warn('Birden fazla sekme açık — persistence devre dışı bırakıldı.');
