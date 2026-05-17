@@ -2,19 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, GraduationCap, Library, Settings, LogOut, Mic, X, Megaphone, Edit3, Pencil, Trash2 } from 'lucide-react';
 
-// PDF KÜTÜPHANELERİ
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-// FİREBASE
 import { db } from './config/firebase'; 
 import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc, getDocs, getDoc } from 'firebase/firestore';
 
-// YARDIMCILAR VE SABİTLER
 import { LIBRARY_TYPES, CLASSES_COLLECTION, LIBRARY_COLLECTION, SETTINGS_COLLECTION, SETTINGS_DOC, DEFAULT_PIN, STATUS_OPTIONS } from './utils/constants';
-import { generateId, calculateStats, generateUsername } from './utils/helpers';
+import { generateId, calculateStats } from './utils/helpers';
 
-// 🧩 PARÇALANMIŞ BİLEŞENLERİMİZ
 import LoginScreen from './components/auth/LoginScreen';
 import TeacherDashboard from './components/dashboard/TeacherDashboard';
 import StudentDashboard from './components/dashboard/StudentDashboard';
@@ -24,7 +20,10 @@ import LibraryModal from './components/modals/LibraryModal';
 import CountdownTimer from './components/ui/Countdown'; 
 import JarvisModal from './components/assistant/JarvisModal'; 
 
-// 🔥 MOBİL KLAVYE KORUMASI
+// ─────────────────────────────────────────────
+// Türkçe karakter + büyük/küçük harf normalizasyonu
+// iOS'ta "İ" harfi "i" yerine büyük I yazdırır — bu fonksiyon bunu düzeltir
+// ─────────────────────────────────────────────
 const makeSafe = (str) => {
     if (!str) return "";
     return String(str).trim()
@@ -38,13 +37,13 @@ const makeSafe = (str) => {
 };
 
 const App = () => {
-    // 🛡️ FİREBASE KİLİTLİ GÜVENLİK STATE'LERİ
     const [isClassesLoaded, setIsClassesLoaded] = useState(false);
     const [isConfigLoaded, setIsConfigLoaded] = useState(false);
     const isFirebaseLoaded = isClassesLoaded && isConfigLoaded;
 
-    // 🔒 Oturumun PWA yarış koşuluna kurban gitmesini önleyen kalkan
-    const [isRestoring, setIsRestoring] = useState(!!localStorage.getItem('berkantHocaSession'));
+    // 🔥 KRİTİK ÇÖZÜM 1 (Claude'un tespiti): Firebase hazır olmadan auto-login başlamamalı
+    const hasSession = !!localStorage.getItem('berkantHocaSession');
+    const [isRestoring, setIsRestoring] = useState(hasSession);
 
     const [classes, setClasses] = useState([]);
     const [libraryItems, setLibraryItems] = useState([]);
@@ -61,41 +60,15 @@ const App = () => {
     const [selectedStudentForView, setSelectedStudentForView] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     
-    // 📱 MOBİL UYGULAMA (PWA) YÜKLEME STATE'LERİ
+    // PWA STATE'LERİ
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [isIos, setIsIos] = useState(false);
     const [isStandalone, setIsStandalone] = useState(false);
 
-    const [newStudentName, setNewStudentName] = useState("");
-    const [modalType, setModalType] = useState(null); 
-    const [modalData, setModalData] = useState(null);
-    const [modalInputVal, setModalInputVal] = useState("");
-    const [modalTitleVal, setModalTitleVal] = useState(""); 
-    const [modalDateVal, setModalDateVal] = useState("");
-    const [modalPdfVal, setModalPdfVal] = useState("");
-    
-    const [activeTopicMenu, setActiveTopicMenu] = useState(null);
-    const [activeColMenu, setActiveColMenu] = useState(null);
-    const [activeCell, setActiveCell] = useState(null);
-    const [studentSettingsModal, setStudentSettingsModal] = useState(false);
-    const [cellNoteModal, setCellNoteModal] = useState(null);
-
-    // J.A.R.V.I.S ve Kütüphane Ayarları
-    const [showLibraryManager, setShowLibraryManager] = useState(false);
-    const [libraryCategory, setLibraryCategory] = useState(LIBRARY_TYPES.TOPIC);
-    const [libraryInput, setLibraryInput] = useState("");
-    const [libraryDate, setLibraryDate] = useState("");
-    const [showAssistant, setShowAssistant] = useState(false);
-
-    const regularClasses = classes.filter(c => c.type !== 'vip');
-    const vipClasses = classes.filter(c => c.type === 'vip');
-
-    // Cihaz ve PWA Dinleyicileri
     useEffect(() => { 
         const handleResize = () => setIsMobile(window.innerWidth < 768); 
         window.addEventListener('resize', handleResize); 
 
-        // Typo hatası window.navigator.userAgent ile %100 düzeltildi
         const userAgent = window.navigator.userAgent.toLowerCase();
         setIsIos(/iphone|ipad|ipod/.test(userAgent));
         setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true);
@@ -107,7 +80,10 @@ const App = () => {
         return () => { window.removeEventListener('resize', handleResize); window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt); }; 
     }, []);
 
-    // 🌐 REALTIME FİREBASE VERİ AKIŞI
+    const regularClasses = classes.filter(c => c.type !== 'vip');
+    const vipClasses = classes.filter(c => c.type === 'vip');
+
+    // 🌐 FİREBASE VERİ ÇEKME
     useEffect(() => {
         const unsubClasses = onSnapshot(collection(db, CLASSES_COLLECTION), (snap) => {
             setClasses(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -127,79 +103,86 @@ const App = () => {
         return () => { unsubClasses(); unsubLibrary(); unsubConfig(); };
     }, []);
 
-    // 🚀 KURŞUN GEÇİRMEZ AUTO-LOGIN MOTORU (Yarış Koşulu Tamamen Çözüldü)
+    // 🚀 OTOMATİK GİRİŞ (isFirebaseLoaded true olmadan asla çalışmaz)
     useEffect(() => {
-        if (!isFirebaseLoaded) return; 
-
-        const sessionStr = localStorage.getItem('berkantHocaSession');
-        if (!sessionStr) {
-            setIsRestoring(false);
-            return;
-        }
-
-        try {
-            const session = JSON.parse(sessionStr);
-            if (session.role === 'teacher') {
-                if (String(session.pin).trim() === String(dbTeacherPin).trim()) {
-                    setIsTeacherMode(true); setCurrentUserRole('teacher'); setView('home'); setActiveTab('homework');
-                } else { localStorage.removeItem('berkantHocaSession'); }
-            } else if (session.role === 'student' || session.role === 'vip-student') {
-                const classesToSearch = session.role === 'vip-student' ? vipClasses : regularClasses;
-                let foundStudent = null, foundClass = null;
-                const safeSessionUser = makeSafe(session.username);
-                
-                for (const cls of classesToSearch) {
-                    const std = cls.students?.find(s => s.username && makeSafe(s.username) === safeSessionUser && s.password === session.password);
-                    if (std) { foundStudent = std; foundClass = cls; break; }
-                }
-                if (foundStudent) {
-                    setCurrentUserRole(session.role); setLoggedInStudent(foundStudent); setSelectedClass(foundClass); setSelectedStudentForView(foundStudent); setView('student-detail'); setActiveTab('homework');
-                } else { localStorage.removeItem('berkantHocaSession'); }
+        if (isFirebaseLoaded && !currentUserRole) {
+            const sessionStr = localStorage.getItem('berkantHocaSession');
+            if (sessionStr) {
+                try {
+                    const session = JSON.parse(sessionStr);
+                    if (session.role === 'teacher') {
+                        if (String(session.pin).trim() === String(dbTeacherPin).trim()) {
+                            setIsTeacherMode(true); setCurrentUserRole('teacher'); setView('home'); setActiveTab('homework');
+                        } else { localStorage.removeItem('berkantHocaSession'); }
+                    } else if (session.role === 'student' || session.role === 'vip-student') {
+                        const classesToSearch = session.role === 'vip-student' ? vipClasses : regularClasses;
+                        let foundStudent = null, foundClass = null;
+                        const safeSessionUser = makeSafe(session.username);
+                        
+                        for (const cls of classesToSearch) {
+                            const std = cls.students?.find(s => s.username && makeSafe(s.username) === safeSessionUser && s.password === session.password);
+                            if (std) { foundStudent = std; foundClass = cls; break; }
+                        }
+                        if (foundStudent) {
+                            setCurrentUserRole(session.role); setLoggedInStudent(foundStudent); setSelectedClass(foundClass); setSelectedStudentForView(foundStudent); setView('student-detail'); setActiveTab('homework');
+                        } else { localStorage.removeItem('berkantHocaSession'); }
+                    }
+                } catch (e) { localStorage.removeItem('berkantHocaSession'); }
             }
-        } catch (e) { localStorage.removeItem('berkantHocaSession'); }
-        setIsRestoring(false); 
-    }, [isFirebaseLoaded, classes, dbTeacherPin]); 
+            setIsRestoring(false); 
+        }
+    }, [isFirebaseLoaded, classes, dbTeacherPin, currentUserRole]); 
 
-    // 🔑 GİRİŞ DOĞRULAMALARI
+    // 🔐 YÖNETİCİ GİRİŞİ 
     const verifyPin = async (inputPin) => { 
         let currentPin = dbTeacherPin;
         if (currentPin === DEFAULT_PIN) {
             try {
                 const docSnap = await getDoc(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC));
                 if (docSnap.exists() && docSnap.data().pin) currentPin = docSnap.data().pin;
-            } catch (e) {}
+            } catch (error) { console.error("Firebase fetch hatası:", error); }
         }
+
         if (String(inputPin).trim() === String(currentPin).trim()) { 
             localStorage.setItem('berkantHocaSession', JSON.stringify({ role: 'teacher', pin: String(inputPin).trim() }));
             setIsTeacherMode(true); setCurrentUserRole('teacher'); setView('home'); setActiveTab('homework'); 
         } else { alert("Hatalı PIN!"); } 
     };
 
+    // 🚀 ÖĞRENCİ GİRİŞİ 
     const handleStudentLogin = async (username, password, isVipLogin = false) => {
         let currentClasses = classes;
-        if (currentClasses.length === 0 || !isFirebaseLoaded) {
+        
+        if (currentClasses.length === 0) {
             try {
                 const snap = await getDocs(collection(db, CLASSES_COLLECTION));
                 currentClasses = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setClasses(currentClasses);
-            } catch (error) { alert('Bağlantı hatası. İnternetinizi kontrol edin.'); return; }
+            } catch (error) { 
+                console.error("Firebase fetch hatası:", error); 
+                alert('Bağlantı hatası. İnternet bağlantınızı kontrol edin.');
+                return; 
+            }
         }
 
         const classesToSearch = isVipLogin ? currentClasses.filter(c => c.type === 'vip') : currentClasses.filter(c => c.type !== 'vip');
         const safeUsername = makeSafe(username); 
         const safePassword = password.trim();
+
         let foundStudent = null, foundClass = null;
 
-        for (const cls of classesToSearch) {
-            const std = cls.students?.find(s => s.username && makeSafe(s.username) === safeUsername && s.password.trim() === safePassword);
-            if (std) { foundStudent = std; foundClass = cls; break; }
+        for (const cls of classesToSearch) { 
+            const std = cls.students?.find(s => s.username && makeSafe(s.username) === safeUsername && s.password.trim() === safePassword); 
+            if (std) { foundStudent = std; foundClass = cls; break; } 
         }
 
         if (foundStudent) { 
             const role = isVipLogin ? 'vip-student' : 'student';
             localStorage.setItem('berkantHocaSession', JSON.stringify({ role, username: safeUsername, password: safePassword }));
             setCurrentUserRole(role); setLoggedInStudent(foundStudent); setSelectedClass(foundClass); setSelectedStudentForView(foundStudent); setView('student-detail'); setActiveTab('homework'); 
-            updateClassInDb({ ...foundClass, students: foundClass.students.map(s => s.id === foundStudent.id ? { ...s, lastLogin: new Date().toISOString() } : s) }); 
+            
+            const updatedStudents = foundClass.students.map(s => s.id === foundStudent.id ? { ...s, lastLogin: new Date().toISOString() } : s); 
+            updateClassInDb({ ...foundClass, students: updatedStudents }); 
         } else { alert('Kullanıcı adı veya şifre hatalı!'); }
     };
     
@@ -208,23 +191,25 @@ const App = () => {
         setCurrentUserRole(null); setIsTeacherMode(false); setLoggedInStudent(null); setSelectedClass(null); setSelectedStudentForView(null); setView('home'); 
     };
     
-    // 📝 VERİTABANI YAZMA VE ÖĞRENCİ EKLEME MOTORU (Türkçe Karakter Bugı Çözüldü)
-    const addStudent = (classId) => { 
-        if(!newStudentName.trim()) return; 
-        const cls = classes.find(c => c.id === classId); 
-        const username = generateUsername(newStudentName); // Güvenli helper motoru devreye alındı!
-        const password = Math.random().toString(36).slice(-6); 
-        const newStd = { id: generateId('std'), name: newStudentName, username, password, grades: {}, assignmentNotes: {} }; 
-        updateClassInDb({ ...cls, students: [...(cls.students || []), newStd] }); 
-        setNewStudentName(""); 
-    };
-
     const updateClassInDb = async (updatedClass) => { try { await updateDoc(doc(db, CLASSES_COLLECTION, updatedClass.id), updatedClass); if (selectedClass?.id === updatedClass.id) setSelectedClass(updatedClass); } catch (e) { console.error(e); } };
     const goHome = () => { setView('home'); setSelectedClass(null); setSelectedStudentForView(null); setActiveTab('homework'); };
     const openClass = (cls) => { setSelectedClass(cls); setView('class-detail'); setActiveTab('homework'); };
     const openStudent = (std) => { setSelectedStudentForView(std); setView('student-detail'); setActiveTab('homework'); };
-    const addLibraryItem = async (text) => { if(!text || !text.trim()) return; let subTopics = []; let mainText = text.trim(); if (libraryCategory === LIBRARY_TYPES.CURRICULUM && text.includes(',')) { const parts = text.split(','); mainText = parts[0].trim(); subTopics = parts.slice(1).map(p => ({ title: p.trim() })).filter(p => p.title); } await addDoc(collection(db, LIBRARY_COLLECTION), { text: mainText, type: libraryCategory, date: libraryCategory === LIBRARY_TYPES.TOPIC ? libraryDate : null, subTopics: subTopics }); };
+    
+    const addLibraryItem = async (text) => { if(!text || typeof text !== 'string' || !text.trim()) return; let subTopics = []; let mainText = text.trim(); if (libraryCategory === LIBRARY_TYPES.CURRICULUM && text.includes(',')) { const parts = text.split(','); mainText = parts[0].trim(); subTopics = parts.slice(1).map(p => ({ title: p.trim() })).filter(p => p.title); } await addDoc(collection(db, LIBRARY_COLLECTION), { text: mainText, type: libraryCategory, date: libraryCategory === LIBRARY_TYPES.TOPIC ? libraryDate : null, subTopics: subTopics }); };
     const deleteLibraryItem = async (id) => { await deleteDoc(doc(db, LIBRARY_COLLECTION, id)); };
+    
+    // 🔥 KRİTİK ÇÖZÜM 3'ün DESTEĞİ: Öğrenci Eklerken Kullanıcı Adı makeSafe() ile Standartlaştırılır
+    const addStudent = (classId) => { 
+        if(!newStudentName.trim()) return; 
+        const cls = classes.find(c => c.id === classId); 
+        const usernameStr = makeSafe(newStudentName).replace(/\s+/g, '.') + Math.floor(Math.random() * 1000);
+        const passwordStr = Math.random().toString(36).slice(-6); 
+        const newStd = { id: generateId('std'), name: newStudentName, username: usernameStr, password: passwordStr, grades: {}, assignmentNotes: {} }; 
+        updateClassInDb({ ...cls, students: [...(cls.students || []), newStd] }); 
+        setNewStudentName(""); 
+    };
+
     const deleteStudent = (e, classId, studentId) => { e.stopPropagation(); if(!window.confirm('Öğrenciyi silmek istediğinize emin misiniz?')) return; const cls = classes.find(c => c.id === classId); updateClassInDb({ ...cls, students: cls.students.filter(s => s.id !== studentId) }); };
     const updateGrade = (classId, studentId, colId, statusId) => { const cls = classes.find(c => c.id === classId); updateClassInDb({ ...cls, students: cls.students.map(s => s.id === studentId ? { ...s, grades: { ...(s.grades || {}), [colId]: statusId } } : s) }); setActiveCell(null); };
     const deleteColumn = (classId, topicId, colId) => { if(!window.confirm('Kaynağı silmek istediğinize emin misiniz?')) return; const cls = classes.find(c => c.id === classId); updateClassInDb({ ...cls, topics: cls.topics.map(t => t.id === topicId ? { ...t, subColumns: t.subColumns.filter(c => c.id !== colId) } : t) }); };
@@ -248,9 +233,27 @@ const App = () => {
         try { const canvas = await html2canvas(printDiv, { scale: 2, useCORS: true }); const imgData = canvas.toDataURL('image/png'); const pdf = new jsPDF('p', 'mm', 'a4'); const pdfWidth = pdf.internal.pageSize.getWidth(); const pdfHeight = (canvas.height * pdfWidth) / canvas.width; pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight); pdf.save(`${cls.className.replace(/\s+/g, '_')}_Sifreler.pdf`); } catch (error) { alert("PDF hatası."); } finally { document.body.removeChild(printDiv); }
     };
 
-    const handleOpenRisk = (cls) => { const stats = calculateStats(cls.students, cls.topics); if (stats.atRisk && stats.atRisk.length > 0) { let msg = `⚠️ RİSKLİ ÖĞRENCİLER (${cls.className})\n\n`; stats.atRisk.forEach(s => { msg += `• ${s.name} - Başarı Oranı: %${s.rate}\n`; }); alert(msg); } else { alert(`✅ Durum mükemmel.`); } };
+    const handleOpenRisk = (cls) => { const stats = calculateStats(cls.students, cls.topics); if (stats.atRisk && stats.atRisk.length > 0) { let msg = `⚠️ RİSKLİ ÖĞRENCİLER (${cls.className})\n\n`; stats.atRisk.forEach(s => { msg += `• ${s.name} - Başarı Oranı: %${s.rate}\n`; }); alert(msg); } else { alert(`✅ Sınıfta risk grubunda olan öğrenci bulunmuyor.`); } };
     const openCellNoteModal = (classId, studentId, colId, currentNote) => { setCellNoteModal({ classId, studentId, colId, note: currentNote || "" }); };
     
+    // --- Modallar ---
+    const [modalType, setModalType] = useState(null); 
+    const [modalData, setModalData] = useState(null);
+    const [modalInputVal, setModalInputVal] = useState("");
+    const [modalTitleVal, setModalTitleVal] = useState(""); 
+    const [modalDateVal, setModalDateVal] = useState("");
+    const [modalPdfVal, setModalPdfVal] = useState("");
+    const [activeTopicMenu, setActiveTopicMenu] = useState(null);
+    const [activeColMenu, setActiveColMenu] = useState(null);
+    const [activeCell, setActiveCell] = useState(null);
+    const [studentSettingsModal, setStudentSettingsModal] = useState(false);
+    const [cellNoteModal, setCellNoteModal] = useState(null);
+    const [showLibraryManager, setShowLibraryManager] = useState(false);
+    const [libraryCategory, setLibraryCategory] = useState(LIBRARY_TYPES.TOPIC);
+    const [libraryInput, setLibraryInput] = useState("");
+    const [libraryDate, setLibraryDate] = useState("");
+    const [showAssistant, setShowAssistant] = useState(false);
+
     const handleModalSubmit = async () => {
         if (modalType === 'system-settings') { await updateDoc(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC), { announcement: modalInputVal, announcementTitle: modalTitleVal, countdown: { targetDate: modalDateVal ? `${modalDateVal}T00:00:00` : countdownConfig.targetDate, startDate: countdownConfig.startDate, label: modalPdfVal || "" } }); setModalType(null); return; }
         if (!modalInputVal.trim() && modalType !== 'edit-date') return;
@@ -276,7 +279,6 @@ const App = () => {
         );
     }
 
-    // 📱 LoginScreen'e arayüz props'ları eksiksiz aktarıldı
     if (!currentUserRole) return (
         <LoginScreen 
             onStudentLogin={handleStudentLogin} 
@@ -323,8 +325,8 @@ const App = () => {
 
             <main className="max-w-7xl mx-auto px-4 mt-8 no-print relative z-10">
                 <AnimatePresence mode="wait">
-                    {isTeacherMode && view === 'home' && <TeacherDashboard regularClasses={regularClasses} vipClasses={vipClasses} onOpenClass={openClass} onNewClass={() => { setModalType('class'); setModalInputVal(''); }} onNewVipClass={() => { setModalType('vip'); setModalInputVal(''); }} />}
-                    {isTeacherMode && view === 'class-detail' && selectedClass && <ClassDetail selectedClass={selectedClass} activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} newStudentName={newStudentName} setNewStudentName={setNewStudentName} addStudent={addStudent} updateGrade={updateGrade} openCellNoteModal={openCellNoteModal} setModalData={setModalData} setModalInputVal={setModalInputVal} setModalDateVal={setModalDateVal} setModalPdfVal={setModalPdfVal} setModalType={setModalType} deleteStudent={deleteStudent} handlePrintStudentReport={handlePrintStudentReport} openStudent={openStudent} setActiveTopicMenu={setActiveTopicMenu} setActiveColMenu={setActiveColMenu} setActiveCell={setActiveCell} deleteColumn={deleteColumn} updateClassInDb={updateClassInDb} handleOpenRisk={handleOpenRisk} handlePrintPasswords={handlePrintPasswords} deleteClass={deleteClass} libraryItems={libraryItems.filter(i => i.type === LIBRARY_TYPES.CURRICULUM)} saveToLibrary={async (topic) => { if(!topic.title) return; try { await addDoc(collection(db, LIBRARY_COLLECTION), { text: topic.title, type: LIBRARY_TYPES.CURRICULUM, subTopics: topic.subTopics ? topic.subTopics.map(st => ({ title: st.title })) : [] }); } catch (e) { console.error("Kütüphane kayıt hatası:", e); } }} />}
+                    {isTeacherMode && view === 'home' && <TeacherDashboard regularClasses={regularClasses} vipClasses={vipClasses} onOpenClass={openClass} onNewClass={() => { setModalType('class'); }} onNewVipClass={() => { setModalType('vip'); }} />}
+                    {isTeacherMode && view === 'class-detail' && selectedClass && <ClassDetail selectedClass={selectedClass} activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} newStudentName={newStudentName} setNewStudentName={setNewStudentName} addStudent={addStudent} updateGrade={updateGrade} openCellNoteModal={openCellNoteModal} setModalData={setModalData} setModalInputVal={setModalInputVal} setModalDateVal={setModalDateVal} setModalPdfVal={setModalPdfVal} setModalType={setModalType} deleteStudent={deleteStudent} handlePrintStudentReport={handlePrintStudentReport} openStudent={openStudent} setActiveTopicMenu={setActiveTopicMenu} setActiveColMenu={setActiveColMenu} setActiveCell={setActiveCell} deleteColumn={deleteColumn} updateClassInDb={updateClassInDb} handleOpenRisk={handleOpenRisk} handlePrintPasswords={handlePrintPasswords} deleteClass={deleteClass} libraryItems={libraryItems.filter(i => i.type === LIBRARY_TYPES.CURRICULUM)} saveToLibrary={async (topic) => { try { await addDoc(collection(db, LIBRARY_COLLECTION), { text: topic.title, type: LIBRARY_TYPES.CURRICULUM, subTopics: topic.subTopics ? topic.subTopics.map(st => ({ title: st.title })) : [] }); } catch (e) { console.error(e); } }} />}
                     {!isTeacherMode && view === 'home' && <StudentDashboard classes={classes} currentUserRole={currentUserRole} onOpenClass={openClass} />}
                     {view === 'student-detail' && selectedClass && selectedStudentForView && <StudentDetail selectedStudentForView={selectedStudentForView} selectedClass={selectedClass} currentUserRole={currentUserRole} activeTab={activeTab} setActiveTab={setActiveTab} isTeacherMode={isTeacherMode} openCellNoteModal={openCellNoteModal} updateGrade={updateGrade} updateClassInDb={updateClassInDb} />}
                 </AnimatePresence>
@@ -352,7 +354,7 @@ const App = () => {
                         ) : (
                             <>
                                 <h3 className="font-bold text-lg mb-4 text-slate-800">{modalType === 'class' ? 'Yeni Sınıf Oluştur' : modalType === 'vip' ? 'Yeni Özel Ders Oluştur' : modalType === 'topic' ? 'Yeni Ödev Ekle' : 'Düzenle'}</h3>
-                                <input type="text" autoFocus className="w-full border-2 border-slate-200 rounded-xl p-3 mb-2 font-bold outline-none focus:border-brandPurple" placeholder="Başlık girin..." value={modalInputVal} onChange={e => setModalInputVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleModalSubmit()} />
+                                <input type="text" autoFocus className="w-full border-2 border-slate-200 rounded-xl p-3 mb-2 font-bold outline-none focus:border-brandPurple" placeholder="Başlık..." value={modalInputVal} onChange={e => setModalInputVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleModalSubmit()} />
                                 {modalType === 'topic' && (
                                     <div className="mb-4">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Veya Kütüphaneden Seç:</label>
@@ -378,12 +380,10 @@ const App = () => {
                 </div>
             )}
 
-            {activeCell && <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setActiveCell(null)}><motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-4 rounded-2xl shadow-xl flex gap-2" onClick={e => e.stopPropagation()}>{STATUS_OPTIONS.map(opt => ( <button key={opt.id} onClick={() => updateGrade(activeCell.classId, activeCell.studentId, activeCell.colId, opt.id)} className={`flex flex-col items-center justify-center p-3 rounded-xl transition-all ${opt.bg} ${opt.color} hover:scale-105 border ${opt.border}`}><opt.icon size={24} className="mb-2" strokeWidth={2.5}/><span className="text-xs font-black uppercase tracking-wider">{opt.label}</span></button> ))}</motion.div></div>}
+            {activeCell && <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setActiveCell(null)}><motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-4 rounded-2xl shadow-xl flex gap-2" onClick={e => e.stopPropagation()}>{STATUS_OPTIONS.map(opt => ( <button key={opt.id} onClick={() => updateGrade(activeCell.classId, activeCell.studentId, activeCell.colId, opt.id)} className={`flex flex-col items-center justify-center p-3 rounded-xl transition-all ${opt.bg} ${opt.color} border ${opt.border}`}><opt.icon size={24} className="mb-2" strokeWidth={2.5}/><span className="text-xs font-black uppercase tracking-wider">{opt.label}</span></button> ))}</motion.div></div>}
             {activeColMenu && <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setActiveColMenu(null)}><motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-2 rounded-2xl shadow-xl flex flex-col gap-1 w-52" onClick={e => e.stopPropagation()}><button onClick={() => { const cls = classes.find(c => c.id === activeColMenu.classId); const col = cls.topics.find(t => t.id === activeColMenu.topicId).subColumns.find(c => c.id === activeColMenu.colId); setModalData({ classId: cls.id, topicId: activeColMenu.topicId, colId: col.id }); setModalInputVal(col.title); setModalPdfVal(col.pdfLink || ""); setModalType('edit-source'); setActiveColMenu(null); }} className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"><Pencil size={16}/> Kaynağı Düzenle</button><button onClick={() => { deleteColumn(activeColMenu.classId, activeColMenu.topicId, activeColMenu.colId); setActiveColMenu(null); }} className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"><Trash2 size={16}/> Kaynağı Sil</button></motion.div></div>}
             {activeTopicMenu && <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setActiveTopicMenu(null)}><motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-2 rounded-2xl shadow-xl flex flex-col gap-1 w-56" onClick={e => e.stopPropagation()}><button onClick={() => { const cls = classes.find(c => c.id === activeTopicMenu.classId); const top = cls.topics.find(t => t.id === activeTopicMenu.topicId); setModalData({ classId: cls.id, topicId: top.id }); setModalInputVal(top.title); setModalDateVal(top.date || ""); setModalType('edit-topic'); setActiveTopicMenu(null); }} className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"><Pencil size={16}/> Başlık / Tarih Düzenle</button></motion.div></div>}
-            {cellNoteModal && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4"><motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl"><h3 className="font-bold text-lg mb-4 text-slate-800 flex items-center gap-2"><Edit3 size={20} className="text-amber-500"/>Öğretmen Notu</h3><textarea autoFocus rows="4" className="w-full border-2 border-slate-200 rounded-xl p-3 mb-4 font-medium text-sm outline-none focus:border-amber-400" placeholder="Öğrenci için notunuzu buraya yazın..." value={cellNoteModal.note} onChange={e => setCellNoteModal({ ...cellNoteModal, note: e.target.value })}></textarea><div className="flex gap-2 justify-end mt-2"><button onClick={() => setCellNoteModal(null)} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-xl">İptal</button><button onClick={() => { const cls = classes.find(c => c.id === cellNoteModal.classId); const updatedStudents = cls.students.map(s => s.id === cellNoteModal.studentId ? { ...s, assignmentNotes: { ...(s.assignmentNotes || {}), [cellNoteModal.colId]: cellNoteModal.note } } : s); updateClassInDb({ ...cls, students: updatedStudents }); setCellNoteModal(null); }} className="px-4 py-2 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 shadow-md">Notu Kaydet</button></div></motion.div></div>}
-            
-            {isTeacherMode && <button onClick={() => setShowAssistant(true)} className="fab-button bg-brandPurple text-white" title="Akıllı Asistan"><div className="fab-pulse"></div><Mic size={28} /></button>}
+            {cellNoteModal && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4"><motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl"><h3 className="font-bold text-lg mb-4 text-slate-800 flex items-center gap-2"><Edit3 size={20} className="text-amber-500"/>Öğretmen Notu</h3><textarea autoFocus rows="4" className="w-full border-2 border-slate-200 rounded-xl p-3 mb-4 font-medium text-sm outline-none focus:border-amber-400" placeholder="Not yazın..." value={cellNoteModal.note} onChange={e => setCellNoteModal({ ...cellNoteModal, note: e.target.value })}></textarea><div className="flex gap-2 justify-end mt-2"><button onClick={() => setCellNoteModal(null)} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-xl">İptal</button><button onClick={() => { const cls = classes.find(c => c.id === cellNoteModal.classId); updateClassInDb({ ...cls, students: cls.students.map(s => s.id === cellNoteModal.studentId ? { ...s, assignmentNotes: { ...(s.assignmentNotes || {}), [cellNoteModal.colId]: cellNoteModal.note } } : s) }); setCellNoteModal(null); }} className="px-4 py-2 bg-amber-500 text-white font-bold rounded-xl shadow-md">Kaydet</button></div></motion.div></div>}
         </div>
     );
 };
