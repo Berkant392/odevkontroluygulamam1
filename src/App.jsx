@@ -69,7 +69,8 @@ const App = () => {
         const handleResize = () => setIsMobile(window.innerWidth < 768); 
         window.addEventListener('resize', handleResize); 
 
-        const userAgent = window.navigator.navigator || window.navigator.userAgent.toLowerCase();
+        const userAgent = window.navigator.userAgent.toLowerCase();
+setIsIos(/iphone|ipad|ipod/.test(userAgent));
         setIsIos(/iphone|ipad|ipod/.test(userAgent));
         setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true);
 
